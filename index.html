@@ -8,246 +8,79 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root{
-      --bg:#EEF1F6;
-      --card:#FFFFFF;
-      --navy:#0B2545;
-      --navy-soft:#3A5A85;
-      --amber:#FFB100;
-      --amber-dark:#B87700;
-      --green:#16A34A;
-      --green-bg:#EAF7EF;
-      --red:#DC2626;
-      --red-bg:#FCEBEA;
-      --border:#D9DFE8;
-      --mono:'IBM Plex Mono', monospace;
-      --display:'Space Grotesk', sans-serif;
-      --body:'Inter', sans-serif;
+      --bg:#EEF1F6; --card:#FFFFFF; --navy:#0B2545; --navy-soft:#3A5A85;
+      --amber:#FFB100; --amber-dark:#B87700; --green:#16A34A; --green-bg:#EAF7EF;
+      --red:#DC2626; --red-bg:#FCEBEA; --border:#D9DFE8;
+      --mono:'IBM Plex Mono', monospace; --display:'Space Grotesk', sans-serif; --body:'Inter', sans-serif;
     }
     *{box-sizing:border-box;}
-    body{
-      margin:0;
-      background:var(--bg);
-      font-family:var(--body);
-      color:var(--navy);
-      min-height:100vh;
-      padding-bottom:40px;
+    body{margin:0;background:var(--bg);font-family:var(--body);color:var(--navy);min-height:100vh;}
+
+    .app-shell{display:flex;min-height:100vh;}
+    .sidebar{
+      width:210px;flex-shrink:0;background:var(--navy);color:#fff;
+      padding:22px 16px;position:sticky;top:0;align-self:flex-start;
+      height:100vh;overflow-y:auto;z-index:20;
     }
-    header{
-      background:var(--navy);
-      color:#fff;
-      padding:22px 20px 20px;
-      position:sticky;
-      top:0;
-      z-index:20;
+    .sidebar .eyebrow{
+      font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+      text-transform:uppercase;color:var(--amber);margin-bottom:4px;
     }
-    header .eyebrow{
-      font-family:var(--mono);
-      font-size:11px;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-      color:var(--amber);
-      margin-bottom:4px;
+    .sidebar h1{font-family:var(--display);font-size:18px;margin:0 0 24px;font-weight:700;line-height:1.3;}
+    .sidebar-nav{display:flex;flex-direction:column;gap:8px;}
+    .nav-btn{
+      border:none;padding:13px 14px;border-radius:10px;text-align:left;
+      font-family:var(--body);font-weight:600;font-size:14.5px;cursor:pointer;
+      background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);transition:.15s;
     }
-    header h1{
-      font-family:var(--display);
-      font-size:20px;
-      margin:0;
-      font-weight:700;
-    }
-    .tabs{
-      display:flex;
-      gap:8px;
-      margin-top:16px;
-    }
-    .tab-btn{
-      flex:1;
-      border:none;
-      padding:11px 8px;
-      border-radius:10px;
-      font-family:var(--body);
-      font-weight:600;
-      font-size:14px;
-      cursor:pointer;
-      background:rgba(255,255,255,.08);
-      color:rgba(255,255,255,.7);
-      transition:.15s;
-    }
-    .tab-btn.active{
-      background:var(--amber);
-      color:var(--navy);
-    }
-    main{
-      max-width:520px;
-      margin:0 auto;
-      padding:18px 16px;
-    }
+    .nav-btn.active{background:var(--amber);color:var(--navy);}
+
+    main{flex:1;min-width:0;padding:20px 18px 40px;max-width:560px;margin:0 auto;width:100%;}
     .panel{display:none;}
     .panel.active{display:block;}
 
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:18px;
-      margin-bottom:16px;
-    }
-    .card h2{
-      font-family:var(--display);
-      font-size:15px;
-      margin:0 0 12px;
-      color:var(--navy);
-    }
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px;}
+    .card h2{font-family:var(--display);font-size:15px;margin:0 0 12px;color:var(--navy);}
     .scan-btn{
-      width:100%;
-      padding:16px;
-      border:none;
-      border-radius:12px;
-      background:var(--navy);
-      color:#fff;
-      font-family:var(--body);
-      font-weight:600;
-      font-size:15px;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
+      width:100%;padding:16px;border:none;border-radius:12px;background:var(--navy);color:#fff;
+      font-family:var(--body);font-weight:600;font-size:15px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:10px;
     }
     .scan-btn:active{opacity:.85;}
     .scan-btn svg{flex-shrink:0;}
-    #reader-wrap{
-      margin-top:14px;
-      border-radius:12px;
-      overflow:hidden;
-      display:none;
-    }
-    #reader-wrap.show{display:block;}
-    #reader{width:100%;}
+    .reader-wrap-el{margin-top:14px;border-radius:12px;overflow:hidden;display:none;}
+    .reader-wrap-el.show{display:block;}
     .stop-btn{
-      width:100%;
-      margin-top:8px;
-      padding:10px;
-      border-radius:10px;
-      border:1px solid var(--border);
-      background:#fff;
-      color:var(--navy-soft);
-      font-weight:600;
-      font-size:13px;
-      cursor:pointer;
+      width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--border);
+      background:#fff;color:var(--navy-soft);font-weight:600;font-size:13px;cursor:pointer;
     }
 
-    .manual-toggle{
-      text-align:center;
-      margin-top:12px;
-      font-size:13px;
-      color:var(--navy-soft);
-      cursor:pointer;
-      text-decoration:underline;
-    }
+    .manual-toggle{text-align:center;margin-top:12px;font-size:13px;color:var(--navy-soft);cursor:pointer;text-decoration:underline;}
     .manual-box{display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);}
     .manual-box.show{display:block;}
 
-    /* Ticket / phiếu style */
-    .ticket{
-      border:2px dashed var(--navy-soft);
-      border-radius:12px;
-      padding:16px;
-      background:#FAFBFD;
-      position:relative;
-    }
-    .ticket .tag{
-      position:absolute;
-      top:-11px;
-      left:14px;
-      background:var(--amber);
-      color:var(--navy);
-      font-family:var(--mono);
-      font-size:11px;
-      font-weight:600;
-      padding:2px 10px;
-      border-radius:6px;
-      letter-spacing:.05em;
-    }
-    .ticket-row{
-      display:flex;
-      justify-content:space-between;
-      padding:6px 0;
-      border-bottom:1px solid #E4E9F0;
-      font-size:13.5px;
-    }
-    .ticket-row:last-child{border-bottom:none;}
-    .ticket-row .label{color:var(--navy-soft);}
-    .ticket-row .value{
-      font-family:var(--mono);
-      font-weight:600;
-      color:var(--navy);
-      text-align:right;
-    }
-    .maid-pill{
-      display:inline-block;
-      font-family:var(--mono);
-      font-weight:700;
-      font-size:13px;
-      background:var(--navy);
-      color:var(--amber);
-      padding:5px 10px;
-      border-radius:8px;
-      margin-top:10px;
-    }
-
     .field{margin-bottom:14px;}
-    .field label{
-      display:block;
-      font-size:12.5px;
-      font-weight:600;
-      color:var(--navy-soft);
-      margin-bottom:5px;
-    }
+    .field label{display:block;font-size:12.5px;font-weight:600;color:var(--navy-soft);margin-bottom:5px;}
     .field input{
-      width:100%;
-      padding:11px 12px;
-      border-radius:10px;
-      border:1px solid var(--border);
-      font-size:14.5px;
-      font-family:var(--body);
-      color:var(--navy);
+      width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border);
+      font-size:14.5px;font-family:var(--body);color:var(--navy);
     }
     .field-row{display:flex;gap:10px;}
     .field-row .field{flex:1;}
 
     .primary-btn{
-      width:100%;
-      padding:14px;
-      border:none;
-      border-radius:12px;
-      background:var(--amber);
-      color:var(--navy);
-      font-weight:700;
-      font-size:15px;
-      cursor:pointer;
+      width:100%;padding:14px;border:none;border-radius:12px;background:var(--amber);
+      color:var(--navy);font-weight:700;font-size:15px;cursor:pointer;
     }
     .primary-btn:disabled{opacity:.5;cursor:default;}
     .ghost-btn{
-      width:100%;
-      margin-top:8px;
-      padding:12px;
-      border-radius:12px;
-      border:1px solid var(--border);
-      background:#fff;
-      color:var(--navy-soft);
-      font-weight:600;
-      cursor:pointer;
+      width:100%;margin-top:8px;padding:12px;border-radius:12px;border:1px solid var(--border);
+      background:#fff;color:var(--navy-soft);font-weight:600;cursor:pointer;
     }
 
     .status{
-      border-radius:12px;
-      padding:13px 14px;
-      font-size:13.5px;
-      font-weight:500;
-      margin-bottom:14px;
-      display:flex;
-      gap:8px;
-      align-items:flex-start;
+      border-radius:12px;padding:13px 14px;font-size:13.5px;font-weight:500;margin-bottom:14px;
+      display:flex;gap:8px;align-items:flex-start;
     }
     .status.success{background:var(--green-bg);color:#0F5C2E;}
     .status.error{background:var(--red-bg);color:#8A1F1F;}
@@ -258,312 +91,161 @@
     .confirm-yes{background:var(--red);color:#fff;}
     .confirm-no{background:#fff;border:1px solid var(--border) !important;color:var(--navy-soft);}
 
-    .empty-hint{
-      text-align:center;
-      color:var(--navy-soft);
-      font-size:13px;
-      padding:20px 10px;
-      line-height:1.6;
-    }
+    .empty-hint{text-align:center;color:var(--navy-soft);font-size:13px;padding:20px 10px;line-height:1.6;}
     .spinner{
-      width:16px;height:16px;border-radius:50%;
-      border:2.5px solid rgba(11,37,69,.15);
-      border-top-color:var(--navy);
-      animation:spin .7s linear infinite;
-      display:inline-block;
+      width:16px;height:16px;border-radius:50%;border:2.5px solid rgba(11,37,69,.15);
+      border-top-color:var(--navy);animation:spin .7s linear infinite;display:inline-block;
     }
     @keyframes spin{to{transform:rotate(360deg);}}
 
-    .tra-table-wrap{
-      border:1px solid var(--border);
-      border-radius:12px;
-      overflow:auto;
-      max-height:70vh;
-    }
-    .tra-table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:12.5px;
-      font-family:var(--mono);
-      white-space:nowrap;
-    }
+    .tra-table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;max-height:70vh;}
+    .tra-table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:var(--mono);white-space:nowrap;}
     .tra-table thead th{
-      position:sticky;
-      top:0;
-      background:var(--navy);
-      color:#fff;
-      font-family:var(--body);
-      font-weight:600;
-      padding:10px 12px;
-      text-align:center;
-      z-index:5;
-      box-shadow:0 2px 0 rgba(0,0,0,.15);
+      position:sticky;top:0;background:var(--navy);color:#fff;font-family:var(--body);
+      font-weight:600;padding:10px 12px;text-align:center;z-index:5;box-shadow:0 2px 0 rgba(0,0,0,.15);
     }
-    .tra-table tbody td{
-      padding:8px 12px;
-      color:var(--navy);
-      border-bottom:1px solid #E4E9F0;
-      text-align:center;
-    }
-    }
+    .tra-table tbody td{padding:8px 12px;color:var(--navy);border-bottom:1px solid #E4E9F0;text-align:center;}
     .tra-table tbody tr:nth-child(odd){background:#E9F1FE;}
     .tra-table tbody tr:nth-child(even){background:#F2F3F5;}
     .tra-table .shipped{color:var(--green);font-weight:600;}
     .tra-table .not-shipped{color:var(--amber-dark);font-weight:600;}
+    .tra-table th,.tra-table td{text-align:center;border-left:1px solid #B9C4D4;}
+    .tra-table th:first-child,.tra-table td:first-child{border-left:none;}
 
-    /* Căn giữa dữ liệu + kẻ đường dọc mỏng cho tất cả các cột */
-    .tra-table th,
-    .tra-table td{
-      text-align:center;
-      border-left:1px solid #B9C4D4;
-    }
-    .tra-table th:first-child,
-    .tra-table td:first-child{
-      border-left:none;
-    }
-
-    .summary-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:12px;
-      margin-bottom:16px;
-    }
-    .summary-card{
-      flex:1 1 90px;
-      background:var(--bg);
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:10px 12px;
-      text-align:center;
-    }
-    .summary-card .num{
-      font-family:var(--display);
-      font-size:24px;
-      font-weight:700;
-      color:var(--navy);
-    }
-    .summary-card .lbl{
-      font-size:12px;
-      color:var(--navy-soft);
-      margin-top:4px;
-      font-weight:600;
-    }
-    .summary-card.total .num{color:var(--navy);}
+    .summary-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;}
+    .summary-card{flex:1 1 90px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 12px;text-align:center;}
+    .summary-card .num{font-family:var(--display);font-size:24px;font-weight:700;color:var(--navy);}
+    .summary-card .lbl{font-size:12px;color:var(--navy-soft);margin-top:4px;font-weight:600;}
     .summary-card.shipped .num{color:var(--green);}
-    .summary-card.unshipped .num{color:var(--amber-dark);}
     .summary-card.percent .num{color:var(--navy);}
     .summary-chart-card{
-      flex:0 0 auto;
-      background:var(--bg);
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:10px 14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:12px;
+      flex:0 0 auto;background:var(--bg);border:1px solid var(--border);border-radius:12px;
+      padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:12px;
     }
-    .donut{
-      width:80px;
-      height:80px;
-      border-radius:50%;
-      flex-shrink:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      position:relative;
-    }
-    .donut::after{
-      content:'';
-      width:50px;
-      height:50px;
-      border-radius:50%;
-      background:var(--card);
-      position:absolute;
-    }
-    .donut-pct{
-      position:relative;
-      z-index:2;
-      font-family:var(--mono);
-      font-weight:700;
-      font-size:13px;
-      color:var(--navy);
-    }
-    .donut-legend{
-      font-size:12px;
-      line-height:1.7;
-    }
-    .donut-legend span{
-      display:inline-block;
-      width:9px;height:9px;
-      border-radius:2px;
-      margin-right:6px;
-    }
+    .donut{width:80px;height:80px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;}
+    .donut::after{content:'';width:50px;height:50px;border-radius:50%;background:var(--card);position:absolute;}
+    .donut-pct{position:relative;z-index:2;font-family:var(--mono);font-weight:700;font-size:13px;color:var(--navy);}
+    .donut-legend{font-size:12px;line-height:1.7;}
+    .donut-legend span{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;}
 
-    .tra-top-row{
-      display:flex;
-      gap:20px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .tra-search-block{
-      flex:0 0 auto;
-    }
-    .tra-summary-block{
-      flex:1 1 auto;
-      min-width:0;
-    }
-    .tra-summary-block .summary-row{
-      margin-bottom:0;
-    }
-
-    .tra-search-row{
-      display:flex;
-      gap:10px;
-      align-items:center;
-    }
+    .tra-top-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+    .tra-search-block{flex:0 0 auto;}
+    .tra-summary-block{flex:1 1 auto;min-width:0;}
+    .tra-summary-block .summary-row{margin-bottom:0;}
+    .tra-search-row{display:flex;gap:10px;align-items:center;}
     .tra-search-row input{
-      flex:0 1 260px;
-      padding:11px 12px;
-      border-radius:10px;
-      border:1px solid var(--border);
-      font-size:14.5px;
-      font-family:var(--body);
-      color:var(--navy);
+      flex:0 1 260px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);
+      font-size:14.5px;font-family:var(--body);color:var(--navy);
     }
-    .tra-search-row button{
-      flex:0 0 auto;
-      width:auto;
-      padding:11px 22px;
-    }
+    .tra-search-row button{flex:0 0 auto;width:auto;padding:11px 22px;}
 
-    @media (min-width: 700px){
-      main{max-width:1100px;}
+    @media (max-width:700px){
+      .sidebar{width:72px;padding:16px 6px;}
+      .sidebar .eyebrow,.sidebar h1{display:none;}
+      .nav-btn{font-size:10.5px;text-align:center;padding:12px 3px;line-height:1.3;}
     }
-    /* Riêng panel Tra cứu: trên máy tính cho bảng kéo rộng full màn hình, chữ to hơn */
-    @media (min-width: 900px){
-      #panel-tra{max-width:none;}
-      #panel-tra .card{
-        max-width:none;
-        margin-left:calc(50% - 50vw + 16px);
-        margin-right:calc(50% - 50vw + 16px);
-        width:calc(100vw - 32px);
-      }
+    @media (min-width:900px){
+      main{max-width:1100px;}
+      #panel-tra .card{width:100%;}
       #panel-tra .tra-table{font-size:14.5px;}
-      #panel-tra .tra-table thead th,
-      #panel-tra .tra-table tbody td{padding:12px 16px;}
+      #panel-tra .tra-table thead th,#panel-tra .tra-table tbody td{padding:12px 16px;}
     }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="eyebrow">KHO GCCK CX</div>
-  <h1>Quản lý Vật tư Kho</h1>
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('nhan')">📥 Nhận</button>
-    <button class="tab-btn" onclick="switchTab('giao')">📤 Giao</button>
-    <button class="tab-btn" onclick="switchTab('tra')">🔍 Tra cứu</button>
-    <button class="tab-btn" onclick="switchTab('lichsu')">🕘 Lịch sử</button>
-  </div>
-</header>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="eyebrow">KHO GCCK CX</div>
+    <h1>Quản lý Vật tư Kho</h1>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" onclick="switchTab('nhan')">📥 Nhận</button>
+      <button class="nav-btn" onclick="switchTab('giao')">📤 Giao</button>
+      <button class="nav-btn" onclick="switchTab('tra')">🔍 Tra cứu</button>
+    </nav>
+  </aside>
 
-<main>
-
-  <!-- ================= NHẬN HÀNG ================= -->
-  <div id="panel-nhan" class="panel active">
-    <div class="card">
-      <h2>1. Quét mã QR trên phiếu</h2>
-      <button class="scan-btn" id="btn-scan-nhan" onclick="startScan('nhan')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
-        Bắt đầu quét QR
-      </button>
-      <div id="reader-wrap-nhan" class="reader-wrap-el" style="margin-top:14px;border-radius:12px;overflow:hidden;display:none;">
-        <div id="reader-nhan"></div>
-        <button class="stop-btn" onclick="stopScan('nhan')">Dừng quét</button>
-      </div>
-      <div class="manual-toggle" onclick="toggleManual('nhan')">hoặc nhập tay (không quét QR)</div>
-      <div class="manual-box" id="manual-nhan">
-        <div class="field-row">
-          <div class="field"><label>LSX *</label><input type="text" id="man-nhan-lsx"></div>
-          <div class="field"><label>STT *</label><input type="text" id="man-nhan-stt" inputmode="numeric"></div>
+  <main>
+    <!-- ================= NHẬN HÀNG ================= -->
+    <div id="panel-nhan" class="panel active">
+      <div class="card">
+        <h2>1. Quét mã QR trên phiếu</h2>
+        <button class="scan-btn" id="btn-scan-nhan" onclick="startScan('nhan')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+          Bắt đầu quét QR
+        </button>
+        <div id="reader-wrap-nhan" class="reader-wrap-el">
+          <div id="reader-nhan"></div>
+          <button class="stop-btn" onclick="stopScan('nhan')">Dừng quét</button>
         </div>
-        <div class="field"><label>Số lượng *</label><input type="text" id="man-nhan-sl" inputmode="numeric"></div>
-        <button class="primary-btn" onclick="submitManualNhan()">Dùng thông tin này</button>
-      </div>
-    </div>
-
-    <div id="result-nhan"></div>
-  </div>
-
-  <!-- ================= GIAO HÀNG ================= -->
-  <div id="panel-giao" class="panel">
-    <div class="card">
-      <h2>1. Quét mã QR trên phiếu cần giao</h2>
-      <button class="scan-btn" id="btn-scan-giao" onclick="startScan('giao')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
-        Bắt đầu quét QR
-      </button>
-      <div id="reader-wrap-giao" class="reader-wrap-el" style="margin-top:14px;border-radius:12px;overflow:hidden;display:none;">
-        <div id="reader-giao"></div>
-        <button class="stop-btn" onclick="stopScan('giao')">Dừng quét</button>
-      </div>
-      <div class="manual-toggle" onclick="toggleManual('giao')">hoặc nhập tay (không quét QR)</div>
-      <div class="manual-box" id="manual-giao">
-        <div class="field-row">
-          <div class="field"><label>LSX *</label><input type="text" id="man-giao-lsx"></div>
-          <div class="field"><label>STT *</label><input type="text" id="man-giao-stt" inputmode="numeric"></div>
-        </div>
-        <div class="field"><label>Số lượng *</label><input type="text" id="man-giao-sl" inputmode="numeric"></div>
-        <button class="primary-btn" onclick="submitManualGiao()">Dùng thông tin này</button>
-      </div>
-
-      <div id="result-giao"></div>
-    </div>
-  </div>
-
-  <!-- ================= TRA CỨU ================= -->
-  <div id="panel-tra" class="panel">
-    <div class="card">
-      <div class="tra-top-row">
-        <div class="tra-search-block">
-          <h2>Tra cứu theo Lệnh sản xuất (LSX)</h2>
-          <div class="tra-search-row">
-            <input type="text" id="tra-lsx" placeholder="Nhập LSX, ví dụ: KDN.19/07">
-            <button class="primary-btn" onclick="submitTraCuu()">Tìm</button>
+        <div class="manual-toggle" onclick="toggleManual('nhan')">hoặc nhập tay (không quét QR)</div>
+        <div class="manual-box" id="manual-nhan">
+          <div class="field-row">
+            <div class="field"><label>LSX *</label><input type="text" id="man-nhan-lsx"></div>
+            <div class="field"><label>STT *</label><input type="text" id="man-nhan-stt" inputmode="numeric"></div>
           </div>
+          <div class="field"><label>Số lượng *</label><input type="text" id="man-nhan-sl" inputmode="numeric"></div>
+          <button class="primary-btn" onclick="submitManualNhan()">Dùng thông tin này</button>
         </div>
-        <div id="summary-tra" class="tra-summary-block"></div>
+      </div>
+      <div id="result-nhan"></div>
+    </div>
+
+    <!-- ================= GIAO HÀNG ================= -->
+    <div id="panel-giao" class="panel">
+      <div class="card">
+        <h2>1. Quét mã QR trên phiếu cần giao</h2>
+        <button class="scan-btn" id="btn-scan-giao" onclick="startScan('giao')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+          Bắt đầu quét QR
+        </button>
+        <div id="reader-wrap-giao" class="reader-wrap-el">
+          <div id="reader-giao"></div>
+          <button class="stop-btn" onclick="stopScan('giao')">Dừng quét</button>
+        </div>
+        <div class="manual-toggle" onclick="toggleManual('giao')">hoặc nhập tay (không quét QR)</div>
+        <div class="manual-box" id="manual-giao">
+          <div class="field-row">
+            <div class="field"><label>LSX *</label><input type="text" id="man-giao-lsx"></div>
+            <div class="field"><label>STT *</label><input type="text" id="man-giao-stt" inputmode="numeric"></div>
+          </div>
+          <div class="field"><label>Số lượng *</label><input type="text" id="man-giao-sl" inputmode="numeric"></div>
+          <button class="primary-btn" onclick="submitManualGiao()">Dùng thông tin này</button>
+        </div>
+        <div id="result-giao"></div>
       </div>
     </div>
-    <div id="result-tra"></div>
-  </div>
 
-  <!-- ================= LỊCH SỬ ================= -->
-  <div id="panel-lichsu" class="panel">
-    <div class="card">
-      <h2>Lịch sử giao nhận (500 gần nhất)</h2>
-      <div class="tra-search-row">
-        <input type="text" id="lichsu-search" placeholder="Tìm theo LSX, mã, tên chi tiết..." oninput="filterHistory()" style="flex:1 1 auto;">
-        <button class="ghost-btn" style="width:auto;margin-top:0;" onclick="loadHistory()">↻ Tải lại</button>
+    <!-- ================= TRA CỨU ================= -->
+    <div id="panel-tra" class="panel">
+      <div class="card">
+        <div class="tra-top-row">
+          <div class="tra-search-block">
+            <h2>Tra cứu theo Lệnh sản xuất (LSX)</h2>
+            <div class="tra-search-row">
+              <input type="text" id="tra-lsx" placeholder="Nhập LSX, ví dụ: KDN.19/07">
+              <button class="primary-btn" onclick="submitTraCuu()">Tìm</button>
+            </div>
+          </div>
+          <div id="summary-tra" class="tra-summary-block"></div>
+        </div>
       </div>
+      <div id="result-tra"></div>
     </div>
-    <div id="result-lichsu"></div>
-  </div>
-
-</main>
+  </main>
+</div>
 
 <script>
 /* ==========================================================
    DÁN LINK WEB APP (Apps Script) CỦA BẠN VÀO ĐÂY, VÍ DỤ:
    'https://script.google.com/macros/s/AKfycb.../exec'
    ========================================================== */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzhEqou5OXgG6Ys1Xe2pFjlKCxUMKU-gw_S8l0hjbhLE6iqOi05y7HFSAdo9GUq5954/exec';
+const SCRIPT_URL = 'DÁN_LINK_APPS_SCRIPT_VÀO_ĐÂY';
 
 function callApi(payload){
   return fetch(SCRIPT_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // tránh CORS preflight
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
   }).then(r => {
     if(!r.ok) throw new Error('HTTP ' + r.status);
@@ -571,16 +253,14 @@ function callApi(payload){
   });
 }
 
-let scanners = {}; // giữ instance Html5Qrcode theo tab
+let scanners = {};
 
 function switchTab(tab){
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+tab).classList.add('active');
   event.currentTarget.classList.add('active');
-  // dừng camera của tab còn lại để tránh 2 camera cùng chạy
   ['nhan','giao'].filter(t=>t!==tab).forEach(t=>stopScan(t));
-  if(tab === 'lichsu') loadHistory();
 }
 
 function todayStr(){
@@ -601,8 +281,7 @@ function submitManualNhan(){
     showStatus('nhan', 'error', 'Vui lòng nhập đủ LSX, STT và Số lượng.');
     return;
   }
-  const data = { lsx: lsx, stt: stt, sl: sl };
-  addToReceiveQueue(data);
+  addToReceiveQueue({ lsx, stt, sl });
 }
 
 function submitManualGiao(){
@@ -613,8 +292,7 @@ function submitManualGiao(){
     showStatus('giao', 'error', 'Vui lòng nhập đủ LSX, STT và Số lượng.');
     return;
   }
-  const data = { lsx: lsx, stt: stt, sl: sl };
-  addToShipQueue(data);
+  addToShipQueue({ lsx, stt, sl });
 }
 
 function startScan(tab){
@@ -649,16 +327,12 @@ function stopScan(tab){
 }
 
 function normalizeLabel(s){
-  return s.replace(/đ/gi, 'd')
-          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase().trim();
+  return s.replace(/đ/gi, 'd').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
 function parseQr(text){
   const result = { lsx:'', soDh:'', stt:'', mact:'', ten:'', sl:'' };
-
   if(text.indexOf(':') === -1 && text.indexOf('|') !== -1){
-    // Định dạng cũ: LSX | STT | Mã CT | Tên CT | SL
     const parts = text.split('|').map(s=>s.trim());
     result.lsx  = parts[0] || '';
     result.stt  = parts[1] || '';
@@ -667,14 +341,12 @@ function parseQr(text){
     result.sl   = parts[4] || '';
     return result;
   }
-
-  // Định dạng nhãn: mỗi dòng "Nhãn: giá trị" - trường nào trống thì bỏ qua
   text.split(/\r?\n/).forEach(function(line){
     const idx = line.indexOf(':');
     if(idx === -1) return;
     const label = normalizeLabel(line.slice(0, idx));
     const value = line.slice(idx + 1).trim();
-    if(!value) return; // bỏ trống
+    if(!value) return;
     if(label === 'lsx') result.lsx = value;
     else if(label === 'so dh') result.soDh = value;
     else if(label === 'stt') result.stt = value;
@@ -707,20 +379,10 @@ function showStatus(tab, type, message){
   const box = document.getElementById('result-'+tab);
   box.innerHTML = '<div class="status '+type+'">'+iconFor(type)+'<span>'+escapeHtml(message)+'</span></div>';
 }
+function iconFor(type){ if(type==='success') return '✅'; if(type==='error') return '⛔'; return '⚠️'; }
+function escapeHtml(str){ const d = document.createElement('div'); d.innerText = str; return d.innerHTML; }
 
-function iconFor(type){
-  if(type==='success') return '✅';
-  if(type==='error') return '⛔';
-  return '⚠️';
-}
-
-function escapeHtml(str){
-  const d = document.createElement('div');
-  d.innerText = str;
-  return d.innerHTML;
-}
-
-/* ---------------- NHẬN HÀNG (theo lô) ---------------- */
+/* ---------------- NHẬN HÀNG ---------------- */
 
 function addToReceiveQueue(data){
   if(!window.__receiveQueue) window.__receiveQueue = [];
@@ -758,17 +420,14 @@ function renderReceiveQueue(){
       <h2>2. Danh sách đã quét (${queue.length} mã)</h2>
       <div class="tra-table-wrap" style="max-height:40vh;">
         <table class="tra-table">
-          <thead><tr><th>#</th><th>Mã ID</th><th>Tên chi tiết</th><th>SL đơn</th><th>SL nhập kho</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>Mã ID</th><th>Tên chi tiết</th><th>SL đơn</th><th>SL nhận</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
     </div>
     <div class="card">
-      <h2>3. Vị trí lưu kho (áp dụng cho tất cả mã trên)</h2>
-      <div class="field-row">
-        <div class="field"><label>Số kệ</label><input type="text" id="in-soke" inputmode="numeric"></div>
-        <div class="field"><label>Tầng</label><input type="text" id="in-tang" inputmode="numeric"></div>
-      </div>
+      <h2>3. Xác nhận nhận hàng</h2>
+      <div class="field"><label>Người nhận</label><input type="text" id="in-nguoinhan" placeholder="Tên người nhận"></div>
       <div class="field"><label>Ngày nhận</label><input type="date" id="in-ngaynhan" value="${todayStr()}"></div>
       <button class="primary-btn" id="btn-save-nhan" onclick="saveReceiveBatch()">Lưu tất cả vào kho</button>
       <button class="ghost-btn" onclick="startScan('nhan')">Quét tiếp</button>
@@ -777,17 +436,16 @@ function renderReceiveQueue(){
   `;
 }
 
-function saveReceiveBatch(confirmDuplicate){
+function saveReceiveBatch(confirmSkip){
   const queue = window.__receiveQueue || [];
   if(!queue.length) return;
 
   const payload = {
     action: 'receiveBatch',
     items: queue,
-    soKe: document.getElementById('in-soke').value,
-    tang: document.getElementById('in-tang').value,
     ngayNhan: document.getElementById('in-ngaynhan').value,
-    confirmDuplicate: !!confirmDuplicate
+    nguoiNhan: document.getElementById('in-nguoinhan').value.trim(),
+    confirmSkip: !!confirmSkip
   };
   const btn = document.getElementById('btn-save-nhan');
   btn.disabled = true;
@@ -802,11 +460,11 @@ function saveReceiveBatch(confirmDuplicate){
         statusBox.innerHTML = '<div class="status success">✅ Đã lưu '+res.count+' mã vào kho.</div>';
         window.__receiveQueue = [];
         setTimeout(function(){ document.getElementById('result-nhan').innerHTML=''; }, 1500);
-      } else if(res.duplicate){
+      } else if(res.missing){
         statusBox.innerHTML = `
           <div class="status warning">⚠️ ${escapeHtml(res.message)}</div>
           <div class="confirm-row">
-            <button class="confirm-yes" onclick="saveReceiveBatch(true)">Vẫn thêm mới</button>
+            <button class="confirm-yes" onclick="saveReceiveBatch(true)">Bỏ qua mã không có, lưu phần còn lại</button>
             <button class="confirm-no" onclick="document.getElementById('status-nhan').innerHTML=''">Hủy</button>
           </div>`;
       } else {
@@ -821,8 +479,6 @@ function saveReceiveBatch(confirmDuplicate){
 }
 
 /* ---------------- GIAO HÀNG ---------------- */
-
-/* ---------------- GIAO HÀNG (theo lô) ---------------- */
 
 function addToShipQueue(data){
   if(!window.__shipQueue) window.__shipQueue = [];
@@ -867,6 +523,7 @@ function renderShipQueue(){
     </div>
     <div class="card">
       <h2>3. Xác nhận giao</h2>
+      <div class="field"><label>Người giao</label><input type="text" id="in-nguoigiao" placeholder="Tên người giao"></div>
       <div class="field"><label>Ngày giao</label><input type="date" id="in-ngaygiao" value="${todayStr()}"></div>
       <button class="primary-btn" id="btn-save-giao" onclick="saveShipBatch()">Lưu tất cả</button>
       <button class="ghost-btn" onclick="startScan('giao')">Quét tiếp</button>
@@ -883,6 +540,7 @@ function saveShipBatch(confirmSkip){
     action: 'shipBatch',
     items: queue,
     ngayGiao: document.getElementById('in-ngaygiao').value,
+    nguoiGiao: document.getElementById('in-nguoigiao').value.trim(),
     confirmSkip: !!confirmSkip
   };
   const btn = document.getElementById('btn-save-giao');
@@ -902,7 +560,7 @@ function saveShipBatch(confirmSkip){
         statusBox.innerHTML = `
           <div class="status warning">⚠️ ${escapeHtml(res.message)}</div>
           <div class="confirm-row">
-            <button class="confirm-yes" onclick="saveShipBatch(true)">Bỏ qua mã chưa nhận, lưu phần còn lại</button>
+            <button class="confirm-yes" onclick="saveShipBatch(true)">Bỏ qua mã không có, lưu phần còn lại</button>
             <button class="confirm-no" onclick="document.getElementById('status-giao').innerHTML=''">Hủy</button>
           </div>`;
       } else {
@@ -915,6 +573,7 @@ function saveShipBatch(confirmSkip){
       document.getElementById('status-giao').innerHTML = '<div class="status error">⛔ Lỗi kết nối: '+escapeHtml(err.message||err)+'</div>';
     });
 }
+
 /* ---------------- TRA CỨU ---------------- */
 
 function submitTraCuu(){
@@ -940,22 +599,20 @@ function submitTraCuu(){
     });
 }
 
-function buildSummaryHtml(total, shippedCount, unshippedCount, percent){
+function buildSummaryHtml(total, nhanCount, giaoCount, percent){
   const deg = percent * 3.6;
   const gradient = 'conic-gradient(var(--green) 0deg ' + deg + 'deg, var(--amber-dark) ' + deg + 'deg 360deg)';
   return `
     <div class="summary-row">
-      <div class="summary-card total"><div class="num">${total}</div><div class="lbl">Tổng số món</div></div>
-      <div class="summary-card shipped"><div class="num">${shippedCount}</div><div class="lbl">Đã giao</div></div>
-      <div class="summary-card unshipped"><div class="num">${unshippedCount}</div><div class="lbl">Chưa giao</div></div>
+      <div class="summary-card"><div class="num">${total}</div><div class="lbl">Tổng số món</div></div>
+      <div class="summary-card"><div class="num">${nhanCount}</div><div class="lbl">Đã nhận vật tư</div></div>
+      <div class="summary-card shipped"><div class="num">${giaoCount}</div><div class="lbl">Đã giao hàng</div></div>
       <div class="summary-card percent"><div class="num">${percent}%</div><div class="lbl">Tỉ lệ đã giao</div></div>
       <div class="summary-chart-card">
-        <div class="donut" style="background:${gradient};">
-          <span class="donut-pct">${percent}%</span>
-        </div>
+        <div class="donut" style="background:${gradient};"><span class="donut-pct">${percent}%</span></div>
         <div class="donut-legend">
-          <div><span style="background:var(--green);"></span>Đã giao (${shippedCount})</div>
-          <div><span style="background:var(--amber-dark);"></span>Chưa giao (${unshippedCount})</div>
+          <div><span style="background:var(--green);"></span>Đã giao (${giaoCount})</div>
+          <div><span style="background:var(--amber-dark);"></span>Chưa giao (${total-giaoCount})</div>
         </div>
       </div>
     </div>`;
@@ -970,33 +627,26 @@ function renderTraCuuResults(items){
   }
 
   const total = items.length;
-  const shippedCount = items.filter(function(it){
-    return Number(it.tongGiao||0) >= Number(it.sl||0) && Number(it.sl||0) > 0;
-  }).length;
-  const unshippedCount = total - shippedCount;
-  const percent = total ? Math.round((shippedCount/total)*100) : 0;
-  document.getElementById('summary-tra').innerHTML = buildSummaryHtml(total, shippedCount, unshippedCount, percent);
+  const nhanCount = items.filter(function(it){ return it.nhanVatTu; }).length;
+  const giaoCount = items.filter(function(it){ return it.giaoHang; }).length;
+  const percent = total ? Math.round((giaoCount/total)*100) : 0;
+  document.getElementById('summary-tra').innerHTML = buildSummaryHtml(total, nhanCount, giaoCount, percent);
+
+  const chk = function(v){ return v ? '<span class="shipped">✓</span>' : '<span class="not-shipped">—</span>'; };
 
   const rows = items.map(function(it, i){
-    const giaoHtml = (it.tongGiao > 0)
-      ? '<span class="shipped">'+escapeHtml(it.statusGiao||'')+'</span>'
-      : '<span class="not-shipped">Chưa giao</span>';
     return `
       <tr>
         <td>${i+1}</td>
         <td>${escapeHtml(it.lsx||'')}</td>
-        <td>${escapeHtml(it.stt||'')}</td>
-        <td>${escapeHtml(it.soDh||'')}</td>
+        <td>${escapeHtml(it.sttCt||'')}</td>
         <td>${escapeHtml(it.mact||'')}</td>
         <td>${escapeHtml(it.ten||'')}</td>
-        <td>${escapeHtml(it.sl||'')}</td>
-        <td>${escapeHtml(it.slNhapKho || it.sl || '')}</td>
-        <td>${escapeHtml(it.tongGiao || 0)}</td>
-        <td>${escapeHtml(it.maId||'')}</td>
-        <td>${escapeHtml(it.soKe||'')}</td>
-        <td>${escapeHtml(it.tang||'')}</td>
-        <td>${escapeHtml(it.ngayNhan||'')}</td>
-        <td>${giaoHtml}</td>
+        <td>${escapeHtml(it.congDoanSau||'')}</td>
+        <td>${escapeHtml(it.slDh||'')}</td>
+        <td>${chk(it.nhanVatTu)}</td>
+        <td>${chk(it.giaoHang)}</td>
+        <td>${chk(it.nmk)}</td>
       </tr>`;
   }).join('');
 
@@ -1006,163 +656,14 @@ function renderTraCuuResults(items){
         <table class="tra-table">
           <thead>
             <tr>
-              <th>STT</th><th>LSX</th><th>STT CT</th><th>Số ĐH</th><th>Mã CT</th>
-              <th>Tên chi tiết</th><th>SL</th><th>SL nhập</th><th>Tổng đã giao</th><th>Mã ID</th><th>Số kệ</th><th>Tầng</th>
-              <th>Ngày nhận</th><th>Tình trạng giao</th>
+              <th>STT</th><th>LSX</th><th>STT CT</th><th>MSCT</th><th>Tên chi tiết</th>
+              <th>Công đoạn sau</th><th>SL/ĐH</th><th>Nhận VT</th><th>Giao hàng</th><th>NMK</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
     </div>`;
-}
-
-/* ---------------- LỊCH SỬ ---------------- */
-
-function loadHistory(){
-  const box = document.getElementById('result-lichsu');
-  box.innerHTML = '<div class="card"><div class="empty-hint"><span class="spinner"></span><br>Đang tải lịch sử...</div></div>';
-
-  callApi({ action: 'getHistory' })
-    .then(function(res){
-      if(!res.success){
-        box.innerHTML = '<div class="status error">⛔ '+escapeHtml(res.message||'Có lỗi xảy ra')+'</div>';
-        return;
-      }
-      // Gắn tên chi tiết cho các dòng "giao" bằng cách tra trong các dòng "nhận" cùng Mã ID
-      const nhanByMaId = {};
-      res.items.forEach(function(it){
-        if(it.type === 'nhan') nhanByMaId[it.maId] = it;
-      });
-      res.items.forEach(function(it){
-        if(it.type === 'giao'){
-          const ref = nhanByMaId[it.maId];
-          it.ten = ref ? ref.ten : '';
-          it.lsx = ref ? ref.lsx : (it.maId||'').split('-')[0];
-          it.stt = ref ? ref.stt : (it.maId||'').split('-').slice(1).join('-');
-        }
-      });
-      window.__historyData = res.items;
-      renderHistoryTable(res.items);
-    })
-    .catch(function(err){
-      box.innerHTML = '<div class="status error">⛔ Lỗi kết nối: '+escapeHtml(err.message||err)+'</div>';
-    });
-}
-
-function normalizeSearch(s){
-  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-}
-
-function filterHistory(){
-  const kw = normalizeSearch(document.getElementById('lichsu-search').value);
-  const all = window.__historyData || [];
-  if(!kw){ renderHistoryTable(all); return; }
-  const filtered = all.filter(function(it){
-    const haystack = normalizeSearch([it.maId, it.lsx, it.stt, it.ten, it.mact, it.soDh].join(' '));
-    return haystack.indexOf(kw) !== -1;
-  });
-  renderHistoryTable(filtered);
-}
-
-function renderHistoryTable(items){
-  const box = document.getElementById('result-lichsu');
-  if(!items || !items.length){
-    box.innerHTML = '<div class="card"><div class="empty-hint">Không có dữ liệu.</div></div>';
-    return;
-  }
-
-  const rows = items.map(function(it, i){
-    const idAttr = it.type + '-' + it.row;
-    if(it.type === 'nhan'){
-      return `
-        <tr>
-          <td>${i+1}</td>
-          <td><span class="maid-pill" style="margin-top:0;">NHẬN</span></td>
-          <td>${escapeHtml(it.lsx)}-${escapeHtml(it.stt)}</td>
-          <td>${escapeHtml(it.ten||'')}</td>
-          <td><input type="text" inputmode="numeric" value="${escapeHtml(it.slNhapKho||it.sl||'')}" style="width:60px;text-align:center;" id="h-sl-${idAttr}"></td>
-          <td><input type="date" value="${escapeHtml(it.ngayNhan||'')}" style="width:130px;" id="h-ngay-${idAttr}"></td>
-          <td style="display:flex;gap:6px;justify-content:center;">
-            <button onclick="saveHistoryEdit('nhan', ${it.row})" style="border:none;background:var(--green-bg);color:#0F5C2E;padding:6px 10px;border-radius:8px;font-weight:600;cursor:pointer;">Lưu</button>
-            <button onclick="deleteHistoryRow('nhan', ${it.row})" style="border:none;background:var(--red-bg);color:#8A1F1F;padding:6px 10px;border-radius:8px;font-weight:600;cursor:pointer;">Xóa</button>
-          </td>
-        </tr>`;
-    } else {
-      return `
-        <tr>
-          <td>${i+1}</td>
-          <td><span class="maid-pill" style="margin-top:0;background:var(--amber);color:var(--navy);">GIAO</span></td>
-          <td>${escapeHtml(it.maId||'')}</td>
-          <td>${escapeHtml(it.ten||'')}</td>
-          <td><input type="text" inputmode="numeric" value="${escapeHtml(it.slGiao||'')}" style="width:60px;text-align:center;" id="h-sl-${idAttr}"></td>
-          <td><input type="date" value="${escapeHtml(it.ngayGiao||'')}" style="width:130px;" id="h-ngay-${idAttr}"></td>
-          <td style="display:flex;gap:6px;justify-content:center;">
-            <button onclick="saveHistoryEdit('giao', ${it.row})" style="border:none;background:var(--green-bg);color:#0F5C2E;padding:6px 10px;border-radius:8px;font-weight:600;cursor:pointer;">Lưu</button>
-            <button onclick="deleteHistoryRow('giao', ${it.row})" style="border:none;background:var(--red-bg);color:#8A1F1F;padding:6px 10px;border-radius:8px;font-weight:600;cursor:pointer;">Xóa</button>
-          </td>
-        </tr>`;
-    }
-  }).join('');
-
-  box.innerHTML = `
-    <div class="card">
-      <div class="tra-table-wrap" style="max-height:65vh;">
-        <table class="tra-table">
-          <thead><tr><th>#</th><th>Loại</th><th>Mã ID</th><th>Tên chi tiết</th><th>SL</th><th>Ngày</th><th>Thao tác</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>
-    <div id="status-lichsu"></div>
-  `;
-}
-
-function saveHistoryEdit(type, row){
-  const idAttr = type + '-' + row;
-  const sl = document.getElementById('h-sl-'+idAttr).value.trim();
-  const ngay = document.getElementById('h-ngay-'+idAttr).value;
-  const item = (window.__historyData||[]).find(function(it){ return it.type===type && it.row===row; });
-  if(!item) return;
-
-  let payload;
-  if(type === 'nhan'){
-    payload = {
-      action: 'updateNhan', row: row,
-      lsx: item.lsx, stt: item.stt, soDh: item.soDh, mact: item.mact, ten: item.ten,
-      sl: item.sl, slNhapKho: sl, soKe: item.soKe, tang: item.tang, ngayNhan: ngay
-    };
-  } else {
-    payload = { action: 'updateGiao', row: row, maId: item.maId, ngayGiao: ngay, slGiao: sl };
-  }
-
-  callApi(payload).then(function(res){
-    const statusBox = document.getElementById('status-lichsu');
-    if(res.success){
-      statusBox.innerHTML = '<div class="status success">✅ Đã lưu thay đổi.</div>';
-      loadHistory();
-    } else {
-      statusBox.innerHTML = '<div class="status error">⛔ '+escapeHtml(res.message||'Có lỗi xảy ra')+'</div>';
-    }
-  }).catch(function(err){
-    document.getElementById('status-lichsu').innerHTML = '<div class="status error">⛔ Lỗi kết nối: '+escapeHtml(err.message||err)+'</div>';
-  });
-}
-
-function deleteHistoryRow(type, row){
-  if(!confirm('Xóa dòng này khỏi lịch sử? Không thể hoàn tác.')) return;
-  const action = type === 'nhan' ? 'deleteNhan' : 'deleteGiao';
-  callApi({ action: action, row: row }).then(function(res){
-    const statusBox = document.getElementById('status-lichsu');
-    if(res.success){
-      statusBox.innerHTML = '<div class="status success">✅ Đã xóa.</div>';
-      loadHistory();
-    } else {
-      statusBox.innerHTML = '<div class="status error">⛔ '+escapeHtml(res.message||'Có lỗi xảy ra')+'</div>';
-    }
-  }).catch(function(err){
-    document.getElementById('status-lichsu').innerHTML = '<div class="status error">⛔ Lỗi kết nối: '+escapeHtml(err.message||err)+'</div>';
-  });
 }
 </script>
 </body>
