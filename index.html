@@ -98,6 +98,17 @@
     }
     @keyframes spin{to{transform:rotate(360deg);}}
 
+    .toast-wrap{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+    .toast{
+      min-width:220px;max-width:320px;padding:12px 14px;border-radius:10px;font-size:13.5px;
+      font-weight:500;color:#fff;box-shadow:0 6px 18px rgba(11,37,69,.18);
+      display:flex;align-items:center;gap:8px;animation:toast-in .25s ease-out;
+    }
+    .toast.success{background:var(--green);}
+    .toast.error{background:var(--red);}
+    .toast.info{background:var(--navy);}
+    @keyframes toast-in{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
     .tra-table-wrap{border:1px solid var(--border);border-radius:12px;overflow-x:hidden;overflow-y:auto;max-height:75vh;}
     .tra-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:clamp(10.5px,1vw,13px);font-family:var(--mono);}
     .tra-table th,.tra-table td{white-space:normal;word-break:break-word;overflow-wrap:break-word;}
@@ -158,15 +169,15 @@
     <div class="eyebrow">KHO GCCK CX</div>
     <h1>Quản lý Vật tư Kho</h1>
     <nav class="sidebar-nav">
-      <button class="nav-btn active" onclick="switchTab('nhan')">📥 Nhận</button>
+      <button class="nav-btn active" onclick="switchTab('tra')">🔍 Tra cứu</button>
+      <button class="nav-btn" onclick="switchTab('nhan')">📥 Nhận</button>
       <button class="nav-btn" onclick="switchTab('giao')">📤 Giao</button>
-      <button class="nav-btn" onclick="switchTab('tra')">🔍 Tra cứu</button>
     </nav>
   </aside>
 
   <main>
     <!-- ================= NHẬN HÀNG ================= -->
-    <div id="panel-nhan" class="panel active">
+    <div id="panel-nhan" class="panel">
       <div class="card">
         <h2>1. Quét mã QR trên phiếu</h2>
         <button class="scan-btn" id="btn-scan-nhan" onclick="startScan('nhan')">
@@ -216,7 +227,7 @@
     </div>
 
     <!-- ================= TRA CỨU ================= -->
-    <div id="panel-tra" class="panel">
+    <div id="panel-tra" class="panel active">
       <div class="card">
         <div class="tra-top-row">
           <div class="tra-search-block">
@@ -233,6 +244,8 @@
     </div>
   </main>
 </div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
 
 <script>
 /* ==========================================================
@@ -435,7 +448,7 @@ function renderReceiveQueue(){
   `;
 }
 
-function saveReceiveBatch(confirmSkip){
+function saveReceiveBatch(){
   const queue = window.__receiveQueue || [];
   if(!queue.length) return;
 
@@ -443,8 +456,7 @@ function saveReceiveBatch(confirmSkip){
     action: 'receiveBatch',
     items: queue,
     ngayNhan: document.getElementById('in-ngaynhan').value,
-    nguoiNhan: document.getElementById('in-nguoinhan').value.trim(),
-    confirmSkip: !!confirmSkip
+    nguoiNhan: document.getElementById('in-nguoinhan').value.trim()
   };
   const btn = document.getElementById('btn-save-nhan');
   btn.disabled = true;
@@ -457,23 +469,19 @@ function saveReceiveBatch(confirmSkip){
       const statusBox = document.getElementById('status-nhan');
       if(res.success){
         statusBox.innerHTML = '<div class="status success">✅ Đã lưu '+res.count+' mã vào kho.</div>';
+        showToast('success', 'Đã lưu ' + res.count + ' mã vào kho.');
         window.__receiveQueue = [];
         setTimeout(function(){ document.getElementById('result-nhan').innerHTML=''; }, 1500);
-      } else if(res.missing){
-        statusBox.innerHTML = `
-          <div class="status warning">⚠️ ${escapeHtml(res.message)}</div>
-          <div class="confirm-row">
-            <button class="confirm-yes" onclick="saveReceiveBatch(true)">Bỏ qua mã không có, lưu phần còn lại</button>
-            <button class="confirm-no" onclick="document.getElementById('status-nhan').innerHTML=''">Hủy</button>
-          </div>`;
       } else {
         statusBox.innerHTML = '<div class="status error">⛔ '+escapeHtml(res.message||'Có lỗi xảy ra')+'</div>';
+        showToast('error', res.message || 'Có lỗi xảy ra khi lưu.');
       }
     })
     .catch(function(err){
       btn.disabled = false;
       btn.innerHTML = 'Lưu tất cả vào kho';
       document.getElementById('status-nhan').innerHTML = '<div class="status error">⛔ Lỗi kết nối: '+escapeHtml(err.message||err)+'</div>';
+      showToast('error', 'Lỗi kết nối: ' + (err.message || err));
     });
 }
 
@@ -531,7 +539,7 @@ function renderShipQueue(){
   `;
 }
 
-function saveShipBatch(confirmSkip){
+function saveShipBatch(){
   const queue = window.__shipQueue || [];
   if(!queue.length) return;
 
@@ -539,8 +547,7 @@ function saveShipBatch(confirmSkip){
     action: 'shipBatch',
     items: queue,
     ngayGiao: document.getElementById('in-ngaygiao').value,
-    nguoiGiao: document.getElementById('in-nguoigiao').value.trim(),
-    confirmSkip: !!confirmSkip
+    nguoiGiao: document.getElementById('in-nguoigiao').value.trim()
   };
   const btn = document.getElementById('btn-save-giao');
   btn.disabled = true;
@@ -553,27 +560,33 @@ function saveShipBatch(confirmSkip){
       const statusBox = document.getElementById('status-giao');
       if(res.success){
         statusBox.innerHTML = '<div class="status success">✅ Đã ghi nhận giao '+res.count+' mã.</div>';
+        showToast('success', 'Đã ghi nhận giao ' + res.count + ' mã.');
         window.__shipQueue = [];
         setTimeout(function(){ document.getElementById('result-giao').innerHTML=''; }, 1500);
-      } else if(res.missing){
-        statusBox.innerHTML = `
-          <div class="status warning">⚠️ ${escapeHtml(res.message)}</div>
-          <div class="confirm-row">
-            <button class="confirm-yes" onclick="saveShipBatch(true)">Bỏ qua mã không có, lưu phần còn lại</button>
-            <button class="confirm-no" onclick="document.getElementById('status-giao').innerHTML=''">Hủy</button>
-          </div>`;
       } else {
         statusBox.innerHTML = '<div class="status error">⛔ '+escapeHtml(res.message||'Có lỗi xảy ra')+'</div>';
+        showToast('error', res.message || 'Có lỗi xảy ra khi lưu.');
       }
     })
     .catch(function(err){
       btn.disabled = false;
       btn.innerHTML = 'Lưu tất cả';
       document.getElementById('status-giao').innerHTML = '<div class="status error">⛔ Lỗi kết nối: '+escapeHtml(err.message||err)+'</div>';
+      showToast('error', 'Lỗi kết nối: ' + (err.message || err));
     });
 }
 
 /* ---------------- TRA CỨU ---------------- */
+
+function showToast(type, message, duration){
+  const wrap = document.getElementById('toast-wrap');
+  if(!wrap) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = (type==='success' ? '✅ ' : type==='error' ? '⛔ ' : 'ℹ️ ') + escapeHtml(message);
+  wrap.appendChild(el);
+  setTimeout(function(){ el.remove(); }, duration || 3000);
+}
 
 function submitTraCuu(){
   const lsx = document.getElementById('tra-lsx').value.trim();
@@ -589,12 +602,15 @@ function submitTraCuu(){
     .then(function(res){
       if(!res.success){
         box.innerHTML = '<div class="status error">⛔ '+escapeHtml(res.message||'Có lỗi xảy ra')+'</div>';
+        showToast('error', res.message || 'Có lỗi xảy ra khi tra cứu.');
         return;
       }
       renderTraCuuResults(res.items);
+      showToast('success', 'Đã tải xong ' + res.items.length + ' chi tiết.');
     })
     .catch(function(err){
       box.innerHTML = '<div class="status error">⛔ Lỗi kết nối: '+escapeHtml(err.message||err)+'</div>';
+      showToast('error', 'Lỗi kết nối: ' + (err.message || err));
     });
 }
 
@@ -637,10 +653,10 @@ function renderTraCuuResults(items){
   const statusCell = function(tong, slDhRaw){
     const slDh = Number(slDhRaw) || 0;
     const t = Number(tong) || 0;
-    if(slDh <= 0) return '<span class="not-shipped">—</span>';
-    if(t === slDh) return '<span class="shipped">✓</span>';
-    if(t < slDh) return '<span class="not-shipped">'+t+'</span>';
-    return '<span class="shipped">'+t+'/'+slDh+'</span>';
+    if(t === 0) return ''; // chưa nhận/giao -> để trống
+    if(t === slDh) return '<span class="shipped">✓</span>'; // đủ -> tick
+    if(t < slDh) return '<span class="not-shipped">'+t+'</span>'; // thiếu -> hiện số đã nhận/giao
+    return '<span class="shipped">'+t+'</span>'; // dư -> hiện số đã nhận/giao
   };
 
   const rows = items.map(function(it, i){
@@ -651,6 +667,12 @@ function renderTraCuuResults(items){
         <td>${escapeHtml(it.sttCt||'')}</td>
         <td>${escapeHtml(it.mact||'')}</td>
         <td>${escapeHtml(it.ten||'')}</td>
+        <td>${escapeHtml(it.vatLieu||'')}</td>
+        <td>${escapeHtml(it.dai||'')}</td>
+        <td>${escapeHtml(it.rong||'')}</td>
+        <td>${escapeHtml(it.day||'')}</td>
+        <td>${escapeHtml(it.dn||'')}</td>
+        <td>${escapeHtml(it.dt||'')}</td>
         <td>${escapeHtml(it.congDoanTruoc||'')}</td>
         <td>${escapeHtml(it.congDoanSau||'')}</td>
         <td>${escapeHtml(it.slDh||'')}</td>
@@ -667,6 +689,7 @@ function renderTraCuuResults(items){
           <thead>
             <tr>
               <th>STT</th><th>LSX</th><th>STT CT</th><th>MSCT</th><th>Tên chi tiết</th>
+              <th>Vật liệu</th><th>Dài</th><th>Rộng</th><th>Dày</th><th>Dn</th><th>Dt</th>
               <th>CĐ trước</th><th>CĐ sau</th><th>SL/ĐH</th><th>Nhận VT</th><th>Giao hàng</th><th>NMK</th>
             </tr>
           </thead>
