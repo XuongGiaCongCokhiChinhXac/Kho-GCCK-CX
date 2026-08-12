@@ -34,6 +34,8 @@
       background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);transition:.15s;
     }
     .nav-btn.active{background:var(--amber);color:var(--navy);}
+    .nav-badge{display:inline-block;min-width:18px;padding:1px 5px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;vertical-align:middle;margin-left:4px;}
+    .nav-badge:empty{display:none;}
 
     main{flex:1;min-width:0;padding:20px 24px 40px;max-width:none;width:100%;}
     .panel{display:none;}
@@ -98,6 +100,8 @@
     }
     @keyframes spin{to{transform:rotate(360deg);}}
 
+    .offline-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--red);color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600;}
+    .offline-banner.show{display:block;}
     .toast-wrap{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px;}
     .toast{
       min-width:220px;max-width:320px;padding:12px 14px;border-radius:10px;font-size:13.5px;
@@ -164,14 +168,15 @@
 </head>
 <body>
 
+<div class="offline-banner" id="offline-banner">⚠️ Mất kết nối mạng. Dữ liệu chưa lưu vẫn còn trong danh sách, vui lòng kiểm tra mạng và thử lại.</div>
 <div class="app-shell">
   <aside class="sidebar">
     <div class="eyebrow">KHO GCCK CX</div>
     <h1>Quản lý Vật tư Kho</h1>
     <nav class="sidebar-nav">
       <button class="nav-btn active" onclick="switchTab('tra')">🔍 Tra cứu</button>
-      <button class="nav-btn" onclick="switchTab('nhan')">📥 Nhận</button>
-      <button class="nav-btn" onclick="switchTab('giao')">📤 Giao</button>
+      <button class="nav-btn" onclick="switchTab('nhan')">📥 Nhận<span class="nav-badge" id="badge-nhan"></span></button>
+      <button class="nav-btn" onclick="switchTab('giao')">📤 Giao<span class="nav-badge" id="badge-giao"></span></button>
     </nav>
   </aside>
 
@@ -233,7 +238,7 @@
           <div class="tra-search-block">
             <h2>Tra cứu theo Lệnh sản xuất (LSX)</h2>
             <div class="tra-search-row">
-              <input type="text" id="tra-lsx" placeholder="Nhập LSX, ví dụ: KDN.19/07">
+              <input type="text" id="tra-lsx" placeholder="Nhập LSX / MSCT / Tên chi tiết...">
               <button class="primary-btn" onclick="submitTraCuu()">Tìm</button>
             </div>
           </div>
@@ -266,6 +271,12 @@ function callApi(payload){
 }
 
 let scanners = {};
+
+window.addEventListener('offline', function(){ document.getElementById('offline-banner').classList.add('show'); });
+window.addEventListener('online', function(){
+  document.getElementById('offline-banner').classList.remove('show');
+  showToast('success', 'Đã có kết nối mạng trở lại.');
+});
 
 function switchTab(tab){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -369,8 +380,23 @@ function parseQr(text){
   return result;
 }
 
+function playBeep(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+  }catch(e){ /* trình duyệt không hỗ trợ AudioContext thì bỏ qua, không chặn luồng quét */ }
+  if(navigator.vibrate) navigator.vibrate(80);
+}
+
 function onScanSuccess(tab, text){
   stopScan(tab);
+  playBeep();
   const data = parseQr(text);
   if(!data.lsx){
     showStatus(tab, 'error', 'Không đọc được LSX từ mã QR này. Bạn có thể nhập tay ở bên dưới.');
@@ -398,6 +424,13 @@ function escapeHtml(str){ const d = document.createElement('div'); d.innerText =
 
 function addToReceiveQueue(data){
   if(!window.__receiveQueue) window.__receiveQueue = [];
+  const existing = window.__receiveQueue.find(function(it){ return it.lsx === data.lsx && String(it.stt) === String(data.stt); });
+  if(existing){
+    existing.slNhapKho = (Number(existing.slNhapKho) || 0) + (Number(data.sl) || 0);
+    renderReceiveQueue();
+    showToast('info', 'Mã '+data.lsx+'-'+data.stt+' đã có trong danh sách, đã cộng dồn số lượng.');
+    return;
+  }
   window.__receiveQueue.push({
     lsx: data.lsx, stt: data.stt, soDh: data.soDh||'', mact: data.mact||'',
     ten: data.ten||'', sl: data.sl||'', slNhapKho: data.sl||''
@@ -413,6 +446,7 @@ function removeFromQueue(idx){
 function renderReceiveQueue(){
   const box = document.getElementById('result-nhan');
   const queue = window.__receiveQueue || [];
+  document.getElementById('badge-nhan').textContent = queue.length || '';
   if(!queue.length){ box.innerHTML = ''; return; }
 
   const rows = queue.map(function(it, i){
@@ -451,6 +485,7 @@ function renderReceiveQueue(){
 function saveReceiveBatch(){
   const queue = window.__receiveQueue || [];
   if(!queue.length) return;
+  if(queue.length > 10 && !window.confirm('Bạn sắp lưu '+queue.length+' mã vào kho. Xác nhận lưu?')) return;
 
   const payload = {
     action: 'receiveBatch',
@@ -468,10 +503,19 @@ function saveReceiveBatch(){
       btn.innerHTML = 'Lưu tất cả vào kho';
       const statusBox = document.getElementById('status-nhan');
       if(res.success){
-        statusBox.innerHTML = '<div class="status success">✅ Đã lưu '+res.count+' mã vào kho.</div>';
+        let extraHtml = '';
+        if(res.notFound && res.notFound.length){
+          extraHtml += '<div class="status warning">⚠️ '+res.notFound.length+' mã không có trong ĐƠN HÀNG: '+escapeHtml(res.notFound.join(', '))+'</div>';
+        }
+        if(res.vuot && res.vuot.length){
+          const list = res.vuot.map(function(v){ return v.maId+' ('+v.tongSau+'/'+v.slDh+')'; }).join(', ');
+          extraHtml += '<div class="status warning">⚠️ Vượt số lượng đơn hàng: '+escapeHtml(list)+'</div>';
+        }
+        statusBox.innerHTML = '<div class="status success">✅ Đã lưu '+res.count+' mã vào kho.</div>' + extraHtml;
         showToast('success', 'Đã lưu ' + res.count + ' mã vào kho.');
         window.__receiveQueue = [];
-        setTimeout(function(){ document.getElementById('result-nhan').innerHTML=''; }, 1500);
+        const hasWarning = (res.notFound && res.notFound.length) || (res.vuot && res.vuot.length);
+        setTimeout(function(){ document.getElementById('result-nhan').innerHTML=''; }, hasWarning ? 6000 : 1500);
       } else {
         statusBox.innerHTML = '<div class="status error">⛔ '+escapeHtml(res.message||'Có lỗi xảy ra')+'</div>';
         showToast('error', res.message || 'Có lỗi xảy ra khi lưu.');
@@ -489,6 +533,13 @@ function saveReceiveBatch(){
 
 function addToShipQueue(data){
   if(!window.__shipQueue) window.__shipQueue = [];
+  const existing = window.__shipQueue.find(function(it){ return it.lsx === data.lsx && String(it.stt) === String(data.stt); });
+  if(existing){
+    existing.slGiao = (Number(existing.slGiao) || 0) + (Number(data.sl) || 0);
+    renderShipQueue();
+    showToast('info', 'Mã '+data.lsx+'-'+data.stt+' đã có trong danh sách, đã cộng dồn số lượng.');
+    return;
+  }
   window.__shipQueue.push({
     lsx: data.lsx, stt: data.stt, soDh: data.soDh||'', mact: data.mact||'',
     ten: data.ten||'', sl: data.sl||'', slGiao: data.sl||''
@@ -504,6 +555,7 @@ function removeFromShipQueue(idx){
 function renderShipQueue(){
   const box = document.getElementById('result-giao');
   const queue = window.__shipQueue || [];
+  document.getElementById('badge-giao').textContent = queue.length || '';
   if(!queue.length){ box.innerHTML = ''; return; }
 
   const rows = queue.map(function(it, i){
@@ -542,6 +594,7 @@ function renderShipQueue(){
 function saveShipBatch(){
   const queue = window.__shipQueue || [];
   if(!queue.length) return;
+  if(queue.length > 10 && !window.confirm('Bạn sắp lưu '+queue.length+' mã. Xác nhận lưu?')) return;
 
   const payload = {
     action: 'shipBatch',
@@ -559,10 +612,19 @@ function saveShipBatch(){
       btn.innerHTML = 'Lưu tất cả';
       const statusBox = document.getElementById('status-giao');
       if(res.success){
-        statusBox.innerHTML = '<div class="status success">✅ Đã ghi nhận giao '+res.count+' mã.</div>';
+        let extraHtml = '';
+        if(res.notFound && res.notFound.length){
+          extraHtml += '<div class="status warning">⚠️ '+res.notFound.length+' mã không có trong ĐƠN HÀNG: '+escapeHtml(res.notFound.join(', '))+'</div>';
+        }
+        if(res.vuot && res.vuot.length){
+          const list = res.vuot.map(function(v){ return v.maId+' ('+v.tongSau+'/'+v.slDh+')'; }).join(', ');
+          extraHtml += '<div class="status warning">⚠️ Vượt số lượng đơn hàng: '+escapeHtml(list)+'</div>';
+        }
+        statusBox.innerHTML = '<div class="status success">✅ Đã ghi nhận giao '+res.count+' mã.</div>' + extraHtml;
         showToast('success', 'Đã ghi nhận giao ' + res.count + ' mã.');
         window.__shipQueue = [];
-        setTimeout(function(){ document.getElementById('result-giao').innerHTML=''; }, 1500);
+        const hasWarning = (res.notFound && res.notFound.length) || (res.vuot && res.vuot.length);
+        setTimeout(function(){ document.getElementById('result-giao').innerHTML=''; }, hasWarning ? 6000 : 1500);
       } else {
         statusBox.innerHTML = '<div class="status error">⛔ '+escapeHtml(res.message||'Có lỗi xảy ra')+'</div>';
         showToast('error', res.message || 'Có lỗi xảy ra khi lưu.');
