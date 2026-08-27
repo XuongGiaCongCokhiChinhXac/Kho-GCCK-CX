@@ -514,11 +514,63 @@
 
   .tracking-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
   .tracking-toolbar h2 { font-size: 17px; }
-  .btn-primary-blue { width: 100%; padding: 14px; font-size: 16px; }
+  .btn-primary-blue { width: 100%; padding: 14px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .tracking-toolbar h2 { display: flex; align-items: center; gap: 8px; }
   .tracking-table-wrap th, .tracking-table-wrap td { padding: 8px 6px; font-size: 12px; }
-  .colvis-modal, .upbom-modal { width: 94vw !important; }
+  .colvis-modal, .upbom-modal, .colvis-overlay .colvis-modal[style*="420px"] {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  .colvis-overlay { padding: 0; }
+  .colvis-list { grid-template-columns: 1fr; }
+  .colvis-header h3, .upbom-header h3 { font-size: 16px; }
+  .upbom-footer, .colvis-footer {
+    position: sticky; bottom: 0; background: #fff;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0));
+  }
   #trackQtyInput, #trackLsxInput, #trackSttInput { font-size: 16px; padding: 12px; }
   #qrScanBtn { padding: 14px; font-size: 15px; }
+
+  /* Modal Nhận phôi/Giao hàng: chiếm toàn màn hình, nút Lưu luôn cố định dưới đáy để
+     không phải cuộn lên xuống khi công nhân thao tác liên tục trên xưởng. */
+  #trackingOverlay .colvis-modal {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  #trackingOverlay label { font-size: 14px; font-weight: 600; color: #333; display: block; }
+  #trackingOverlay input, #trackingOverlay select {
+    margin-top: 4px; border: 1px solid #ccc; border-radius: 6px;
+  }
+  #trackingOverlay input:focus, #trackingOverlay select:focus {
+    border-color: #1a73e8; outline: none;
+  }
+  #trackingOverlay .upbom-footer {
+    position: sticky; bottom: 0; background: #fff; box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0));
+  }
+  #trackingOverlay .upbom-footer button { flex: 1; padding: 14px; font-size: 15px; font-weight: bold; }
+  #qrScanBtn, .btn-primary-blue { min-height: 46px; }
+
+  /* Bảng Nhận phôi/Giao hàng: chuyển sang dạng THẺ (card) thay vì bảng cuộn ngang,
+     dễ đọc hơn nhiều trên màn hình hẹp. */
+  .tracking-table-wrap table thead { display: none; }
+  .tracking-table-wrap table, .tracking-table-wrap tbody, .tracking-table-wrap tr, .tracking-table-wrap td {
+    display: block; width: 100%;
+  }
+  .tracking-table-wrap tr {
+    border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px;
+    padding: 8px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); background: #fff;
+  }
+  .tracking-table-wrap td {
+    border: none; text-align: left; padding: 4px 0; display: flex; justify-content: space-between; gap: 10px;
+  }
+  .tracking-table-wrap td::before {
+    content: attr(data-label); font-weight: bold; color: #666; flex-shrink: 0;
+  }
 }
 
   </style>
@@ -2621,6 +2673,7 @@
         { key: 'lsx_stt', label: 'LSX-STT' },
         { key: 'lsx', label: 'Lệnh sản xuất' },
         { key: 'stt', label: 'STT' },
+        { key: 'msct', label: 'MSCT' },
         { key: 'ten_chi_tiet', label: 'Tên chi tiết' },
         { key: 'vat_lieu', label: 'Vật liệu' },
         { key: 'dai', label: 'Dài' },
@@ -2662,7 +2715,7 @@
           html += '<tr data-lsxstt="' + String(r.lsx_stt).replace(/"/g, '&quot;') + '">';
           cols.forEach(function(c) {
             const v = r[c.key];
-            html += '<td>' + (v === null || v === undefined ? '' : v) + '</td>';
+            html += '<td data-label="' + c.label + '">' + (v === null || v === undefined ? '' : v) + '</td>';
           });
           html += '</tr>';
         });
@@ -2732,6 +2785,22 @@ function refreshGiaoHangTab() {
     let trackingPendingList = [];
     let qrScanner_ = null;
 
+    let autoFillReqId_ = 0;
+    function autoFillTrackingDetail_() {
+      const lsx = document.getElementById('trackLsxInput').value.trim();
+      const stt = document.getElementById('trackSttInput').value.trim();
+      if (!lsx || !stt) return;
+      const myId = ++autoFillReqId_;
+      google.script.run
+        .withSuccessHandler(function(detail) {
+          if (myId !== autoFillReqId_ || !detail) return;
+          if (detail.msct) document.getElementById('trackMsctInput').value = detail.msct;
+          if (detail.ten_chi_tiet) document.getElementById('trackTenCtInput').value = detail.ten_chi_tiet;
+        })
+        .withFailureHandler(function() {})
+        .lookupBomDetailForTracking(lsx, stt);
+    }
+
     function onTrackNguoiChange_() {
       const sel = document.getElementById('trackNguoiSelect');
       document.getElementById('trackNguoiOther').style.display = (sel.value === 'Khác') ? 'block' : 'none';
@@ -2752,6 +2821,8 @@ function refreshGiaoHangTab() {
         '<input type="number" id="trackQtyInput" min="1" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />';
       document.getElementById('trackLsxInput').value = '';
       document.getElementById('trackSttInput').value = '';
+      document.getElementById('trackMsctInput').value = '';
+      document.getElementById('trackTenCtInput').value = '';
 
       const sel = document.getElementById('trackNguoiSelect');
       sel.innerHTML = WORKER_NAMES.map(function(n) { return '<option value="' + n + '">' + n + '</option>'; }).join('');
@@ -2783,6 +2854,7 @@ function refreshGiaoHangTab() {
         return '<tr>' +
           '<td style="border:1px solid #ddd; padding:4px;">' + item.lsx + '</td>' +
           '<td style="border:1px solid #ddd; padding:4px;">' + item.stt + '</td>' +
+          '<td style="border:1px solid #ddd; padding:4px;">' + (item.tenChiTiet || '') + '</td>' +
           '<td style="border:1px solid #ddd; padding:4px;">' + item.soLuong + '</td>' +
           '<td style="border:1px solid #ddd; padding:4px; cursor:pointer; color:#c62828;" onclick="removeFromTrackingList_(' + i + ')">&times;</td>' +
           '</tr>';
@@ -2797,6 +2869,8 @@ function refreshGiaoHangTab() {
     function addToTrackingList_() {
       const lsx = document.getElementById('trackLsxInput').value.trim();
       const stt = document.getElementById('trackSttInput').value.trim();
+      const msct = document.getElementById('trackMsctInput').value.trim();
+      const tenChiTiet = document.getElementById('trackTenCtInput').value.trim();
       const qtyInput = document.getElementById('trackQtyInput');
       const sl = Number(qtyInput ? qtyInput.value.trim() : '');
       const nguoi = getSelectedNguoi_();
@@ -2815,12 +2889,16 @@ function refreshGiaoHangTab() {
       if (existing) {
         existing.soLuong += sl;
         existing.nguoi = nguoi;
+        if (msct) existing.msct = msct;
+        if (tenChiTiet) existing.tenChiTiet = tenChiTiet;
       } else {
-        trackingPendingList.push({ lsx: lsx, stt: stt, soLuong: sl, nguoi: nguoi });
+        trackingPendingList.push({ lsx: lsx, stt: stt, soLuong: sl, nguoi: nguoi, msct: msct, tenChiTiet: tenChiTiet });
       }
 
       document.getElementById('trackLsxInput').value = '';
       document.getElementById('trackSttInput').value = '';
+      document.getElementById('trackMsctInput').value = '';
+      document.getElementById('trackTenCtInput').value = '';
       qtyInput.value = '';
       document.getElementById('trackLsxInput').focus();
       renderTrackingPendingList_();
@@ -2856,6 +2934,12 @@ function refreshGiaoHangTab() {
       const parts = decodedText.split('|').map(function(s) { return s.trim(); });
       if (parts[0]) document.getElementById('trackLsxInput').value = parts[0];
       if (parts[1]) document.getElementById('trackSttInput').value = parts[1];
+      if (parts[2]) document.getElementById('trackMsctInput').value = parts[2];
+      if (parts[3]) document.getElementById('trackTenCtInput').value = parts[3];
+      if (parts[4]) {
+        const qtyInput = document.getElementById('trackQtyInput');
+        if (qtyInput) qtyInput.value = parts[4];
+      }
       stopQrScan_();
       showToast('Đã đọc mã QR, kiểm tra lại thông tin trước khi thêm vào danh sách.', 'success');
     }
@@ -3236,10 +3320,16 @@ function refreshGiaoHangTab() {
       </button>
 
       <label>Lệnh sản xuất (có thể viết tắt, VD: 710/08)
-        <input type="text" id="trackLsxInput" placeholder="VD: 710/08" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
+        <input type="text" id="trackLsxInput" placeholder="VD: 710/08" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" onblur="autoFillTrackingDetail_()" />
       </label>
       <label>STT
-        <input type="text" id="trackSttInput" placeholder="VD: 7" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
+        <input type="text" id="trackSttInput" placeholder="VD: 7" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" onblur="autoFillTrackingDetail_()" />
+      </label>
+      <label>MSCT
+        <input type="text" id="trackMsctInput" placeholder="Tự điền khi quét QR / nhập LSX+STT" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px; background:#f5f5f5;" />
+      </label>
+      <label>Tên chi tiết
+        <input type="text" id="trackTenCtInput" placeholder="Tự điền khi quét QR / nhập LSX+STT" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px; background:#f5f5f5;" />
       </label>
       <label id="trackQtyLabel">SL nhận
         <input type="number" id="trackQtyInput" min="1" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
@@ -3259,6 +3349,7 @@ function refreshGiaoHangTab() {
           <thead><tr style="background:#f0f0f0;">
             <th style="border:1px solid #ddd; padding:4px;">LSX</th>
             <th style="border:1px solid #ddd; padding:4px;">STT</th>
+            <th style="border:1px solid #ddd; padding:4px;">Tên chi tiết</th>
             <th style="border:1px solid #ddd; padding:4px;">SL</th>
             <th style="border:1px solid #ddd; padding:4px;"></th>
           </tr></thead>
