@@ -2783,13 +2783,13 @@ function refreshGiaoHangTab() {
       }
       switch (dashCardFilter) {
         case 'all': return rows;
-        case 'completed': return rows.filter(function(r) { return r.percent >= 100; });
-        case 'remaining': return rows.filter(function(r) { return r.percent < 100; });
-        case 'overdue': return rows.filter(function(r) { return r.percent < 100 && r.khgh && r.khgh < todayStr; });
+        case 'completed': return rows.filter(function(r) { return r.tienDoPercent >= 100; });
+        case 'remaining': return rows.filter(function(r) { return r.tienDoPercent < 100; });
+        case 'overdue': return rows.filter(function(r) { return r.tienDoPercent < 100 && r.khgh && r.khgh < todayStr; });
         case 'today': return rows.filter(function(r) { return r.khgh === todayStr; });
-        case 'almost': return rows.filter(function(r) { return r.percent >= 80 && r.percent < 100; });
+        case 'almost': return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
         default:
-          return rows.filter(function(r) { return r.khgh === todayStr || (r.percent >= 80 && r.percent < 100); });
+          return rows.filter(function(r) { return r.khgh === todayStr || (r.tienDoPercent >= 80 && r.tienDoPercent < 100); });
       }
     }
 
@@ -2872,11 +2872,11 @@ function refreshGiaoHangTab() {
       if (!el) return;
 
       const total = rows.length;
-      const completed = rows.filter(function(r) { return r.percent >= 100; }).length;
+      const completed = rows.filter(function(r) { return r.tienDoPercent >= 100; }).length;
       const remaining = total - completed;
-      const overdue = rows.filter(function(r) { return r.percent < 100 && r.khgh && r.khgh < todayStr; }).length;
+      const overdue = rows.filter(function(r) { return r.tienDoPercent < 100 && r.khgh && r.khgh < todayStr; }).length;
       const dueToday = rows.filter(function(r) { return r.khgh === todayStr; }).length;
-      const almostDone = rows.filter(function(r) { return r.percent >= 80 && r.percent < 100; }).length;
+      const almostDone = rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; }).length;
 
       const cards = [
         { key: 'all', label: 'Tổng số đơn hàng', value: total, cls: '' },
@@ -2918,7 +2918,6 @@ function refreshGiaoHangTab() {
     }
 
     function renderDashboard_() {
-      const fromDate = document.getElementById('dashFromDate').value;
       const todayStr = getTodayStr_();
       renderDashboardStats_(dashboardRows, todayStr); // thẻ luôn tính trên toàn bộ dữ liệu
 
@@ -2974,9 +2973,22 @@ function refreshGiaoHangTab() {
           let chuyenCells = '';
           CHUYEN_LABELS.forEach(function(c) {
             const info = (r.chuyen && r.chuyen[c.key]) || {};
-            chuyenCells += '<td style="font-size:11px;">' +
-              (info.gc || 0) + '/' + (info.tong || 0) + '<br>' + percentBadge_(info.td) +
-            '</td>';
+            const tong = Number(info.tong) || 0;
+            if (tong === 0) {
+              // Chuyền này không có chi tiết nào cần gia công -> hiện dấu gạch ngang, nền trắng
+              chuyenCells += '<td style="font-size:11px; color:#aaa;">-</td>';
+            } else {
+              const pctNum = Number(info.td);
+              const pct = isNaN(pctNum) ? null : Math.round(pctNum * 1000) / 10;
+              const isDone = pct !== null && pct >= 100;
+              const cellStyle = isDone
+                ? 'background:#34a853; color:#fff; font-weight:bold; font-size:11px;'
+                : 'font-size:11px;';
+              chuyenCells += '<td style="' + cellStyle + '">' +
+                (info.gc || 0) + '/' + tong +
+                (isDone ? '' : ('<br>' + (pct !== null ? pct + '%' : ''))) +
+              '</td>';
+            }
           });
           html += '<tr>' +
             '<td>' + r.lsx + '</td>' +
