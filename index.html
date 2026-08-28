@@ -557,7 +557,7 @@
 
     /* ===== Thanh trên cùng (topbar) ===== */
     .topbar {
-      height: 52px; background: #1a73e8; color: #fff; display: flex; align-items: center;
+      height: 52px; background: #003DA5; color: #fff; display: flex; align-items: center;
       justify-content: space-between; padding: 0 18px; flex-shrink: 0;
       box-shadow: 0 2px 6px rgba(0,0,0,0.15); position: relative; z-index: 60;
     }
@@ -690,15 +690,44 @@
 
    <div id="loginOverlay" class="splash-overlay" style="z-index:600;">
     <div class="splash-box" style="width:300px;">
-      <div class="splash-greeting" style="margin-bottom:6px;">Đăng nhập</div>
-      <div style="font-size:13px; color:#666; margin-bottom:18px;">Vui lòng nhập MSNV để tiếp tục</div>
-      <input type="text" id="loginMsnvInput" placeholder="MSNV" autocomplete="off"
-        style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;" />
-      <input type="password" id="loginPasswordInput" placeholder="Mật khẩu (nếu có)"
-        style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:14px;" />
-      <button type="button" id="loginSubmitBtn" onclick="submitLogin_()"
-        style="width:100%; padding:11px; background:#1a73e8; color:#fff; border:none; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer;">Đăng nhập</button>
-      <div id="loginError" style="color:#c62828; font-size:13px; margin-top:10px; min-height:16px;"></div>
+
+      <!-- Đăng nhập nhanh: đã từng đăng nhập trên máy này -->
+      <div id="quickLoginView">
+        <div class="splash-greeting" style="margin-bottom:4px;">Xin chào,</div>
+        <div id="quickLoginName" style="font-size:17px; font-weight:bold; color:#003DA5; margin-bottom:18px;"></div>
+        <input type="tel" id="quickPasswordInput" placeholder="Nhập MSNV làm mật khẩu"
+          inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+          style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; text-align:center; letter-spacing:1px;" />
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#555; margin-bottom:14px; cursor:pointer;">
+          <input type="checkbox" id="quickRememberCheck" /> Nhớ mật khẩu cho lần sau
+        </label>
+        <button type="button" id="quickLoginBtn" onclick="submitQuickLogin_()"
+          style="width:100%; padding:11px; background:#1a73e8; color:#fff; border:none; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer;">Đăng nhập</button>
+        <div id="quickLoginError" style="color:#c62828; font-size:13px; margin-top:10px; min-height:16px;"></div>
+        <div style="margin-top:6px;">
+          <span onclick="switchToFullLogin_()" style="color:#1a73e8; font-size:13px; cursor:pointer; text-decoration:underline;">Không phải bạn? Đăng nhập tài khoản khác</span>
+        </div>
+      </div>
+
+      <!-- Đăng nhập đầy đủ: lần đầu trên máy này, hoặc chuyển tài khoản -->
+      <div id="fullLoginView" style="display:none;">
+        <div class="splash-greeting" style="margin-bottom:6px;">Đăng nhập</div>
+        <div style="font-size:13px; color:#666; margin-bottom:18px;">Vui lòng nhập MSNV để tiếp tục</div>
+        <input type="text" id="loginMsnvInput" placeholder="MSNV" autocomplete="off"
+          inputmode="numeric" pattern="[0-9]*"
+          style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;" />
+        <input type="text" id="loginHoTenInput" placeholder="Họ và tên (tài khoản mới)" autocomplete="off"
+          style="display:none; width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;" />
+        <input type="password" id="loginPasswordInput" placeholder="Mật khẩu (mặc định là MSNV)" autocomplete="off"
+          style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;" />
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#555; margin-bottom:14px; cursor:pointer;">
+          <input type="checkbox" id="fullRememberCheck" /> Nhớ mật khẩu cho lần sau
+        </label>
+        <button type="button" id="loginSubmitBtn" onclick="submitFullLogin_()"
+          style="width:100%; padding:11px; background:#1a73e8; color:#fff; border:none; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer;">Đăng nhập</button>
+        <div id="loginError" style="color:#c62828; font-size:13px; margin-top:10px; min-height:16px;"></div>
+      </div>
+
     </div>
   </div>
 
@@ -722,9 +751,6 @@
       <span>Xưởng Gia Công Cơ Khí Chính Xác</span>
     </div>
     <div class="topbar-right">
-      <button class="topbar-icon-btn" title="Thông báo" onclick="showToast('Chưa có thông báo mới.', 'info')">
-        <i class="fa-regular fa-bell"></i>
-      </button>
       <div class="topbar-user" id="topbarUserMenu">
         <button class="topbar-user-btn" onclick="toggleUserMenu_()">
           <i class="fa-regular fa-circle-user"></i>
@@ -757,10 +783,10 @@
   <div class="app-layout">
     <nav class="sidebar" id="mainSidebar">
       <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
-      <button class="sidebar-nav-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+      <button class="sidebar-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
         <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
       </button>
-      <button class="sidebar-nav-btn active" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
+      <button class="sidebar-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
         <i class="fa-solid fa-magnifying-glass"></i><span class="nav-label">Check đơn hàng</span>
       </button>
       <button class="sidebar-nav-btn" data-tab="tab-nhanphoi" onclick="switchTab('tab-nhanphoi')">
@@ -777,10 +803,10 @@
     <!-- Thanh điều hướng dưới cùng - CHỈ hiện trên mobile (xem media query 768px),
          thay thế cho sidebar để không còn bị mất lối vào Nhận phôi / Giao hàng. -->
     <nav class="mobile-bottom-nav" id="mobileBottomNav">
-      <button class="mobile-nav-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+      <button class="mobile-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
         <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
       </button>
-      <button class="mobile-nav-btn active" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
+      <button class="mobile-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
         <i class="fa-solid fa-magnifying-glass"></i><span>Check đơn hàng</span>
       </button>
       <button class="mobile-nav-btn" data-tab="tab-nhanphoi" onclick="switchTab('tab-nhanphoi')">
@@ -792,7 +818,7 @@
     </nav>
 
     <div class="app-main">
-      <div id="tab-checkdon" class="tab-pane active">
+      <div id="tab-checkdon" class="tab-pane">
 
    <div class="header-area">
     <div id="cellInfoBar" class="cell-info-bar">Chưa chọn ô nào</div>
@@ -876,7 +902,7 @@
         <div id="giaoHangResult" class="tracking-table-wrap"></div>
       </div>
 
-      <div id="tab-dashboard" class="tab-pane">
+      <div id="tab-dashboard" class="tab-pane active">
         <div class="tracking-toolbar" style="flex-wrap:wrap;">
           <h2 style="margin:0;">Dashboard tiến độ đơn hàng</h2>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -919,13 +945,42 @@
 
         let currentUser_ = null; // { msnv, hoTen }
 
-    function submitLogin_() {
-      const msnv = document.getElementById('loginMsnvInput').value.trim();
-      const pass = document.getElementById('loginPasswordInput').value;
-      const errEl = document.getElementById('loginError');
-      const btn = document.getElementById('loginSubmitBtn');
+    // Gọi khi đăng nhập THÀNH CÔNG (dù qua đường nào) - lưu lại thông tin cho lần sau.
+    function finishLogin_(user, remember, passUsed) {
+      currentUser_ = user;
+      try {
+        localStorage.setItem('gcck_last_user', JSON.stringify({ msnv: user.msnv, hoTen: user.hoTen }));
+        if (remember) {
+          localStorage.setItem('gcck_remember_creds', JSON.stringify({ msnv: user.msnv, matKhau: passUsed, hoTen: user.hoTen }));
+        } else {
+          localStorage.removeItem('gcck_remember_creds');
+        }
+      } catch (e) {}
 
-      if (!msnv) { errEl.textContent = 'Vui lòng nhập MSNV.'; return; }
+      document.getElementById('topbarUserName').textContent = user.hoTen;
+      document.getElementById('loginOverlay').style.display = 'none';
+
+      // Tải Dashboard TRƯỚC (số liệu ở các ô), màn hình chờ sẽ đợi đúng bước này.
+      loadDashboardOnLogin_();
+
+      // Dữ liệu còn lại tải NGẦM phía sau, không chặn màn hình chờ.
+      loadInitialAppData_();
+      setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
+      startTrackingPolling_();
+    }
+
+    /* ---- Đăng nhập nhanh (đã từng đăng nhập trên máy này) ---- */
+    function submitQuickLogin_() {
+      let lastUser = null;
+      try { lastUser = JSON.parse(localStorage.getItem('gcck_last_user') || 'null'); } catch (e) {}
+      if (!lastUser) { switchToFullLogin_(); return; }
+
+      const pass = document.getElementById('quickPasswordInput').value;
+      const errEl = document.getElementById('quickLoginError');
+      const btn = document.getElementById('quickLoginBtn');
+      const remember = document.getElementById('quickRememberCheck').checked;
+
+      if (!pass) { errEl.textContent = 'Vui lòng nhập MSNV làm mật khẩu.'; return; }
 
       errEl.textContent = '';
       btn.disabled = true;
@@ -933,19 +988,68 @@
 
       google.script.run
         .withSuccessHandler(function(user) {
-          currentUser_ = user;
-          try { localStorage.setItem('gcck_last_msnv', user.msnv); } catch (e) {}
-          document.getElementById('topbarUserName').textContent = user.hoTen;
-          document.getElementById('loginOverlay').style.display = 'none';
-          btn.disabled = false;
-          btn.textContent = 'Đăng nhập';
+          finishLogin_(user, remember, pass);
+          btn.disabled = false; btn.textContent = 'Đăng nhập';
         })
         .withFailureHandler(function(err) {
           errEl.textContent = err.message;
-          btn.disabled = false;
-          btn.textContent = 'Đăng nhập';
+          btn.disabled = false; btn.textContent = 'Đăng nhập';
         })
-        .loginUser(msnv, pass);
+        .loginUser(lastUser.msnv, pass);
+    }
+
+    function switchToFullLogin_() {
+      document.getElementById('quickLoginView').style.display = 'none';
+      document.getElementById('fullLoginView').style.display = 'block';
+      document.getElementById('loginMsnvInput').focus();
+    }
+
+    /* ---- Đăng nhập đầy đủ (lần đầu trên máy này / chuyển tài khoản) ---- */
+    let msnvCheckTimer_ = null;
+
+    function submitFullLogin_() {
+      const msnv = document.getElementById('loginMsnvInput').value.trim();
+      const hoTen = document.getElementById('loginHoTenInput').value.trim();
+      const pass = document.getElementById('loginPasswordInput').value;
+      const errEl = document.getElementById('loginError');
+      const btn = document.getElementById('loginSubmitBtn');
+      const remember = document.getElementById('fullRememberCheck').checked;
+      const isNewAccount = document.getElementById('loginHoTenInput').style.display !== 'none';
+
+      if (!msnv) { errEl.textContent = 'Vui lòng nhập MSNV.'; return; }
+
+      errEl.textContent = '';
+      btn.disabled = true;
+      btn.textContent = 'Đang kiểm tra...';
+
+      if (isNewAccount) {
+        if (!hoTen) {
+          errEl.textContent = 'Vui lòng nhập họ và tên.';
+          btn.disabled = false; btn.textContent = 'Đăng nhập';
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(function(user) {
+            finishLogin_(user, remember, msnv); // tài khoản mới -> mật khẩu = MSNV
+            btn.disabled = false; btn.textContent = 'Đăng nhập';
+          })
+          .withFailureHandler(function(err) {
+            errEl.textContent = err.message;
+            btn.disabled = false; btn.textContent = 'Đăng nhập';
+          })
+          .registerUser(msnv, hoTen);
+      } else {
+        google.script.run
+          .withSuccessHandler(function(user) {
+            finishLogin_(user, remember, pass);
+            btn.disabled = false; btn.textContent = 'Đăng nhập';
+          })
+          .withFailureHandler(function(err) {
+            errEl.textContent = err.message;
+            btn.disabled = false; btn.textContent = 'Đăng nhập';
+          })
+          .loginUser(msnv, pass);
+      }
     }
 
     function openChangePasswordModal_() {
@@ -2228,7 +2332,18 @@
     let splashTimer = null;
     let splashStepsDone = 0;
     let splashFinished = false;
-    const SPLASH_TOTAL_STEPS = 2; // 1: giao diện đã dựng xong, 2: đã lấy được thời gian đồng bộ gần nhất
+    const SPLASH_TOTAL_STEPS = 2; // 1: giao diện đã dựng xong, 2: Dashboard đã có số liệu để hiển thị
+    let dashboardSplashDone_ = false;
+
+    function markDashboardReadyForSplash_() {
+      if (dashboardSplashDone_) return;
+      dashboardSplashDone_ = true;
+      splashStepDone_();
+    }
+
+    // Phòng trường hợp tải Dashboard không phản hồi (mất mạng, server treo...) - vẫn
+    // đóng màn hình chờ sau tối đa 8 giây, không để người dùng bị kẹt mãi.
+    setTimeout(markDashboardReadyForSplash_, 8000);
 
     function showGreeting_() {
       const hour = new Date().getHours();
@@ -2282,7 +2397,6 @@
     }
 
     /* ================= TRẠNG THÁI ĐỒNG BỘ SHEET -> SUPABASE ================= */
-    let initialSyncLoaded = false;
     const SYNC_STATUS_REFRESH_MS = 30000; // 30 giây tự làm mới 1 lần
 
     function renderSyncStatus_(iso) {
@@ -2296,26 +2410,14 @@
       el.innerHTML = '<span class="sync-dot"></span>Cập nhật ' + hh + ':' + mm + ':' + ss;
     }
 
+    // Chỉ số hiển thị trạng thái đồng bộ - KHÔNG còn giữ màn hình chờ nữa
+    // (màn hình chờ giờ chỉ đợi đúng Dashboard, xem markDashboardReadyForSplash_).
     function refreshSyncStatus() {
       google.script.run
-        .withSuccessHandler(function(iso) {
-          renderSyncStatus_(iso);
-          if (!initialSyncLoaded) { initialSyncLoaded = true; splashStepDone_(); }
-        })
-        .withFailureHandler(function() {
-          // Im lặng bỏ qua, lần làm mới sau (30s) sẽ tự thử lại. Vẫn phải đóng màn
-          // hình chờ dù lỗi, tránh treo mãi mãi nếu server không phản hồi được.
-          if (!initialSyncLoaded) { initialSyncLoaded = true; splashStepDone_(); }
-        })
+        .withSuccessHandler(renderSyncStatus_)
+        .withFailureHandler(function() { /* im lặng, lần làm mới sau (30s) tự thử lại */ })
         .getLastSyncTime();
     }
-
-    // Phòng trường hợp getLastSyncTime() không phản hồi vì lý do bất thường nào đó
-    // (mất mạng, server treo...) - vẫn đóng màn hình chờ sau tối đa 8 giây, không để
-    // người dùng bị kẹt mãi ở màn hình chờ.
-    setTimeout(function() {
-      if (!initialSyncLoaded) { initialSyncLoaded = true; splashStepDone_(); }
-    }, 8000);
 
     showGreeting_();
     startSplashProgress_();
@@ -2428,13 +2530,11 @@
 
     function exitApp_() {
       closeUserMenu_();
-      // App không có hệ thống đăng nhập riêng, "Thoát" chỉ đóng tab hiện tại.
-      // Trình duyệt có thể chặn window.close() nếu tab không do script tự mở,
-      // nên vẫn hiện thông báo dự phòng để người dùng tự đóng tay.
-      window.close();
-      setTimeout(function() {
-        showToast('Bạn có thể đóng tab này để thoát khỏi ứng dụng.', 'info');
-      }, 300);
+      // "Thoát" giờ là ĐĂNG XUẤT thật: xoá thông tin đăng nhập đã ghi nhớ (nếu có bật
+      // "Nhớ mật khẩu"), rồi tải lại trang để quay về màn hình đăng nhập - vì
+      // window.close() gần như luôn bị trình duyệt chặn khi tab không do script tự mở.
+      try { localStorage.removeItem('gcck_remember_creds'); } catch (e) {}
+      location.reload();
     }
 
         function onDarkModeToggle_(isDark) {
@@ -2625,6 +2725,31 @@ function refreshGiaoHangTab() {
 
     /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
     let dashboardRows = [];
+    let dashboardTypeFilter = null; // loại đơn đang được lọc trên bảng, null = không lọc
+    const DASHBOARD_CACHE_KEY = 'gcck_dashboard_cache_v1';
+
+    function loadDashboardCache_() {
+      try {
+        const raw = localStorage.getItem(DASHBOARD_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+
+    function saveDashboardCache_(rows) {
+      try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(rows)); } catch (e) {}
+    }
+
+    // Gọi ngay sau khi đăng nhập: hiện số liệu CŨ đã lưu (nếu có) tức thì, không phải
+    // chờ mạng, rồi mới âm thầm lấy bản mới nhất phía sau (SWR).
+    function loadDashboardOnLogin_() {
+      const cached = loadDashboardCache_();
+      if (cached && cached.length) {
+        dashboardRows = cached;
+        renderDashboard_();
+        markDashboardReadyForSplash_();
+      }
+      refreshDashboard_();
+    }
 
     function refreshDashboard_() {
       const btn = document.getElementById('refreshDashboardBtn');
@@ -2634,11 +2759,14 @@ function refreshGiaoHangTab() {
       google.script.run
         .withSuccessHandler(function(rows) {
           dashboardRows = rows || [];
+          saveDashboardCache_(dashboardRows);
           renderDashboard_();
+          markDashboardReadyForSplash_();
           stop();
         })
         .withFailureHandler(function(err) {
           showToast('Lỗi tải dashboard: ' + err.message, 'error');
+          markDashboardReadyForSplash_(); // vẫn phải mở app dù lỗi, tránh kẹt màn hình chờ
           stop();
         })
         .getDashboardData();
@@ -2675,6 +2803,11 @@ function refreshGiaoHangTab() {
       }).join('');
     }
 
+        function filterDashboardByType_(type) {
+      dashboardTypeFilter = (dashboardTypeFilter === type) ? null : type; // bấm lại để bỏ lọc
+      renderDashboard_();
+    }
+
     function renderDashboard_() {
       const fromDate = document.getElementById('dashFromDate').value;
       const toDate = document.getElementById('dashToDate').value;
@@ -2706,16 +2839,25 @@ function refreshGiaoHangTab() {
         const pct = g.total ? Math.round((g.delivered / g.total) * 100) : 0;
         const meta = typeColorMap[t] || { color: '#576574', dark: false };
         const textColor = meta.dark ? '#333' : '#fff';
-        return '<div class="dash-type-chip" style="background:' + meta.color + '; color:' + textColor + ';">' +
+        const isActive = dashboardTypeFilter === t;
+        const activeStyle = isActive ? ' outline:3px solid #333; outline-offset:2px;' : '';
+        return '<div class="dash-type-chip" style="background:' + meta.color + '; color:' + textColor + '; cursor:pointer;' + activeStyle + '" ' +
+          'onclick="filterDashboardByType_(\'' + t + '\')" title="Bấm để lọc bảng theo loại ' + t + '">' +
           '<span class="dash-type-chip-name">' + t + '</span>' +
           '<span class="dash-type-chip-pct">' + pct + '%</span>' +
           '<span class="dash-type-chip-sub">' + g.delivered + '/' + g.total + ' lệnh</span>' +
         '</div>';
       }).join('') || '<div style="color:#999;">Không có dữ liệu phù hợp bộ lọc.</div>';
 
-      const rows = filtered.slice().sort(function(a, b) { return a.percent - b.percent; });
+      const tableSourceRows = dashboardTypeFilter ? filtered.filter(function(r) { return r.loai === dashboardTypeFilter; }) : filtered;
+      const rows = tableSourceRows.slice().sort(function(a, b) { return a.percent - b.percent; });
       const wrap = document.getElementById('dashboardResult');
-      let html = '<table><tr><th>LSX</th><th>Loại đơn</th><th>KHGH</th><th>Đã giao/Tổng</th><th>% hoàn thành</th></tr>';
+      let html = '';
+      if (dashboardTypeFilter) {
+        html += '<div style="padding:8px 4px; font-size:13px; color:#333;">Đang lọc theo loại đơn: <b>' + dashboardTypeFilter +
+          '</b> — <span onclick="filterDashboardByType_(\'' + dashboardTypeFilter + '\')" style="color:#1a73e8; cursor:pointer; text-decoration:underline;">Bỏ lọc</span></div>';
+      }
+      html += '<table><tr><th>LSX</th><th>Loại đơn</th><th>KHGH</th><th>Đã giao/Tổng</th><th>% hoàn thành</th></tr>';
       if (rows.length === 0) {
         html += '<tr><td colspan="5" class="empty-state-cell">Không có dữ liệu.</td></tr>';
       } else {
@@ -3341,39 +3483,84 @@ function stepTrackQty_(delta) {
           trackingLoaded.giaohang = true;
           renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
           renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
-          if (!initialSyncLoaded) { initialSyncLoaded = true; splashStepDone_(); }
         })
         .withFailureHandler(function(err) {
           renderTrackingTable_('nhanPhoiResult', [], 'nhanphoi');
           renderTrackingTable_('giaoHangResult', [], 'giaohang');
           showToast('Không tải được dữ liệu ban đầu: ' + err.message, 'error');
-          if (!initialSyncLoaded) { initialSyncLoaded = true; splashStepDone_(); }
         })
         .getInitialAppData();
     }
+        (function initLoginScreen_() {
+    let remembered = null, lastUser = null;
+    try {
+      remembered = JSON.parse(localStorage.getItem('gcck_remember_creds') || 'null');
+      lastUser = JSON.parse(localStorage.getItem('gcck_last_user') || 'null');
+    } catch (e) {}
 
-    loadInitialAppData_();
-    setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
-    startTrackingPolling_(); // vô hại nếu chưa mở tab nào - activeTrackingTab_ đang null
+    if (remembered && remembered.msnv) {
+      // Đã lưu mật khẩu -> đăng nhập ngầm luôn, không cần hỏi lại gì
+      google.script.run
+        .withSuccessHandler(function(user) { finishLogin_(user, true, remembered.matKhau); })
+        .withFailureHandler(function() {
+          try { localStorage.removeItem('gcck_remember_creds'); } catch (e) {}
+          showLoginScreenFallback_(lastUser);
+        })
+        .loginUser(remembered.msnv, remembered.matKhau);
+      return;
+    }
+    showLoginScreenFallback_(lastUser);
+  })();
 
-    // Hiện tên người dùng lên thanh trên cùng nếu lấy được (phụ thuộc cấu hình
-    // "Execute as" khi deploy Web App) - nếu không lấy được, vẫn giữ chữ "Người dùng".
-    google.script.run
-      .withSuccessHandler(function(email) {
-        if (email) document.getElementById('topbarUserName').textContent = email.split('@')[0];
-      })
-      .withFailureHandler(function() {})
-      .getCurrentUserEmail();
-        const loginMsnvEl = document.getElementById('loginMsnvInput');
-  try {
-    const lastMsnv = localStorage.getItem('gcck_last_msnv');
-    if (lastMsnv) loginMsnvEl.value = lastMsnv;
-  } catch (e) {}
-  loginMsnvEl.addEventListener('keydown', function(e) {
+  function showLoginScreenFallback_(lastUser) {
+    if (lastUser && lastUser.msnv) {
+      document.getElementById('quickLoginView').style.display = 'block';
+      document.getElementById('fullLoginView').style.display = 'none';
+      document.getElementById('quickLoginName').textContent = lastUser.hoTen;
+      setTimeout(function() {
+        const pwEl = document.getElementById('quickPasswordInput');
+        if (pwEl) pwEl.focus();
+      }, 100);
+    } else {
+      document.getElementById('quickLoginView').style.display = 'none';
+      document.getElementById('fullLoginView').style.display = 'block';
+    }
+  }
+
+  // Gõ MSNV xong -> hỏi ngay server có tài khoản này chưa, tự hiện ô "Họ và tên"
+  // nếu là tài khoản mới (hiển thị "realtime" khi đang gõ, có debounce 250ms).
+  document.getElementById('loginMsnvInput').addEventListener('input', function() {
+    const msnv = this.value.trim();
+    const hoTenInput = document.getElementById('loginHoTenInput');
+    clearTimeout(msnvCheckTimer_);
+    if (!msnv) { hoTenInput.style.display = 'none'; return; }
+
+    msnvCheckTimer_ = setTimeout(function() {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hoTenInput.style.display = res.exists ? 'none' : 'block';
+          if (!res.exists) hoTenInput.value = '';
+        })
+        .withFailureHandler(function() { /* im lặng, submit sẽ tự báo lỗi nếu có */ })
+        .checkMsnvExists(msnv);
+    }, 250);
+  });
+
+  document.getElementById('quickPasswordInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitQuickLogin_();
+  });
+  document.getElementById('loginMsnvInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      const hoTenVisible = document.getElementById('loginHoTenInput').style.display !== 'none';
+      if (hoTenVisible) document.getElementById('loginHoTenInput').focus();
+      else document.getElementById('loginPasswordInput').focus();
+    }
+  });
+  document.getElementById('loginHoTenInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') document.getElementById('loginPasswordInput').focus();
   });
   document.getElementById('loginPasswordInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') submitLogin_();
+    if (e.key === 'Enter') submitFullLogin_();
   });
   </script>
 
