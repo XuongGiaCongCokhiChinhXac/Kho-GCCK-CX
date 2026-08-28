@@ -665,16 +665,24 @@
     .dash-reset-btn:hover { background: #a51f1f; }
 
     /* ===== Ô chi tiết từng chuyền: chia 4 ô Tổng/Gia công/Còn lại/Tiến độ ===== */
-    .chuyen-cell { padding: 4px !important; min-width: 118px; vertical-align: middle; }
+    .chuyen-cell { padding: 3px !important; width: 92px; min-width: 92px; max-width: 92px; vertical-align: middle; }
     .chuyen-empty { color: #bbb; font-size: 13px; }
-    .chuyen-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+    .chuyen-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
     .chuyen-box {
-      background: #f3f4f6; border-radius: 5px; padding: 4px 5px;
+      background: #f3f4f6; border-radius: 4px; padding: 2px 3px;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      line-height: 1.25; min-height: 34px;
+      line-height: 1.15; min-height: 26px;
     }
-    .chuyen-label { font-size: 10px; color: #777; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2px; }
-    .chuyen-value { font-size: 14px; font-weight: 800; color: #222; }
+    .chuyen-label { font-size: 8.5px; color: #777; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2px; }
+    .chuyen-value { font-size: 12px; font-weight: 800; color: #222; }
+
+    .dash-lsx-cell {
+      font-size: 15px; font-weight: 900; color: #003DA5; cursor: pointer;
+      text-decoration: underline dotted; white-space: nowrap;
+    }
+    .dash-lsx-cell:hover { color: #1a73e8; background: #eaf2ff; }
+    .dash-khgh-cell { font-size: 14px; font-weight: 800; color: #222; white-space: nowrap; }
+    .dash-progress-col { width: 70px; min-width: 70px; max-width: 70px; }
     .chuyen-box.chuyen-done { background: #34a853; }
     .chuyen-box.chuyen-done .chuyen-label, .chuyen-box.chuyen-done .chuyen-value { color: #fff; }
     .chuyen-box.chuyen-mid { background: #fff3cd; }
@@ -693,6 +701,25 @@
     .dash-stat-card.dash-stat-warning .dash-stat-value { color: #b45309; }
     .dash-stat-card.dash-stat-success .dash-stat-value { color: #2e7d32; }
     .dash-stat-card.dash-stat-info .dash-stat-value { color: #1a73e8; }
+
+    .dash-calendar-popup {
+  position: absolute; top: 100%; left: 0; margin-top: 6px; z-index: 90;
+  background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  width: 280px; padding: 14px; font-family: Arial, sans-serif;
+}
+.dash-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dash-cal-header .dash-cal-title { font-weight: 800; font-size: 14px; color: #003DA5; }
+.dash-cal-nav { background: #f0f4fb; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; color: #1a73e8; font-size: 13px; }
+.dash-cal-nav:hover { background: #dbe7fb; }
+.dash-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+.dash-cal-dow { font-size: 11px; color: #999; font-weight: 700; padding-bottom: 4px; }
+.dash-cal-day { padding: 6px 0; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.dash-cal-day:hover { background: #eaf2ff; }
+.dash-cal-day.dash-cal-today { border: 1px solid #1a73e8; font-weight: bold; }
+.dash-cal-day.dash-cal-selected { background: #1a73e8; color: #fff; font-weight: bold; }
+.dash-cal-day.dash-cal-muted { color: #ccc; }
+.dash-cal-footer { display: flex; justify-content: space-between; margin-top: 10px; }
+.dash-cal-footer button { border: none; background: none; color: #1a73e8; font-weight: 700; font-size: 13px; cursor: pointer; }
 
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -967,12 +994,28 @@
           </div>
         </div>
         <div id="dashboardStats" class="dash-stats-row">
-          <div class="dash-date-card">
+          <div class="dash-date-card" style="position:relative;">
             <div class="dash-stat-label">Lọc theo ngày KHGH</div>
-            <input type="date" id="dashFilterDate" class="dash-date-input" onchange="onDashDateChange_()"
-              onclick="if (this.showPicker) { try { this.showPicker(); } catch (e) {} }" />
+            <button type="button" id="dashDateBtn" class="dash-date-input" onclick="toggleDashCalendar_()" style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+              <i class="fa-regular fa-calendar"></i>
+              <span id="dashDateBtnLabel">Chọn ngày</span>
+            </button>
+            <input type="hidden" id="dashFilterDate" />
+            <div id="dashCalendarPopup" class="dash-calendar-popup" style="display:none;"></div>
           </div>
           <div id="dashboardStatCards" style="display:contents;"></div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:0 16px 10px 16px;">
+          <div style="position:relative; flex:0 0 240px;">
+            <input type="text" id="dashLsxSearchInput" placeholder="Tìm theo LSX..." oninput="onDashLsxSearchInput_()"
+              style="width:100%; padding:8px 30px 8px 10px; box-sizing:border-box; font-size:13px; border:1px solid #ddd; border-radius:6px;" />
+            <span id="dashLsxSearchClear" onclick="clearDashLsxSearch_()" style="display:none; position:absolute; right:8px; top:50%; transform:translateY(-50%); cursor:pointer; color:#999; font-size:16px;">&times;</span>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="quick-btn" id="prioFilterBtn-gap" onclick="togglePriorityFilter_('gap')" style="border-color:#d62828; color:#d62828;">Gấp</button>
+            <button type="button" class="quick-btn" id="prioFilterBtn-ut1" onclick="togglePriorityFilter_('ut1')" style="border-color:#ff8c00; color:#ff8c00;">ƯT1</button>
+            <button type="button" class="quick-btn" id="prioFilterBtn-ut2" onclick="togglePriorityFilter_('ut2')" style="border-color:#fbbc04; color:#a17d00;">ƯT2</button>
+          </div>
         </div>
         <div id="dashboardFilterInfo" style="padding:0 16px 6px 16px; font-size:13px;"></div>
         <div id="dashboardSummary" style="padding:0 16px 10px 16px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px;"></div>
@@ -2821,8 +2864,84 @@ function refreshGiaoHangTab() {
       dashDateFilter = '';
       const dateEl = document.getElementById('dashFilterDate');
       if (dateEl) dateEl.value = '';
+      const lbl = document.getElementById('dashDateBtnLabel');
+      if (lbl) lbl.textContent = 'Chọn ngày';
       renderDashboard_();
     }
+
+    let dashCalViewDate_ = new Date();
+
+function toggleDashCalendar_() {
+  const pop = document.getElementById('dashCalendarPopup');
+  const isOpen = pop.style.display === 'block';
+  pop.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    dashCalViewDate_ = dashDateFilter ? new Date(dashDateFilter) : new Date();
+    renderDashCalendar_();
+  }
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#dashCalendarPopup') && !e.target.closest('#dashDateBtn')) {
+    const pop = document.getElementById('dashCalendarPopup');
+    if (pop) pop.style.display = 'none';
+  }
+});
+
+function dashCalPrevMonth_() { dashCalViewDate_.setMonth(dashCalViewDate_.getMonth() - 1); renderDashCalendar_(); }
+function dashCalNextMonth_() { dashCalViewDate_.setMonth(dashCalViewDate_.getMonth() + 1); renderDashCalendar_(); }
+
+function renderDashCalendar_() {
+  const pop = document.getElementById('dashCalendarPopup');
+  const y = dashCalViewDate_.getFullYear();
+  const m = dashCalViewDate_.getMonth();
+  const monthNames = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const daysInPrevMonth = new Date(y, m, 0).getDate();
+  const todayStr = getTodayStr_();
+
+  let html = '<div class="dash-cal-header">' +
+    '<button type="button" class="dash-cal-nav" onclick="dashCalPrevMonth_()">&#8249;</button>' +
+    '<span class="dash-cal-title">' + monthNames[m] + ' ' + y + '</span>' +
+    '<button type="button" class="dash-cal-nav" onclick="dashCalNextMonth_()">&#8250;</button>' +
+  '</div><div class="dash-cal-grid">';
+
+  ['CN','T2','T3','T4','T5','T6','T7'].forEach(function(d) { html += '<div class="dash-cal-dow">' + d + '</div>'; });
+  for (let i = firstDow - 1; i >= 0; i--) html += '<div class="dash-cal-day dash-cal-muted">' + (daysInPrevMonth - i) + '</div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = y + '-' + String(m + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    let cls = 'dash-cal-day';
+    if (dateStr === todayStr) cls += ' dash-cal-today';
+    if (dateStr === dashDateFilter) cls += ' dash-cal-selected';
+    html += '<div class="' + cls + '" onclick="pickDashCalDay_(\'' + dateStr + '\')">' + d + '</div>';
+  }
+  const trailing = (7 - ((firstDow + daysInMonth) % 7)) % 7;
+  for (let d = 1; d <= trailing; d++) html += '<div class="dash-cal-day dash-cal-muted">' + d + '</div>';
+
+  html += '</div><div class="dash-cal-footer">' +
+    '<button type="button" onclick="dashCalClear_()">Xóa</button>' +
+    '<button type="button" onclick="dashCalGoToday_()">Hôm nay</button>' +
+  '</div>';
+  pop.innerHTML = html;
+}
+
+function pickDashCalDay_(dateStr) {
+  dashDateFilter = dateStr;
+  dashCardFilter = null;
+  document.getElementById('dashFilterDate').value = dateStr;
+  document.getElementById('dashDateBtnLabel').textContent = formatDate(dateStr);
+  document.getElementById('dashCalendarPopup').style.display = 'none';
+  renderDashboard_();
+}
+function dashCalGoToday_() { pickDashCalDay_(getTodayStr_()); }
+function dashCalClear_() {
+  dashDateFilter = ''; dashCardFilter = 'all';
+  document.getElementById('dashFilterDate').value = '';
+  document.getElementById('dashDateBtnLabel').textContent = 'Chọn ngày';
+  document.getElementById('dashCalendarPopup').style.display = 'none';
+  renderDashboard_();
+}
 
     function getDashFilteredRows_(rows, todayStr) {
       if (dashDateFilter) {
@@ -2839,6 +2958,19 @@ function refreshGiaoHangTab() {
           return rows.filter(function(r) { return r.khgh === todayStr || (r.tienDoPercent >= 80 && r.tienDoPercent < 100); });
       }
     }
+
+    function copyDashLsx_(el, lsx) {
+  navigator.clipboard.writeText(lsx).then(function() {
+    const old = el.textContent;
+    el.textContent = 'Đã copy!';
+    setTimeout(function() { el.textContent = old; }, 700);
+  }).catch(function() {});
+  const input = document.getElementById('lsxInput');
+  if (input) {
+    input.value = lsx;
+    document.getElementById('clearBtn').style.display = 'block';
+  }
+}
 
     function renderDashboardFilterInfo_() {
       const el = document.getElementById('dashboardFilterInfo');
@@ -2986,6 +3118,25 @@ function refreshGiaoHangTab() {
 
     // Vẽ 1 ô chi tiết chuyền dạng lưới 2x2: Tổng / Gia công / Còn lại / Tiến độ - to, rõ,
     // giống cách quản lý xem trên Google Sheet "TỔNG HỢP CÁC ĐƠN HÀNG".
+    function chuyenPercentColor_(pct) {
+      const stops = [
+        { p: 0,   c: [214, 40, 40]  },
+        { p: 33,  c: [255, 140, 0]  },
+        { p: 66,  c: [251, 188, 4]  },
+        { p: 100, c: [52, 168, 83]  }
+      ];
+      let a = stops[0], b = stops[stops.length - 1];
+      for (let i = 0; i < stops.length - 1; i++) {
+        if (pct >= stops[i].p && pct <= stops[i + 1].p) { a = stops[i]; b = stops[i + 1]; break; }
+      }
+      const range = (b.p - a.p) || 1;
+      const t = Math.max(0, Math.min(1, (pct - a.p) / range));
+      const r = Math.round(a.c[0] + (b.c[0] - a.c[0]) * t);
+      const g = Math.round(a.c[1] + (b.c[1] - a.c[1]) * t);
+      const bl = Math.round(a.c[2] + (b.c[2] - a.c[2]) * t);
+      return 'rgb(' + r + ',' + g + ',' + bl + ')';
+    }
+
     function buildChuyenCell_(info) {
       const tong = Number(info && info.tong) || 0;
       if (tong === 0) {
@@ -2998,21 +3149,107 @@ function refreshGiaoHangTab() {
         : Number(conRaw);
       const pctNum = Number(info.td);
       const pct = isNaN(pctNum) ? Math.round((gc / tong) * 1000) / 10 : Math.round(pctNum * 1000) / 10;
-      const pctClass = pct >= 100 ? 'chuyen-done' : (pct >= 50 ? 'chuyen-mid' : 'chuyen-low');
+      const bg = chuyenPercentColor_(pct);
+      const textColor = (pct >= 33 && pct < 66) ? '#3a2e00' : '#fff';
 
       return '<td class="chuyen-cell"><div class="chuyen-grid">' +
+        '<div class="chuyen-box" style="background:' + bg + '; color:' + textColor + ';"><span class="chuyen-label" style="color:' + textColor + '; opacity:0.85;">%</span><span class="chuyen-value">' + pct + '%</span></div>' +
         '<div class="chuyen-box"><span class="chuyen-label">Tổng</span><span class="chuyen-value">' + tong + '</span></div>' +
-        '<div class="chuyen-box"><span class="chuyen-label">Gia công</span><span class="chuyen-value">' + gc + '</span></div>' +
-        '<div class="chuyen-box"><span class="chuyen-label">Còn lại</span><span class="chuyen-value">' + conLai + '</span></div>' +
-        '<div class="chuyen-box ' + pctClass + '"><span class="chuyen-label">Tiến độ</span><span class="chuyen-value">' + pct + '%</span></div>' +
+        '<div class="chuyen-box"><span class="chuyen-label">GC</span><span class="chuyen-value">' + gc + '</span></div>' +
+        '<div class="chuyen-box"><span class="chuyen-label">Còn</span><span class="chuyen-value">' + conLai + '</span></div>' +
       '</div></td>';
     }
+
+    const PRIORITY_TAGS_KEY = 'gcck_priority_tags_v1';
+const PRIORITY_OPTIONS = [
+  { value: '', label: '(Trống)' },
+  { value: 'gap', label: 'Gấp' },
+  { value: 'ut1', label: 'ƯT1' },
+  { value: 'ut2', label: 'ƯT2' },
+  { value: 'ut3', label: 'ƯT3' },
+  { value: '__add__', label: '+ Thêm...' }
+];
+
+function loadPriorityTags_() {
+  try { return JSON.parse(localStorage.getItem(PRIORITY_TAGS_KEY) || '{}'); } catch (e) { return {}; }
+}
+function savePriorityTags_() {
+  try { localStorage.setItem(PRIORITY_TAGS_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
+}
+let priorityTags_ = loadPriorityTags_();
+let dashLsxSearch_ = '';
+let priorityFilterActive_ = null;
+
+function priorityMeta_(tag) {
+  switch (tag) {
+    case 'gap': return { label: 'Gấp', bg: '#d62828', color: '#fff' };
+    case 'ut1': return { label: 'ƯT1', bg: '#ff8c00', color: '#fff' };
+    case 'ut2': return { label: 'ƯT2', bg: '#fbbc04', color: '#3a2e00' };
+    default:    return { label: tag || '', bg: '#fff', color: '#c62828' }; // ƯT3, +thêm, trống
+  }
+}
+
+function priorityRowStyle_(tag) {
+  if (!tag) return '';
+  const meta = priorityMeta_(tag);
+  return 'background:' + meta.bg + ' !important; color:' + meta.color + ';';
+}
+
+function buildPriorityDropdown_(lsx, tag) {
+  const safeLsx = lsx.replace(/'/g, "\\'");
+  const meta = priorityMeta_(tag);
+  const opts = PRIORITY_OPTIONS.map(function(o) {
+    const sel = o.value === (tag || '') ? ' selected' : '';
+    return '<option value="' + o.value + '"' + sel + '>' + o.label + '</option>';
+  }).join('');
+  return '<select onchange="onPriorityChange_(this, \'' + safeLsx + '\')" ' +
+    'style="width:100%; padding:4px; border-radius:6px; border:1px solid #ccc; font-weight:700; ' +
+    'background:' + meta.bg + '; color:' + meta.color + ';">' + opts + '</select>';
+}
+
+function onPriorityChange_(sel, lsx) {
+  let value = sel.value;
+  if (value === '__add__') {
+    const custom = prompt('Nhập nhãn ưu tiên mới cho ' + lsx + ':');
+    if (!custom) { renderDashboard_(); return; }
+    value = custom.trim();
+  }
+  if (value) priorityTags_[lsx] = value; else delete priorityTags_[lsx];
+  savePriorityTags_();
+  renderDashboard_();
+}
+
+function onDashLsxSearchInput_() {
+  dashLsxSearch_ = document.getElementById('dashLsxSearchInput').value.trim().toLowerCase();
+  document.getElementById('dashLsxSearchClear').style.display = dashLsxSearch_ ? 'block' : 'none';
+  renderDashboard_();
+}
+function clearDashLsxSearch_() {
+  dashLsxSearch_ = '';
+  document.getElementById('dashLsxSearchInput').value = '';
+  document.getElementById('dashLsxSearchClear').style.display = 'none';
+  renderDashboard_();
+}
+function togglePriorityFilter_(tag) {
+  priorityFilterActive_ = (priorityFilterActive_ === tag) ? null : tag;
+  ['gap','ut1','ut2'].forEach(function(t) {
+    const btn = document.getElementById('prioFilterBtn-' + t);
+    if (btn) btn.classList.toggle('active', t === priorityFilterActive_);
+  });
+  renderDashboard_();
+}
 
     function renderDashboard_() {
       const todayStr = getTodayStr_();
       renderDashboardStats_(dashboardRows, todayStr); // thẻ luôn tính trên toàn bộ dữ liệu
 
-      const filtered = getDashFilteredRows_(dashboardRows, todayStr);
+      let filtered = getDashFilteredRows_(dashboardRows, todayStr);
+      if (dashLsxSearch_) {
+        filtered = filtered.filter(function(r) { return String(r.lsx || '').toLowerCase().indexOf(dashLsxSearch_) !== -1; });
+      }
+      if (priorityFilterActive_) {
+        filtered = filtered.filter(function(r) { return priorityTags_[r.lsx] === priorityFilterActive_; });
+      }
       renderDashboardFilterInfo_();
 
       // Gộp theo loại đơn hàng bằng SỐ LỆNH (LSX) + % TRUNG BÌNH, thay vì total/delivered
@@ -3059,8 +3296,8 @@ function refreshGiaoHangTab() {
       ];
       const chuyenHeaderHtml = CHUYEN_LABELS.map(function(c) { return '<th>' + c.label + '</th>'; }).join('');
 
-      html += '<table><tr><th>LSX</th><th>Loại đơn</th><th>KHGH</th>' +
-        chuyenHeaderHtml + '<th>Tiến độ SX</th><th>% Kho giao hàng</th></tr>';
+      html += '<table><tr><th>LSX</th><th>Ưu tiên</th><th class="dash-khgh-cell">KHGH</th>' +
+        chuyenHeaderHtml + '<th class="dash-progress-col">Tiến độ SX</th><th>% Kho giao hàng</th></tr>';
       if (rows.length === 0) {
         html += '<tr><td colspan="' + (5 + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr>';
       } else {
@@ -3070,12 +3307,14 @@ function refreshGiaoHangTab() {
           CHUYEN_LABELS.forEach(function(c) {
             chuyenCells += buildChuyenCell_(r.chuyen && r.chuyen[c.key]);
           });
-          html += '<tr>' +
-            '<td>' + r.lsx + '</td>' +
-            '<td>' + r.loai + '</td>' +
-            '<td>' + formatDate(r.khgh) + '</td>' +
+          const tag = priorityTags_[r.lsx] || '';
+          const rowStyle = priorityRowStyle_(tag);
+          html += '<tr style="' + rowStyle + '">' +
+            '<td class="dash-lsx-cell" onclick="copyDashLsx_(this, \'' + r.lsx.replace(/'/g,"\\'") + '\')" title="Bấm để copy, điền vào ô Tra cứu">' + r.lsx + '</td>' +
+            '<td>' + buildPriorityDropdown_(r.lsx, tag) + '</td>' +
+            '<td class="dash-khgh-cell">' + formatDate(r.khgh) + '</td>' +
             chuyenCells +
-            '<td>' + percentBadge_(r.tienDoDonHang) + '</td>' +
+            '<td class="dash-progress-col">' + percentBadge_(r.tienDoDonHang) + '</td>' +
             '<td style="min-width:120px;">' +
               '<div style="background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
                 '<div style="width:' + r.percent + '%; background:' + barColor + '; height:100%;"></div>' +
