@@ -2901,7 +2901,24 @@ function refreshGiaoHangTab() {
       renderDashboard_();
     }
 
+        // Định dạng 1 giá trị tỉ lệ (dạng phân số 0->1 từ Supabase, VD 0.347826...) thành
+    // badge % có màu: 100% = xanh lá/chữ trắng đậm, 50-99% = vàng, dưới 50% = cam.
+    function percentBadge_(fraction) {
+      if (fraction === null || fraction === undefined || fraction === '') return '';
+      const num = Number(fraction);
+      if (isNaN(num)) return '';
+      const pct = Math.round(num * 1000) / 10; // làm tròn 1 chữ số thập phân
+      let bg, color, weight = '600';
+      if (pct >= 100) { bg = '#34a853'; color = '#fff'; weight = 'bold'; }
+      else if (pct >= 50) { bg = '#fbbc04'; color = '#3a2e00'; }
+      else { bg = '#ff8a3d'; color = '#fff'; }
+      return '<span style="display:inline-block; padding:2px 8px; border-radius:10px; background:' +
+        bg + '; color:' + color + '; font-weight:' + weight + '; font-size:11px; white-space:nowrap;">' +
+        pct + '%</span>';
+    }
+
     function renderDashboard_() {
+      const fromDate = document.getElementById('dashFromDate').value;
       const todayStr = getTodayStr_();
       renderDashboardStats_(dashboardRows, todayStr); // thẻ luôn tính trên toàn bộ dữ liệu
 
@@ -2935,14 +2952,11 @@ function refreshGiaoHangTab() {
         '</div>';
       }).join('') || '<div style="color:#999;">Không có dữ liệu phù hợp bộ lọc.</div>';
 
-      const tableSourceRows = dashboardTypeFilter ? filtered.filter(function(r) { return r.loai === dashboardTypeFilter; }) : filtered;
+            const tableSourceRows = dashboardTypeFilter ? filtered.filter(function(r) { return r.loai === dashboardTypeFilter; }) : filtered;
       const rows = tableSourceRows.slice().sort(function(a, b) { return a.percent - b.percent; });
       const wrap = document.getElementById('dashboardResult');
       let html = '';
-      if (dashboardTypeFilter) {
-        html += '<div style="padding:8px 4px; font-size:13px; color:#333;">Đang lọc theo loại đơn: <b>' + dashboardTypeFilter +
-          '</b> — <span onclick="filterDashboardByType_(\'' + dashboardTypeFilter + '\')" style="color:#1a73e8; cursor:pointer; text-decoration:underline;">Bỏ lọc</span></div>';
-      }
+
       const CHUYEN_LABELS = [
         { key: 'ducNhom', label: 'Đúc nhôm' }, { key: 'cuaVong', label: 'Cửa vòng' },
         { key: 'tien', label: 'Tiện' }, { key: 'phay', label: 'Phay' },
@@ -2956,12 +2970,12 @@ function refreshGiaoHangTab() {
         html += '<tr><td colspan="' + (5 + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr>';
       } else {
         rows.forEach(function(r) {
-          const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ea4335');
+          const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ff8a3d');
           let chuyenCells = '';
           CHUYEN_LABELS.forEach(function(c) {
             const info = (r.chuyen && r.chuyen[c.key]) || {};
             chuyenCells += '<td style="font-size:11px;">' +
-              (info.gc || 0) + '/' + (info.tong || 0) + '<br><span style="color:#888;">' + (info.td || '') + '</span>' +
+              (info.gc || 0) + '/' + (info.tong || 0) + '<br>' + percentBadge_(info.td) +
             '</td>';
           });
           html += '<tr>' +
@@ -2969,7 +2983,7 @@ function refreshGiaoHangTab() {
             '<td>' + r.loai + '</td>' +
             '<td>' + formatDate(r.khgh) + '</td>' +
             chuyenCells +
-            '<td>' + (r.tienDoDonHang || '') + '</td>' +
+            '<td>' + percentBadge_(r.tienDoDonHang) + '</td>' +
             '<td style="min-width:120px;">' +
               '<div style="background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
                 '<div style="width:' + r.percent + '%; background:' + barColor + '; height:100%;"></div>' +
