@@ -483,9 +483,21 @@
 .btn-primary-blue { background: #1a73e8; color: #fff; font-weight: bold; border: none; border-radius: 4px; padding: 10px 18px; cursor: pointer; font-size: 14px; }
 .btn-primary-blue:hover { background: #1558b0; }
 .tracking-table-wrap { flex: 1; overflow: auto; padding: 0 16px 16px 16px; }
-.tracking-table-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.tracking-table-wrap th, .tracking-table-wrap td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
-.tracking-table-wrap th { background: #003DA5; color: #fff; font-weight: bold; position: sticky; top: 0; }
+    /* border-collapse: separate + border-spacing:0 để tránh lỗi td "chui" lên đè hàng
+       header khi cuộn — y hệt lỗi/giải pháp đã áp dụng cho bảng #result phía trên. */
+    .tracking-table-wrap table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    .tracking-table-wrap th, .tracking-table-wrap td {
+      border-bottom: 1px solid #ddd; border-right: 1px solid #ddd;
+      padding: 6px 8px; text-align: center; box-sizing: border-box;
+    }
+    .tracking-table-wrap tr td:first-child, .tracking-table-wrap tr th:first-child { border-left: 1px solid #ddd; }
+    .tracking-table-wrap td { background: #fff; }
+    body.dark-mode .tracking-table-wrap td { background: #2a2a2a; }
+    .tracking-table-wrap th {
+      background: #003DA5; color: #fff; font-weight: bold;
+      position: sticky; top: 0; z-index: 5;
+      border-top: 1px solid #003DA5; border-bottom: 1px solid #003DA5;
+    }
 
 /* ===== Giao diện Mobile cho Nhận phôi / Giao hàng ===== */
 @media (max-width: 768px) {
@@ -665,11 +677,12 @@
     .dash-reset-btn:hover { background: #a51f1f; }
 
     /* ===== Ô chi tiết từng chuyền: chia 4 ô Tổng/Gia công/Còn lại/Tiến độ ===== */
-    .chuyen-cell { padding: 3px !important; width: 92px; min-width: 92px; max-width: 92px; vertical-align: middle; }
+    /* 4 ô (%/Tổng/GC/Còn) vẽ thành 1 hàng ngang thay vì lưới 2x2 -> rộng ra, thấp xuống */
+    .chuyen-cell { padding: 3px !important; width: 210px; min-width: 210px; max-width: 210px; vertical-align: middle; }
     .chuyen-empty { color: #bbb; font-size: 13px; }
-    .chuyen-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+    .chuyen-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
     .chuyen-box {
-      background: #f3f4f6; border-radius: 4px; padding: 2px 3px;
+      background: #f3f4f6; border-radius: 4px; padding: 2px 2px;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       line-height: 1.15; min-height: 26px;
     }
@@ -677,12 +690,38 @@
     .chuyen-value { font-size: 12px; font-weight: 800; color: #222; }
 
     .dash-lsx-cell {
-      font-size: 15px; font-weight: 900; color: #003DA5; cursor: pointer;
-      text-decoration: underline dotted; white-space: nowrap;
+      font-size: 13px; font-weight: 900; color: #003DA5; cursor: pointer;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
     }
-    .dash-lsx-cell:hover { color: #1a73e8; background: #eaf2ff; }
-    .dash-khgh-cell { font-size: 14px; font-weight: 800; color: #222; white-space: nowrap; }
+
+        /* ===== Popup chọn Ưu tiên (thay cho <select> xấu) ===== */
+    .priority-pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 100%; min-height: 22px; padding: 4px 6px; border-radius: 12px;
+      font-size: 12px; font-weight: 800; cursor: pointer; border: 1px solid transparent;
+      box-sizing: border-box;
+    }
+    .priority-popup {
+      position: fixed; background: #fff; border: 1px solid #ccc; border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 300; padding: 6px; width: 150px;
+    }
+    .priority-popup-option {
+      padding: 8px 10px; border-radius: 6px; font-size: 13px; font-weight: 800;
+      cursor: pointer; margin-bottom: 3px; text-align: left;
+    }
+    .priority-popup-option:hover { filter: brightness(0.95); }
+    .priority-popup-add {
+      padding: 7px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
+      color: #1a73e8; text-align: left; border-top: 1px solid #eee; margin-top: 4px; padding-top: 8px;
+    }
+
+    .dash-khgh-cell { font-size: 12px; font-weight: 800; color: #222; white-space: nowrap; }
     .dash-progress-col { width: 70px; min-width: 70px; max-width: 70px; }
+    /* Vừa đủ dữ liệu, không chiếm hết bề ngang bảng như trước */
+    .dash-lsx-col { width: 100px; min-width: 100px; max-width: 100px; }
+    .dash-priority-col { width: 74px; min-width: 74px; max-width: 74px; }
+    .dash-khgh-col { width: 80px; min-width: 80px; max-width: 80px; }
+    .dash-sanpham-col { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .chuyen-box.chuyen-done { background: #34a853; }
     .chuyen-box.chuyen-done .chuyen-label, .chuyen-box.chuyen-done .chuyen-value { color: #fff; }
     .chuyen-box.chuyen-mid { background: #fff3cd; }
@@ -1007,9 +1046,10 @@
         </div>
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:0 16px 10px 16px;">
           <div style="position:relative; flex:0 0 240px;">
-            <input type="text" id="dashLsxSearchInput" placeholder="Tìm theo LSX..." oninput="onDashLsxSearchInput_()"
+            <input type="text" id="dashLsxSearchInput" placeholder="Tìm theo LSX (Enter để tìm)..." autocomplete="off"
               style="width:100%; padding:8px 30px 8px 10px; box-sizing:border-box; font-size:13px; border:1px solid #ddd; border-radius:6px;" />
             <span id="dashLsxSearchClear" onclick="clearDashLsxSearch_()" style="display:none; position:absolute; right:8px; top:50%; transform:translateY(-50%); cursor:pointer; color:#999; font-size:16px;">&times;</span>
+            <div id="dashLsxSuggestions" class="suggestions" style="top:100%;"></div>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button type="button" class="quick-btn" id="prioFilterBtn-gap" onclick="togglePriorityFilter_('gap')" style="border-color:#d62828; color:#d62828;">Gấp</button>
@@ -1620,6 +1660,8 @@
         renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
       } else if (activeFilterTarget === 'giaohang') {
         renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
+      } else if (activeFilterTarget === 'dashboard') {
+        renderDashboard_();
       } else {
         render(applyFilters(lastRows));
       }
@@ -2534,6 +2576,7 @@
     renderCategoryButtons();
     renderEmptyTable();
     applySavedDisplayPrefs_();
+    initDashSearchBox_();
     splashStepDone_(); // bước 1: giao diện đã dựng xong
 
       /* ================= SIDEBAR + TAB ================= */
@@ -2566,7 +2609,10 @@
         if (!trackingLoaded.giaohang) refreshGiaoHangTab();
       } else if (tabId === 'tab-dashboard') {
         activeTrackingTab_ = null;
-        if (dashboardRows.length === 0) refreshDashboard_(); else renderDashboard_();
+        // Chỉ dựng lại bảng nếu CHƯA từng render (hoặc chưa có dữ liệu) - tránh việc mỗi lần
+        // chuyển qua lại tab Dashboard đều build lại hàng ngàn dòng gây giật, khựng.
+        if (dashboardRows.length === 0) refreshDashboard_();
+        else if (!dashboardRenderedOnce_) renderDashboard_();
       } else {
         activeTrackingTab_ = null;
       }
@@ -2707,6 +2753,7 @@
     function getFilterDataset_() {
       if (activeFilterTarget === 'nhanphoi') return { rows: nhanPhoiRows, filters: trackingFilters.nhanphoi };
       if (activeFilterTarget === 'giaohang') return { rows: giaoHangRows, filters: trackingFilters.giaohang };
+      if (activeFilterTarget === 'dashboard') return { rows: dashboardRows, filters: dashboardFilters };
       return { rows: lastRows, filters: filters };
     }
 
@@ -2839,6 +2886,9 @@ function refreshGiaoHangTab() {
     let dashCardFilter = 'all'; // 'all'|'completed'|'remaining'|'overdue'|'today'|'almost' - mặc định hiện TẤT CẢ
     let dashDateFilter = '';        // yyyy-mm-dd, khi có giá trị sẽ ưu tiên hơn dashCardFilter
     const DASHBOARD_CACHE_KEY = 'gcck_dashboard_cache_v1';
+    let dashboardRenderedOnce_ = false; // đã build DOM bảng dashboard lần nào chưa
+    const dashboardFilters = {};        // bộ lọc theo cột (giống `filters` của tab Tra cứu), key: 'sanPham'|'khgh'
+    let dashRenderToken_ = 0;           // huỷ đợt build dở dang khi có render mới hơn
 
     function getTodayStr_() {
       const d = new Date();
@@ -2959,18 +3009,88 @@ function dashCalClear_() {
       }
     }
 
-    function copyDashLsx_(el, lsx) {
-  navigator.clipboard.writeText(lsx).then(function() {
-    const old = el.textContent;
-    el.textContent = 'Đã copy!';
-    setTimeout(function() { el.textContent = old; }, 700);
-  }).catch(function() {});
-  const input = document.getElementById('lsxInput');
-  if (input) {
-    input.value = lsx;
-    document.getElementById('clearBtn').style.display = 'block';
-  }
-}
+    /* ================= CHỌN Ô KIỂU EXCEL CHO BẢNG DASHBOARD ================= */
+    let dashSelRegions = [];
+    let dashSelAnchorR = -1, dashSelAnchorC = -1, dashActiveR = -1, dashActiveC = -1;
+    let dashIsSelecting = false;
+
+    function dashIsCellSelected_(r, c) {
+      return dashSelRegions.some(function(reg) { return r >= reg.r1 && r <= reg.r2 && c >= reg.c1 && c <= reg.c2; });
+    }
+    function dashClearSelection_() {
+      dashSelRegions = [];
+      dashSelAnchorR = dashSelAnchorC = dashActiveR = dashActiveC = -1;
+      document.querySelectorAll('#dashboardResult td.cell-selected, #dashboardResult td.cell-active')
+        .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
+    }
+    function dashSelectSingle_(r, c) {
+      dashSelRegions = [{ r1: r, r2: r, c1: c, c2: c }];
+      dashSelAnchorR = r; dashSelAnchorC = c; dashActiveR = r; dashActiveC = c;
+      dashPaintSelection_();
+    }
+    function dashExtendSelection_(r, c) {
+      if (dashSelAnchorR < 0) { dashSelectSingle_(r, c); return; }
+      const rect = { r1: Math.min(dashSelAnchorR, r), r2: Math.max(dashSelAnchorR, r), c1: Math.min(dashSelAnchorC, c), c2: Math.max(dashSelAnchorC, c) };
+      if (dashSelRegions.length === 0) dashSelRegions.push(rect); else dashSelRegions[dashSelRegions.length - 1] = rect;
+      dashActiveR = r; dashActiveC = c;
+      dashPaintSelection_();
+    }
+    function dashToggleCellRegion_(r, c) {
+      const idx = dashSelRegions.findIndex(function(reg) { return reg.r1 === r && reg.r2 === r && reg.c1 === c && reg.c2 === c; });
+      if (idx !== -1) dashSelRegions.splice(idx, 1); else dashSelRegions.push({ r1: r, r2: r, c1: c, c2: c });
+      dashSelAnchorR = r; dashSelAnchorC = c; dashActiveR = r; dashActiveC = c;
+      dashPaintSelection_();
+    }
+    function dashPaintSelection_() {
+      document.querySelectorAll('#dashboardResult td.cell-selected, #dashboardResult td.cell-active')
+        .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
+      document.querySelectorAll('#dashboardResult td[data-r]').forEach(function(td) {
+        const r = Number(td.getAttribute('data-r')), c = Number(td.getAttribute('data-c'));
+        if (dashIsCellSelected_(r, c)) td.classList.add('cell-selected');
+      });
+      const activeTd = document.querySelector('#dashboardResult td[data-r="' + dashActiveR + '"][data-c="' + dashActiveC + '"]');
+      if (activeTd) activeTd.classList.add('cell-active');
+    }
+    function dashCopySelection_() {
+      if (dashSelRegions.length === 0) return;
+      let r1 = Infinity, r2 = -Infinity, c1 = Infinity, c2 = -Infinity;
+      dashSelRegions.forEach(function(reg) { r1 = Math.min(r1, reg.r1); r2 = Math.max(r2, reg.r2); c1 = Math.min(c1, reg.c1); c2 = Math.max(c2, reg.c2); });
+      const lines = [];
+      for (let r = r1; r <= r2; r++) {
+        const vals = [];
+        for (let c = c1; c <= c2; c++) {
+          const td = document.querySelector('#dashboardResult td[data-r="' + r + '"][data-c="' + c + '"]');
+          vals.push(dashIsCellSelected_(r, c) && td ? td.innerText.trim() : '');
+        }
+        lines.push(vals.join('\t'));
+      }
+      writeToRealClipboard_(lines.join('\n'));
+    }
+
+    document.getElementById('dashboardResult').addEventListener('mousedown', function(e) {
+      const td = e.target.closest('td[data-r]');
+      if (!td) return;
+      if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+      const r = Number(td.getAttribute('data-r')), c = Number(td.getAttribute('data-c'));
+      if (e.shiftKey) { dashExtendSelection_(r, c); dashIsSelecting = false; }
+      else if (e.ctrlKey || e.metaKey) { dashToggleCellRegion_(r, c); dashIsSelecting = false; }
+      else { dashIsSelecting = true; dashSelectSingle_(r, c); }
+      if (e.target.tagName === 'TD') e.preventDefault();
+    });
+    document.getElementById('dashboardResult').addEventListener('mouseover', function(e) {
+      if (!dashIsSelecting) return;
+      const td = e.target.closest('td[data-r]');
+      if (!td) return;
+      dashExtendSelection_(Number(td.getAttribute('data-r')), Number(td.getAttribute('data-c')));
+    });
+    document.addEventListener('mouseup', function() { dashIsSelecting = false; });
+    document.addEventListener('keydown', function(e) {
+      const dashTab = document.getElementById('tab-dashboard');
+      if (!dashTab || !dashTab.classList.contains('active')) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { dashCopySelection_(); }
+      else if (e.key === 'Escape') { dashClearSelection_(); }
+    });
 
     function renderDashboardFilterInfo_() {
       const el = document.getElementById('dashboardFilterInfo');
@@ -3106,7 +3226,7 @@ function dashCalClear_() {
       if (fraction === null || fraction === undefined || fraction === '') return '';
       const num = Number(fraction);
       if (isNaN(num)) return '';
-      const pct = Math.round(num * 1000) / 10; // làm tròn 1 chữ số thập phân
+      const pct = Math.round(num * 100); // số nguyên, không lẻ thập phân (VD 42.9% -> 43%)
       let bg, color, weight = '600';
       if (pct >= 100) { bg = '#34a853'; color = '#fff'; weight = 'bold'; }
       else if (pct >= 50) { bg = '#fbbc04'; color = '#3a2e00'; }
@@ -3148,12 +3268,13 @@ function dashCalClear_() {
         ? Math.max(tong - gc, 0)
         : Number(conRaw);
       const pctNum = Number(info.td);
-      const pct = isNaN(pctNum) ? Math.round((gc / tong) * 1000) / 10 : Math.round(pctNum * 1000) / 10;
+      const pct = isNaN(pctNum) ? Math.round((gc / tong) * 100) : Math.round(pctNum * 100);
       const bg = chuyenPercentColor_(pct);
       const textColor = (pct >= 33 && pct < 66) ? '#3a2e00' : '#fff';
 
+      // Bỏ nhãn "%" thừa phía trên - chỉ để đúng 1 số kiểu "100%", "50%"
       return '<td class="chuyen-cell"><div class="chuyen-grid">' +
-        '<div class="chuyen-box" style="background:' + bg + '; color:' + textColor + ';"><span class="chuyen-label" style="color:' + textColor + '; opacity:0.85;">%</span><span class="chuyen-value">' + pct + '%</span></div>' +
+        '<div class="chuyen-box" style="background:' + bg + '; color:' + textColor + ';"><span class="chuyen-value">' + pct + '%</span></div>' +
         '<div class="chuyen-box"><span class="chuyen-label">Tổng</span><span class="chuyen-value">' + tong + '</span></div>' +
         '<div class="chuyen-box"><span class="chuyen-label">GC</span><span class="chuyen-value">' + gc + '</span></div>' +
         '<div class="chuyen-box"><span class="chuyen-label">Còn</span><span class="chuyen-value">' + conLai + '</span></div>' +
@@ -3161,14 +3282,6 @@ function dashCalClear_() {
     }
 
     const PRIORITY_TAGS_KEY = 'gcck_priority_tags_v1';
-const PRIORITY_OPTIONS = [
-  { value: '', label: '(Trống)' },
-  { value: 'gap', label: 'Gấp' },
-  { value: 'ut1', label: 'ƯT1' },
-  { value: 'ut2', label: 'ƯT2' },
-  { value: 'ut3', label: 'ƯT3' },
-  { value: '__add__', label: '+ Thêm...' }
-];
 
 function loadPriorityTags_() {
   try { return JSON.parse(localStorage.getItem(PRIORITY_TAGS_KEY) || '{}'); } catch (e) { return {}; }
@@ -3177,8 +3290,7 @@ function savePriorityTags_() {
   try { localStorage.setItem(PRIORITY_TAGS_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
 }
 let priorityTags_ = loadPriorityTags_();
-let dashLsxSearch_ = '';
-let priorityFilterActive_ = null;
+let dashLsxSearch_ = []; // mảng các từ khoá LSX, chỉ áp dụng khi bấm Enter / chọn gợi ý
 
 function priorityMeta_(tag) {
   switch (tag) {
@@ -3195,66 +3307,187 @@ function priorityRowStyle_(tag) {
   return 'background:' + meta.bg + ' !important; color:' + meta.color + ';';
 }
 
+// Pill nhỏ gọn: có tag -> hiện màu + chữ; trống -> để trắng, KHÔNG in chữ "(Trống)"
 function buildPriorityDropdown_(lsx, tag) {
   const safeLsx = lsx.replace(/'/g, "\\'");
   const meta = priorityMeta_(tag);
-  const opts = PRIORITY_OPTIONS.map(function(o) {
-    const sel = o.value === (tag || '') ? ' selected' : '';
-    return '<option value="' + o.value + '"' + sel + '>' + o.label + '</option>';
-  }).join('');
-  return '<select onchange="onPriorityChange_(this, \'' + safeLsx + '\')" ' +
-    'style="width:100%; padding:4px; border-radius:6px; border:1px solid #ccc; font-weight:700; ' +
-    'background:' + meta.bg + '; color:' + meta.color + ';">' + opts + '</select>';
+  const style = tag
+    ? ('background:' + meta.bg + '; color:' + meta.color + ';')
+    : 'background:#fff; color:#999; border-color:#ddd;';
+  return '<span class="priority-pill" style="' + style + '" onclick="openPriorityPopup_(event, \'' + safeLsx + '\')">' +
+    (tag ? meta.label : '') + '</span>';
 }
 
-function onPriorityChange_(sel, lsx) {
-  let value = sel.value;
-  if (value === '__add__') {
-    const custom = prompt('Nhập nhãn ưu tiên mới cho ' + lsx + ':');
-    if (!custom) { renderDashboard_(); return; }
-    value = custom.trim();
-  }
-  if (value) priorityTags_[lsx] = value; else delete priorityTags_[lsx];
+const PRIORITY_POPUP_OPTIONS = [
+  { value: '',    label: '(Trống)', bg: '#fff',     color: '#666', border: '1px solid #ddd' },
+  { value: 'gap', label: 'Gấp',     bg: '#d62828',  color: '#fff' },
+  { value: 'ut1', label: 'ƯT1',     bg: '#ff8c00',  color: '#fff' },
+  { value: 'ut2', label: 'ƯT2',     bg: '#fbbc04',  color: '#3a2e00' },
+  { value: 'ut3', label: 'ƯT3',     bg: '#6c5ce7',  color: '#fff' }
+];
+
+let priorityPopupLsx_ = null;
+
+function openPriorityPopup_(e, lsx) {
+  e.stopPropagation();
+  priorityPopupLsx_ = lsx;
+  const popup = document.getElementById('priorityPopup');
+  popup.innerHTML = PRIORITY_POPUP_OPTIONS.map(function(o) {
+    return '<div class="priority-popup-option" style="background:' + o.bg + '; color:' + o.color +
+      (o.border ? '; border:' + o.border : '') + ';" onclick="pickPriority_(\'' + o.value + '\')">' + o.label + '</div>';
+  }).join('') + '<div class="priority-popup-add" onclick="pickPriorityCustom_()">+ Thêm nhãn khác...</div>';
+
+  const rect = e.target.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  let left = rect.left;
+  if (left + 150 > window.innerWidth) left = window.innerWidth - 158;
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
+  popup.style.display = 'block';
+}
+function closePriorityPopup_() {
+  const popup = document.getElementById('priorityPopup');
+  if (popup) popup.style.display = 'none';
+  priorityPopupLsx_ = null;
+}
+function pickPriority_(value) {
+  if (!priorityPopupLsx_) return;
+  if (value) priorityTags_[priorityPopupLsx_] = value; else delete priorityTags_[priorityPopupLsx_];
+  savePriorityTags_();
+  closePriorityPopup_();
+  renderDashboard_();
+}
+function pickPriorityCustom_() {
+  const lsx = priorityPopupLsx_;
+  closePriorityPopup_();
+  if (!lsx) return;
+  const custom = prompt('Nhập nhãn ưu tiên mới cho ' + lsx + ':');
+  if (!custom) return;
+  priorityTags_[lsx] = custom.trim();
   savePriorityTags_();
   renderDashboard_();
 }
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#priorityPopup') && !e.target.closest('.priority-pill')) closePriorityPopup_();
+});
 
-function onDashLsxSearchInput_() {
-  dashLsxSearch_ = document.getElementById('dashLsxSearchInput').value.trim().toLowerCase();
-  document.getElementById('dashLsxSearchClear').style.display = dashLsxSearch_ ? 'block' : 'none';
+let dashSuggestTimer_ = null;
+let dashActiveSuggestions_ = [];
+let dashSuggestRequestId_ = 0;
+
+function initDashSearchBox_() {
+  const input = document.getElementById('dashLsxSearchInput');
+  if (!input || input.dataset.bound) return;
+  input.dataset.bound = '1';
+
+  input.addEventListener('input', function() {
+    const value = input.value;
+    document.getElementById('dashLsxSearchClear').style.display = value ? 'block' : 'none';
+    clearTimeout(dashSuggestTimer_);
+    if (value.trim().length < 1) { hideDashSuggestions_(); return; }
+    const myId = ++dashSuggestRequestId_;
+    dashSuggestTimer_ = setTimeout(function() {
+      google.script.run
+        .withSuccessHandler(function(list) { if (myId === dashSuggestRequestId_) showDashSuggestions_(list); })
+        .withFailureHandler(function() { if (myId === dashSuggestRequestId_) hideDashSuggestions_(); })
+        .suggestLSX(value);
+    }, 150);
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { hideDashSuggestions_(); applyDashLsxSearch_(); }
+    else if (e.key === 'Escape') { hideDashSuggestions_(); }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#dashLsxSearchInput') && !e.target.closest('#dashLsxSuggestions')) hideDashSuggestions_();
+  });
+}
+
+function showDashSuggestions_(list) {
+  dashActiveSuggestions_ = list;
+  const box = document.getElementById('dashLsxSuggestions');
+  if (!list || list.length === 0) { hideDashSuggestions_(); return; }
+  box.innerHTML = list.map(function(lsx, i) {
+    return '<div data-index="' + i + '" onclick="pickDashSuggestion_(' + i + ')">' + lsx + '</div>';
+  }).join('');
+  box.style.display = 'block';
+}
+function hideDashSuggestions_() {
+  const box = document.getElementById('dashLsxSuggestions');
+  if (!box) return;
+  box.style.display = 'none';
+  box.innerHTML = '';
+  dashActiveSuggestions_ = [];
+}
+function pickDashSuggestion_(i) {
+  document.getElementById('dashLsxSearchInput').value = dashActiveSuggestions_[i];
+  hideDashSuggestions_();
+  applyDashLsxSearch_();
+}
+
+// Cho phép dán nhiều LSX (cách nhau bởi dấu phẩy/chấm phẩy/xuống dòng/khoảng trắng) - chỉ lọc khi Enter.
+function applyDashLsxSearch_() {
+  const raw = document.getElementById('dashLsxSearchInput').value;
+  dashLsxSearch_ = raw.split(/[,;\s]+/).map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s.length > 0; });
+  document.getElementById('dashLsxSearchClear').style.display = raw ? 'block' : 'none';
   renderDashboard_();
 }
+
 function clearDashLsxSearch_() {
-  dashLsxSearch_ = '';
+  dashLsxSearch_ = [];
   document.getElementById('dashLsxSearchInput').value = '';
   document.getElementById('dashLsxSearchClear').style.display = 'none';
+  hideDashSuggestions_();
   renderDashboard_();
 }
 function togglePriorityFilter_(tag) {
-  priorityFilterActive_ = (priorityFilterActive_ === tag) ? null : tag;
+  if (priorityFilterActive_.has(tag)) priorityFilterActive_.delete(tag);
+  else priorityFilterActive_.add(tag);
   ['gap','ut1','ut2'].forEach(function(t) {
     const btn = document.getElementById('prioFilterBtn-' + t);
-    if (btn) btn.classList.toggle('active', t === priorityFilterActive_);
+    if (btn) btn.classList.toggle('active', priorityFilterActive_.has(t));
   });
   renderDashboard_();
 }
 
+    function dashFilterIconHtml_(key) {
+      const activeCls = dashboardFilters[key] ? ' active' : '';
+      return '<span class="filter-icon' + activeCls + '" onclick="openFilterPopup(\'' + key + '\', this, \'dashboard\')">&#9662;</span>';
+    }
+
+    function applyDashboardColumnFilters_(rows) {
+      const keys = Object.keys(dashboardFilters);
+      if (keys.length === 0) return rows;
+      return rows.filter(function(r) {
+        for (const key in dashboardFilters) {
+          const allowed = dashboardFilters[key];
+          if (!allowed) continue;
+          if (!allowed.has(normalizeValue(key, r[key]))) return false;
+        }
+        return true;
+      });
+    }
+
     function renderDashboard_() {
+      dashboardRenderedOnce_ = true;
       const todayStr = getTodayStr_();
       renderDashboardStats_(dashboardRows, todayStr); // thẻ luôn tính trên toàn bộ dữ liệu
 
       let filtered = getDashFilteredRows_(dashboardRows, todayStr);
-      if (dashLsxSearch_) {
-        filtered = filtered.filter(function(r) { return String(r.lsx || '').toLowerCase().indexOf(dashLsxSearch_) !== -1; });
+      if (dashLsxSearch_ && dashLsxSearch_.length > 0) {
+        filtered = filtered.filter(function(r) {
+          const lsxLower = String(r.lsx || '').toLowerCase();
+          return dashLsxSearch_.some(function(tok) { return lsxLower.indexOf(tok) !== -1; });
+        });
       }
-      if (priorityFilterActive_) {
-        filtered = filtered.filter(function(r) { return priorityTags_[r.lsx] === priorityFilterActive_; });
+      if (priorityFilterActive_ && priorityFilterActive_.size > 0) {
+        filtered = filtered.filter(function(r) { return priorityFilterActive_.has(priorityTags_[r.lsx]); });
       }
+      filtered = applyDashboardColumnFilters_(filtered);
       renderDashboardFilterInfo_();
 
-      // Gộp theo loại đơn hàng bằng SỐ LỆNH (LSX) + % TRUNG BÌNH, thay vì total/delivered
-      // (2 field này luôn null khi đọc từ bảng tien_do_don_hang) - đây là lý do các ô loại
-      // đơn hàng trước đây luôn hiện 0% / 0/0 lệnh dù bảng bên dưới có dữ liệu.
+      // Gộp theo loại đơn hàng bằng SỐ LỆNH (LSX) + % TRUNG BÌNH
       const byType = {};
       filtered.forEach(function(r) {
         if (!byType[r.loai]) byType[r.loai] = { totalOrders: 0, doneOrders: 0, sumPercent: 0 };
@@ -3284,10 +3517,9 @@ function togglePriorityFilter_(tag) {
         '</div>';
       }).join('') || '<div style="color:#999;">Không có dữ liệu phù hợp bộ lọc.</div>';
 
-            const tableSourceRows = dashboardTypeFilter ? filtered.filter(function(r) { return r.loai === dashboardTypeFilter; }) : filtered;
+      const tableSourceRows = dashboardTypeFilter ? filtered.filter(function(r) { return r.loai === dashboardTypeFilter; }) : filtered;
       const rows = tableSourceRows.slice().sort(function(a, b) { return a.percent - b.percent; });
       const wrap = document.getElementById('dashboardResult');
-      let html = '';
 
       const CHUYEN_LABELS = [
         { key: 'ducNhom', label: 'Đúc nhôm' }, { key: 'cuaVong', label: 'Cửa vòng' },
@@ -3296,36 +3528,69 @@ function togglePriorityFilter_(tag) {
       ];
       const chuyenHeaderHtml = CHUYEN_LABELS.map(function(c) { return '<th>' + c.label + '</th>'; }).join('');
 
-      html += '<table><tr><th>LSX</th><th>Ưu tiên</th><th class="dash-khgh-cell">KHGH</th>' +
-        chuyenHeaderHtml + '<th class="dash-progress-col">Tiến độ SX</th><th>% Kho giao hàng</th></tr>';
+      const headerHtml = '<tr>' +
+        '<th class="dash-lsx-col">LSX' + dashFilterIconHtml_('lsx') + '</th>' +
+        '<th>Sản phẩm' + dashFilterIconHtml_('sanPham') + '</th>' +
+        '<th class="dash-priority-col">Ưu tiên</th>' +
+        '<th class="dash-khgh-col">KHGH' + dashFilterIconHtml_('khgh') + '</th>' +
+        chuyenHeaderHtml + '<th class="dash-progress-col">Tiến độ</th><th>% Kho giao hàng</th></tr>';
+
+      const myToken = ++dashRenderToken_;
+      dashClearSelection_();
+
       if (rows.length === 0) {
-        html += '<tr><td colspan="' + (5 + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr>';
-      } else {
-        rows.forEach(function(r) {
-          const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ff8a3d');
-          let chuyenCells = '';
-          CHUYEN_LABELS.forEach(function(c) {
-            chuyenCells += buildChuyenCell_(r.chuyen && r.chuyen[c.key]);
-          });
-          const tag = priorityTags_[r.lsx] || '';
-          const rowStyle = priorityRowStyle_(tag);
-          html += '<tr style="' + rowStyle + '">' +
-            '<td class="dash-lsx-cell" onclick="copyDashLsx_(this, \'' + r.lsx.replace(/'/g,"\\'") + '\')" title="Bấm để copy, điền vào ô Tra cứu">' + r.lsx + '</td>' +
-            '<td>' + buildPriorityDropdown_(r.lsx, tag) + '</td>' +
-            '<td class="dash-khgh-cell">' + formatDate(r.khgh) + '</td>' +
-            chuyenCells +
-            '<td class="dash-progress-col">' + percentBadge_(r.tienDoDonHang) + '</td>' +
-            '<td style="min-width:120px;">' +
-              '<div style="background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
-                '<div style="width:' + r.percent + '%; background:' + barColor + '; height:100%;"></div>' +
-              '</div>' +
-              '<span style="font-size:11px;">' + r.percent + '%</span>' +
-            '</td>' +
-          '</tr>';
-        });
+        wrap.innerHTML = '<table>' + headerHtml +
+          '<tr><td colspan="' + (6 + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr></table>';
+        return;
       }
-      html += '</table>';
-      wrap.innerHTML = html;
+
+      wrap.innerHTML = '<table id="dashTable">' + headerHtml + '</table>';
+      const table = document.getElementById('dashTable');
+
+      // Dựng bảng theo từng khối nhỏ bằng requestAnimationFrame thay vì build 1 chuỗi HTML
+      // khổng lồ rồi gán 1 lần - đây chính là nguyên nhân gây khựng/giật khi bấm qua lại
+      // tab Dashboard với danh sách vài nghìn dòng.
+      const CHUNK_SIZE = 150;
+      let index = 0;
+
+      function buildRowHtml(r, rIdx) {
+        const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ff8a3d');
+        let colIdx = 0;
+        function nextAttrs() { return ' data-r="' + rIdx + '" data-c="' + (colIdx++) + '"'; }
+
+        let chuyenCells = '';
+        CHUYEN_LABELS.forEach(function(c) {
+          // buildChuyenCell_ tự vẽ trọn thẻ <td>, chèn thêm data-r/data-c để chọn ô được luôn.
+          chuyenCells += buildChuyenCell_(r.chuyen && r.chuyen[c.key]).replace('<td class="chuyen-cell">', '<td class="chuyen-cell"' + nextAttrs() + '>');
+        });
+
+        const tag = priorityTags_[r.lsx] || '';
+        const rowStyle = priorityRowStyle_(tag);
+        return '<tr style="' + rowStyle + '">' +
+          '<td class="dash-lsx-cell"' + nextAttrs() + '>' + escapeHtml_(r.lsx) + '</td>' +
+          '<td class="dash-sanpham-col"' + nextAttrs() + '>' + escapeHtml_(r.sanPham || '') + '</td>' +
+          '<td' + nextAttrs() + '>' + buildPriorityDropdown_(r.lsx, tag) + '</td>' +
+          '<td class="dash-khgh-cell"' + nextAttrs() + '>' + formatDate(r.khgh) + '</td>' +
+          chuyenCells +
+          '<td class="dash-progress-col"' + nextAttrs() + '>' + percentBadge_(r.tienDoDonHang) + '</td>' +
+          '<td style="min-width:120px;"' + nextAttrs() + '>' +
+            '<div style="background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
+              '<div style="width:' + r.percent + '%; background:' + barColor + '; height:100%;"></div>' +
+            '</div>' +
+            '<span style="font-size:11px;">' + r.percent + '%</span>' +
+          '</td>' +
+        '</tr>';
+      }
+
+      function renderChunk() {
+        if (myToken !== dashRenderToken_) return; // đã có lượt lọc/render mới hơn -> huỷ đợt cũ
+        let chunkHtml = '';
+        const limit = Math.min(index + CHUNK_SIZE, rows.length);
+        for (; index < limit; index++) chunkHtml += buildRowHtml(rows[index], index);
+        table.insertAdjacentHTML('beforeend', chunkHtml);
+        if (index < rows.length) requestAnimationFrame(renderChunk);
+      }
+      requestAnimationFrame(renderChunk);
     }
 
     /* ================= MODAL NHẬN PHÔI / GIAO HÀNG + QR ================= */
@@ -4037,6 +4302,7 @@ function stepTrackQty_(delta) {
   </div>
 
   <div id="toastStack"></div>
+  <div id="priorityPopup" class="priority-popup" style="display:none;"></div>
 
   <div id="filterPopup" class="filter-popup" style="display:none;">
     <div class="filter-popup-search">
