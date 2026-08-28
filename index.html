@@ -688,6 +688,20 @@
   Object.defineProperty(window.google.script, 'run', { get: createScriptRunProxy_ });
 </script>
 
+   <div id="loginOverlay" class="splash-overlay" style="z-index:600;">
+    <div class="splash-box" style="width:300px;">
+      <div class="splash-greeting" style="margin-bottom:6px;">Đăng nhập</div>
+      <div style="font-size:13px; color:#666; margin-bottom:18px;">Vui lòng nhập MSNV để tiếp tục</div>
+      <input type="text" id="loginMsnvInput" placeholder="MSNV" autocomplete="off"
+        style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;" />
+      <input type="password" id="loginPasswordInput" placeholder="Mật khẩu (nếu có)"
+        style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:14px;" />
+      <button type="button" id="loginSubmitBtn" onclick="submitLogin_()"
+        style="width:100%; padding:11px; background:#1a73e8; color:#fff; border:none; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer;">Đăng nhập</button>
+      <div id="loginError" style="color:#c62828; font-size:13px; margin-top:10px; min-height:16px;"></div>
+    </div>
+  </div>
+
   <div id="splashOverlay" class="splash-overlay">
     <div class="splash-box">
       <div id="splashGreeting" class="splash-greeting">Xin chào!</div>
@@ -727,6 +741,9 @@
           </button>
           <button type="button" onclick="openZoomPopover_()">
             <i class="fa-solid fa-magnifying-glass-plus"></i> Thu phóng
+          </button>
+          <button type="button" onclick="openChangePasswordModal_()">
+            <i class="fa-solid fa-key"></i> Đổi mật khẩu
           </button>
           <div class="topbar-menu-divider"></div>
           <button type="button" class="topbar-menu-exit" onclick="exitApp_()">
@@ -899,6 +916,66 @@
     }
 
     const lsxInput = document.getElementById('lsxInput');
+
+        let currentUser_ = null; // { msnv, hoTen }
+
+    function submitLogin_() {
+      const msnv = document.getElementById('loginMsnvInput').value.trim();
+      const pass = document.getElementById('loginPasswordInput').value;
+      const errEl = document.getElementById('loginError');
+      const btn = document.getElementById('loginSubmitBtn');
+
+      if (!msnv) { errEl.textContent = 'Vui lòng nhập MSNV.'; return; }
+
+      errEl.textContent = '';
+      btn.disabled = true;
+      btn.textContent = 'Đang kiểm tra...';
+
+      google.script.run
+        .withSuccessHandler(function(user) {
+          currentUser_ = user;
+          try { localStorage.setItem('gcck_last_msnv', user.msnv); } catch (e) {}
+          document.getElementById('topbarUserName').textContent = user.hoTen;
+          document.getElementById('loginOverlay').style.display = 'none';
+          btn.disabled = false;
+          btn.textContent = 'Đăng nhập';
+        })
+        .withFailureHandler(function(err) {
+          errEl.textContent = err.message;
+          btn.disabled = false;
+          btn.textContent = 'Đăng nhập';
+        })
+        .loginUser(msnv, pass);
+    }
+
+    function openChangePasswordModal_() {
+      if (!currentUser_) { showToast('Vui lòng đăng nhập trước.', 'error'); return; }
+      document.getElementById('oldPassInput').value = '';
+      document.getElementById('newPassInput').value = '';
+      document.getElementById('changePassError').textContent = '';
+      document.getElementById('changePassOverlay').style.display = 'flex';
+      closeUserMenu_();
+    }
+
+    function closeChangePasswordModal_() {
+      document.getElementById('changePassOverlay').style.display = 'none';
+    }
+
+    function submitChangePassword_() {
+      const oldPass = document.getElementById('oldPassInput').value;
+      const newPass = document.getElementById('newPassInput').value;
+      const errEl = document.getElementById('changePassError');
+
+      if (!newPass) { errEl.textContent = 'Vui lòng nhập mật khẩu mới.'; return; }
+
+      google.script.run
+        .withSuccessHandler(function() {
+          showToast('Đã đổi mật khẩu.', 'success');
+          closeChangePasswordModal_();
+        })
+        .withFailureHandler(function(err) { errEl.textContent = err.message; })
+        .changeUserPassword(currentUser_.msnv, oldPass, newPass);
+    }
     const suggestionsBox = document.getElementById('suggestions');
     let suggestTimer = null;
     let activeSuggestions = [];
@@ -2405,9 +2482,15 @@
         zoom = localStorage.getItem('gcck_zoom') || '100';
       } catch (e) {}
       document.body.classList.toggle('dark-mode', dark === '1');
-      document.getElementById('zoomSlider').value = zoom;
-      document.getElementById('zoomNumberInput').value = zoom;
-      document.querySelector('.app-layout').style.zoom = (Number(zoom) / 100);
+      // Các phần tử này nằm trong HTML SAU thẻ script nên có thể CHƯA tồn tại
+      // tại thời điểm khởi tạo -> phải kiểm tra tồn tại trước khi gán, nếu không
+      // sẽ ném lỗi và làm dừng toàn bộ script phía sau (gây kẹt màn hình chờ ở 85%).
+      const zoomSlider = document.getElementById('zoomSlider');
+      const zoomNumberInput = document.getElementById('zoomNumberInput');
+      if (zoomSlider) zoomSlider.value = zoom;
+      if (zoomNumberInput) zoomNumberInput.value = zoom;
+      const appLayout = document.querySelector('.app-layout');
+      if (appLayout) appLayout.style.zoom = (Number(zoom) / 100);
       refreshDarkModeMenuState_();
     }
 
@@ -3281,6 +3364,17 @@ function stepTrackQty_(delta) {
       })
       .withFailureHandler(function() {})
       .getCurrentUserEmail();
+        const loginMsnvEl = document.getElementById('loginMsnvInput');
+  try {
+    const lastMsnv = localStorage.getItem('gcck_last_msnv');
+    if (lastMsnv) loginMsnvEl.value = lastMsnv;
+  } catch (e) {}
+  loginMsnvEl.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('loginPasswordInput').focus();
+  });
+  document.getElementById('loginPasswordInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitLogin_();
+  });
   </script>
 
 <div id="zoomPopover" class="zoom-popover" style="display:none;">
@@ -3386,6 +3480,28 @@ function stepTrackQty_(delta) {
     <div class="upbom-footer">
       <button type="button" class="upbom-cancel" onclick="closeTrackingModal()">Hủy</button>
       <button type="button" id="trackSaveBtn" class="upbom-save" onclick="saveTrackingBatch_()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div id="changePassOverlay" class="colvis-overlay" style="display:none;">
+  <div class="colvis-modal" style="width:320px;">
+    <div class="colvis-header">
+      <h3>Đổi mật khẩu</h3>
+      <span class="upbom-close" onclick="closeChangePasswordModal_()">&times;</span>
+    </div>
+    <div style="padding:16px; display:flex; flex-direction:column; gap:10px;">
+      <label>Mật khẩu cũ (bỏ trống nếu chưa từng đặt)
+        <input type="password" id="oldPassInput" style="width:100%; padding:8px; box-sizing:border-box; margin-top:4px;" />
+      </label>
+      <label>Mật khẩu mới
+        <input type="password" id="newPassInput" style="width:100%; padding:8px; box-sizing:border-box; margin-top:4px;" />
+      </label>
+      <div id="changePassError" style="color:#c62828; font-size:13px; min-height:16px;"></div>
+    </div>
+    <div class="upbom-footer">
+      <button type="button" class="upbom-cancel" onclick="closeChangePasswordModal_()">Hủy</button>
+      <button type="button" class="upbom-save" onclick="submitChangePassword_()">Lưu</button>
     </div>
   </div>
 </div>
