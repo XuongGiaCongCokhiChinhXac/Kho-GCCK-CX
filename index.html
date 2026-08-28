@@ -628,6 +628,9 @@
       <button class="sidebar-nav-btn" data-tab="tab-giaohang" onclick="switchTab('tab-giaohang')">
         <i class="fa-solid fa-truck"></i><span class="nav-label">Giao hàng</span>
       </button>
+     <button class="sidebar-nav-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+        <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
+      </button>
       <button class="sidebar-nav-btn" data-tab="tab-settings" onclick="switchTab('tab-settings')">
         <i class="fa-solid fa-gear"></i><span class="nav-label">Cài đặt</span>
       </button>
@@ -644,6 +647,9 @@
       </button>
       <button class="mobile-nav-btn" data-tab="tab-giaohang" onclick="switchTab('tab-giaohang')">
         <i class="fa-solid fa-truck"></i><span>Giao hàng</span>
+      </button>
+      <button class="mobile-nav-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+        <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
       </button>
       <button class="mobile-nav-btn" data-tab="tab-settings" onclick="switchTab('tab-settings')">
         <i class="fa-solid fa-gear"></i><span>Cài đặt</span>
@@ -735,6 +741,25 @@
         <div id="giaoHangResult" class="tracking-table-wrap"></div>
       </div>
 
+      <div id="tab-dashboard" class="tab-pane">
+        <div class="tracking-toolbar" style="flex-wrap:wrap;">
+          <h2 style="margin:0;">Dashboard tiến độ đơn hàng</h2>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <label style="font-size:13px;">Từ ngày
+              <input type="date" id="dashFromDate" onchange="renderDashboard_()" style="padding:6px; margin-left:4px;" />
+            </label>
+            <label style="font-size:13px;">Đến ngày
+              <input type="date" id="dashToDate" onchange="renderDashboard_()" style="padding:6px; margin-left:4px;" />
+            </label>
+            <button id="refreshDashboardBtn" class="icon-btn" title="Làm mới" onclick="refreshDashboard_()">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
+        </div>
+        <div id="dashboardSummary" style="padding:0 16px 10px 16px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px;"></div>
+        <div id="dashboardResult" class="tracking-table-wrap"></div>
+      </div>
+
       <div id="tab-settings" class="tab-pane">
         <div style="padding:20px; max-width:420px; display:flex; flex-direction:column; gap:24px;">
           <div>
@@ -745,9 +770,15 @@
             </label>
           </div>
           <div>
-            <h3 style="margin:0 0 8px 0;">Thu phóng: <span id="zoomValueLabel">100%</span></h3>
-            <input type="range" id="zoomSlider" min="0" max="150" value="100" step="5"
-              style="width:100%;" oninput="onZoomChange_(this.value)" />
+            <h3 style="margin:0 0 8px 0;">Thu phóng</h3>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input type="range" id="zoomSlider" min="10" max="150" value="100" step="1"
+                style="flex:1;" oninput="onZoomChange_(this.value)" />
+              <input type="number" id="zoomNumberInput" min="10" max="150" step="1" value="100"
+                style="width:68px; padding:6px; box-sizing:border-box; font-size:14px; text-align:center;"
+                onchange="onZoomNumberChange_(this.value)" />
+              <span>%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -904,30 +935,6 @@
     let activeR = -1, activeC = -1;         // ô vừa thao tác gần nhất - dùng để tô sáng cả hàng và vẽ khung ô active
     let isSelecting = false;
     let appClipboard = null; // { data: [[value,...],...], keys: [colKey,...] } - clipboard nội bộ trong app
-
-    /* ================= HOÀN TÁC (CTRL+Z) ================= */
-    let undoStack = [];
-    const UNDO_LIMIT = 50;
-
-    function pushUndo(entries) {
-      if (!entries || entries.length === 0) return;
-      undoStack.push(entries);
-      if (undoStack.length > UNDO_LIMIT) undoStack.shift();
-    }
-
-    function performUndo() {
-      if (undoStack.length === 0) return;
-      const batch = undoStack.pop();
-      const saveItems = [];
-      batch.forEach(function(entry) {
-        const rIdx = displayedRows.findIndex(function(r) { return String(r.lsx_stt) === String(entry.lsxStt); });
-        if (rIdx === -1) return;
-        const item = applyCellLocal_(rIdx, entry.field, entry.oldValue);
-        if (item) saveItems.push(item);
-      });
-      batchSave_(saveItems);
-      showToast('Đã hoàn tác ' + saveItems.length + ' ô.', 'info');
-    }
 
     function setLoading(isLoading) {
       isSearching = isLoading;
@@ -2036,175 +2043,6 @@
       document.body.removeChild(ta);
     }
 
-    function setCellValue_(rIdx, colKey, value, recordUndo) {
-      if (recordUndo === undefined) recordUndo = true;
-      const row = displayedRows[rIdx];
-      if (!row) return;
-      const lsxStt = row.lsx_stt;
-      const tr = document.querySelector('#result tr[data-lsxstt="' + String(lsxStt).replace(/"/g,'\\"') + '"]');
-      const cIdx = COLUMNS.findIndex(function(c){ return c.key === colKey; });
-      const td = tr ? tr.cells[cIdx] : null;
-
-      if (colKey === 'ghi_chu') {
-        const ta = td ? td.querySelector('.row-note') : null;
-        if (ta) { ta.value = value || ''; autoGrowNote(ta); onNoteChange(ta, recordUndo); }
-      } else if (BOOL_KEYS.indexOf(colKey) !== -1) {
-        const cb = td ? td.querySelector('.row-chk') : null;
-        const boolVal = (value === true || value === 'true' || value === 'TRUE' || value === '1');
-        if (cb) { cb.checked = boolVal; onBoolChange(cb, colKey, recordUndo); }
-      }
-      // Các cột không thuộc EDITABLE_KEYS: bỏ qua, không cho ghi đè dữ liệu gốc từ app
-    }
-
-    // Cập nhật 1 ô CHỈ ở phía giao diện + dữ liệu cục bộ, KHÔNG gọi server ngay.
-    // Dùng khi thao tác hàng loạt (dán/fill/xóa) để gom nhiều ô thành 1 lệnh lưu duy nhất
-    // thay vì gọi google.script.run riêng lẻ cho từng ô -> nhanh hơn nhiều với vùng chọn lớn.
-    function applyCellLocal_(rIdx, colKey, value) {
-      const row = displayedRows[rIdx];
-      if (!row) return null;
-      const lsxStt = row.lsx_stt;
-      const tr = document.querySelector('#result tr[data-lsxstt="' + String(lsxStt).replace(/"/g,'\\"') + '"]');
-      const cIdx = COLUMNS.findIndex(function(c){ return c.key === colKey; });
-      const td = tr ? tr.cells[cIdx] : null;
-      const dataRow = findRowData(lsxStt);
-      let finalValue = value;
-
-      if (colKey === 'ghi_chu') {
-        finalValue = value || '';
-        const ta = td ? td.querySelector('.row-note') : null;
-        if (ta) { ta.value = finalValue; ta.setAttribute('data-old', finalValue); autoGrowNote(ta); }
-        if (dataRow) dataRow.ghi_chu = finalValue;
-      } else if (BOOL_KEYS.indexOf(colKey) !== -1) {
-        finalValue = (value === true || value === 'true' || value === 'TRUE' || value === '1');
-        const cb = td ? td.querySelector('.row-chk') : null;
-        if (cb) cb.checked = finalValue;
-        if (dataRow) dataRow[colKey] = finalValue;
-      } else {
-        return null; // cột không cho phép sửa
-      }
-
-      return { lsxStt: lsxStt, field: colKey, value: finalValue, sheetRow: dataRow ? dataRow.thu_tu : null };
-    }
-
-    // Gửi 1 lệnh duy nhất xuống server để lưu nhiều ô cùng lúc.
-    function batchSave_(items) {
-      if (!items || items.length === 0) return;
-      items.forEach(function(it) { pendingSaves.add(pendingKey_(it.lsxStt, it.field)); });
-      updateSummary(lastRows);
-
-      google.script.run
-        .withSuccessHandler(function() {
-          items.forEach(function(it) { pendingSaves.delete(pendingKey_(it.lsxStt, it.field)); });
-          showToast('Đã lưu ' + items.length + ' ô.', 'success');
-          refreshSyncStatus();
-        })
-        .withFailureHandler(function(err) {
-          items.forEach(function(it) { pendingSaves.delete(pendingKey_(it.lsxStt, it.field)); });
-          showToast('Lưu thất bại (' + items.length + ' ô): ' + err.message, 'error');
-        })
-        .updateBomFieldsBatch(items);
-    }
-
-    function pasteSelection() {
-      if (!appClipboard) return;
-      const rect = cellRect();
-      const srcRows = appClipboard.data.length;
-      const srcCols = appClipboard.keys.length;
-      const targetRows = Math.max(rect.r2 - rect.r1 + 1, srcRows);
-      const targetCols = Math.max(rect.c2 - rect.c1 + 1, srcCols);
-
-      const undoEntries = [];
-      const applyList = [];
-
-      for (let i = 0; i < targetRows; i++) {
-        const r = rect.r1 + i;
-        if (r > displayedRows.length - 1) break;
-        for (let j = 0; j < targetCols; j++) {
-          const c = rect.c1 + j;
-          if (c > COLUMNS.length - 1) break;
-          const colKey = COLUMNS[c].key;
-          if (EDITABLE_KEYS.indexOf(colKey) === -1) continue;
-          const value = appClipboard.data[i % srcRows][j % srcCols];
-          const row = displayedRows[r];
-          undoEntries.push({ lsxStt: row.lsx_stt, field: colKey, oldValue: row[colKey] });
-          applyList.push({ r: r, colKey: colKey, value: value });
-        }
-      }
-
-      pushUndo(undoEntries);
-      const saveItems = applyList.map(function(item) { return applyCellLocal_(item.r, item.colKey, item.value); })
-        .filter(function(x) { return x; });
-      batchSave_(saveItems);
-    }
-
-    function clearSelectionValues() {
-      const rect = cellRect();
-      const undoEntries = [];
-      const applyList = [];
-
-      for (let r = rect.r1; r <= rect.r2; r++) {
-        for (let c = rect.c1; c <= rect.c2; c++) {
-          const colKey = COLUMNS[c].key;
-          if (EDITABLE_KEYS.indexOf(colKey) === -1) continue;
-          const row = displayedRows[r];
-          const newValue = BOOL_KEYS.indexOf(colKey) !== -1 ? false : '';
-          undoEntries.push({ lsxStt: row.lsx_stt, field: colKey, oldValue: row[colKey] });
-          applyList.push({ r: r, colKey: colKey, value: newValue });
-        }
-      }
-
-      pushUndo(undoEntries);
-      const saveItems = applyList.map(function(item) { return applyCellLocal_(item.r, item.colKey, item.value); })
-        .filter(function(x) { return x; });
-      batchSave_(saveItems);
-    }
-
-    function fillDown() {
-      const rect = cellRect();
-      if (rect.r1 === rect.r2) return;
-      const undoEntries = [];
-      const applyList = [];
-
-      for (let c = rect.c1; c <= rect.c2; c++) {
-        const colKey = COLUMNS[c].key;
-        if (EDITABLE_KEYS.indexOf(colKey) === -1) continue;
-        const sourceValue = getCellRawValue_(rect.r1, c);
-        for (let r = rect.r1 + 1; r <= rect.r2; r++) {
-          const row = displayedRows[r];
-          undoEntries.push({ lsxStt: row.lsx_stt, field: colKey, oldValue: row[colKey] });
-          applyList.push({ r: r, colKey: colKey, value: sourceValue });
-        }
-      }
-
-      pushUndo(undoEntries);
-      const saveItems = applyList.map(function(item) { return applyCellLocal_(item.r, item.colKey, item.value); })
-        .filter(function(x) { return x; });
-      batchSave_(saveItems);
-    }
-
-    function fillRight() {
-      const rect = cellRect();
-      if (rect.c1 === rect.c2) return;
-      const undoEntries = [];
-      const applyList = [];
-
-      for (let r = rect.r1; r <= rect.r2; r++) {
-        const sourceValue = getCellRawValue_(r, rect.c1);
-        for (let c = rect.c1 + 1; c <= rect.c2; c++) {
-          const colKey = COLUMNS[c].key;
-          if (EDITABLE_KEYS.indexOf(colKey) === -1) continue;
-          const row = displayedRows[r];
-          undoEntries.push({ lsxStt: row.lsx_stt, field: colKey, oldValue: row[colKey] });
-          applyList.push({ r: r, colKey: colKey, value: sourceValue });
-        }
-      }
-
-      pushUndo(undoEntries);
-      const saveItems = applyList.map(function(item) { return applyCellLocal_(item.r, item.colKey, item.value); })
-        .filter(function(x) { return x; });
-      batchSave_(saveItems);
-    }
-
     /* ================= MÀN HÌNH CHỜ KHI MỞ APP ================= */
     let splashProgress = 0;
     let splashTimer = null;
@@ -2330,10 +2168,13 @@
         activeTrackingTab_ = 'nhanphoi';
         renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
         if (!trackingLoaded.nhanphoi) refreshNhanPhoiTab(); // lỡ dữ liệu ban đầu chưa tải xong -> âm thầm tải bù
-      } else if (tabId === 'tab-giaohang') {
+       } else if (tabId === 'tab-giaohang') {
         activeTrackingTab_ = 'giaohang';
         renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
         if (!trackingLoaded.giaohang) refreshGiaoHangTab();
+      } else if (tabId === 'tab-dashboard') {
+        activeTrackingTab_ = null;
+        if (dashboardRows.length === 0) refreshDashboard_(); else renderDashboard_();
       } else {
         activeTrackingTab_ = null;
       }
@@ -2379,9 +2220,36 @@
       try { localStorage.setItem('gcck_dark_mode', isDark ? '1' : '0'); } catch (e) {}
     }
 
-    function onZoomChange_(percent) {
-      document.getElementById('zoomValueLabel').textContent = percent + '%';
+    let zoomRafId_ = null;
+    let pendingZoomPercent_ = null;
+
+    function applyZoom_(percent) {
       document.querySelector('.app-layout').style.zoom = (percent / 100);
+    }
+
+    // Gom nhiều sự kiện 'input' bắn liên tục khi kéo chuột thành 1 lần cập nhật
+    // mỗi khung hình (requestAnimationFrame) - trước đây mỗi pixel kéo đều gọi
+    // style.zoom ngay lập tức, ép trình duyệt tính lại layout nhiều lần/giây -> giật.
+    function onZoomChange_(percent) {
+      percent = Math.max(10, Math.min(150, Number(percent) || 100));
+      const numInput = document.getElementById('zoomNumberInput');
+      if (numInput) numInput.value = percent;
+
+      pendingZoomPercent_ = percent;
+      if (zoomRafId_ === null) {
+        zoomRafId_ = requestAnimationFrame(function() {
+          applyZoom_(pendingZoomPercent_);
+          zoomRafId_ = null;
+        });
+      }
+      try { localStorage.setItem('gcck_zoom', percent); } catch (e) {}
+    }
+
+    function onZoomNumberChange_(value) {
+      const percent = Math.max(10, Math.min(150, Number(value) || 100));
+      document.getElementById('zoomSlider').value = percent;
+      document.getElementById('zoomNumberInput').value = percent;
+      applyZoom_(percent);
       try { localStorage.setItem('gcck_zoom', percent); } catch (e) {}
     }
 
@@ -2394,7 +2262,7 @@
       document.getElementById('darkModeToggle').checked = (dark === '1');
       document.body.classList.toggle('dark-mode', dark === '1');
       document.getElementById('zoomSlider').value = zoom;
-      document.getElementById('zoomValueLabel').textContent = zoom + '%';
+      document.getElementById('zoomNumberInput').value = zoom;
       document.querySelector('.app-layout').style.zoom = (Number(zoom) / 100);
     }
 
@@ -2527,8 +2395,98 @@ function refreshGiaoHangTab() {
     .getGiaoHangData();
 }
 
+    /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
+    let dashboardRows = [];
+
+    function refreshDashboard_() {
+      const btn = document.getElementById('refreshDashboardBtn');
+      if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+      function stop() { if (btn) { btn.classList.remove('spinning'); btn.disabled = false; } }
+
+      google.script.run
+        .withSuccessHandler(function(rows) {
+          dashboardRows = rows || [];
+          renderDashboard_();
+          stop();
+        })
+        .withFailureHandler(function(err) {
+          showToast('Lỗi tải dashboard: ' + err.message, 'error');
+          stop();
+        })
+        .getDashboardData();
+    }
+
+    function renderDashboard_() {
+      const fromDate = document.getElementById('dashFromDate').value;
+      const toDate = document.getElementById('dashToDate').value;
+
+      const filtered = dashboardRows.filter(function(r) {
+        if (!fromDate && !toDate) return true;
+        if (!r.khgh) return false;
+        if (fromDate && r.khgh < fromDate) return false;
+        if (toDate && r.khgh > toDate) return false;
+        return true;
+      });
+
+      const byType = {};
+      filtered.forEach(function(r) {
+        if (!byType[r.loai]) byType[r.loai] = { total: 0, delivered: 0 };
+        byType[r.loai].total += r.total;
+        byType[r.loai].delivered += r.delivered;
+      });
+
+      const summaryEl = document.getElementById('dashboardSummary');
+      const typeKeys = Object.keys(byType).sort();
+      summaryEl.innerHTML = typeKeys.map(function(t) {
+        const g = byType[t];
+        const pct = g.total ? Math.round((g.delivered / g.total) * 100) : 0;
+        return '<div style="background:#f5f5f5; border:1px solid #ddd; border-radius:6px; padding:8px 12px;">' +
+          '<b>' + t + '</b>: ' + pct + '% (' + g.delivered + '/' + g.total + ' lệnh)</div>';
+      }).join('') || '<div style="color:#999;">Không có dữ liệu phù hợp bộ lọc.</div>';
+
+      const rows = filtered.slice().sort(function(a, b) { return a.percent - b.percent; });
+      const wrap = document.getElementById('dashboardResult');
+      let html = '<table><tr><th>LSX</th><th>Loại đơn</th><th>KHGH</th><th>Đã giao/Tổng</th><th>% hoàn thành</th></tr>';
+      if (rows.length === 0) {
+        html += '<tr><td colspan="5" class="empty-state-cell">Không có dữ liệu.</td></tr>';
+      } else {
+        rows.forEach(function(r) {
+          const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ea4335');
+          html += '<tr>' +
+            '<td>' + r.lsx + '</td>' +
+            '<td>' + r.loai + '</td>' +
+            '<td>' + formatDate(r.khgh) + '</td>' +
+            '<td>' + r.delivered + '/' + r.total + '</td>' +
+            '<td style="min-width:120px;">' +
+              '<div style="background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
+                '<div style="width:' + r.percent + '%; background:' + barColor + '; height:100%;"></div>' +
+              '</div>' +
+              '<span style="font-size:11px;">' + r.percent + '%</span>' +
+            '</td>' +
+          '</tr>';
+        });
+      }
+      html += '</table>';
+      wrap.innerHTML = html;
+    }
+
     /* ================= MODAL NHẬN PHÔI / GIAO HÀNG + QR ================= */
     const WORKER_NAMES = ['Ngô Duy Đông','Trần Minh Chí','Nguyễn Dương','Nguyễn Thanh Nam','Phạm Thị Chiến','Bùi Ngọc Lưu','Khác'];
+
+// Nhớ người thực hiện lần gần nhất, tách riêng theo Nhận phôi / Giao hàng
+function getLastNguoi_(mode) {
+  try { return localStorage.getItem('gcck_last_nguoi_' + mode) || ''; } catch (e) { return ''; }
+}
+function saveLastNguoi_(mode, nguoi) {
+  try { if (nguoi) localStorage.setItem('gcck_last_nguoi_' + mode, nguoi); } catch (e) {}
+}
+
+function stepTrackQty_(delta) {
+  const input = document.getElementById('trackQtyInput');
+  if (!input) return;
+  const current = Number(input.value) || 0;
+  input.value = Math.max(1, current + delta);
+}
 
     let trackingMode = 'nhanphoi';
     let trackingPendingList = [];
@@ -2572,15 +2530,21 @@ function refreshGiaoHangTab() {
 
       document.getElementById('trackingModalTitle').textContent = mode === 'nhanphoi' ? 'Nhận phôi' : 'Giao hàng';
       document.getElementById('trackQtyLabel').innerHTML = (mode === 'nhanphoi' ? 'SL nhận' : 'SL Giao') +
-        '<input type="number" id="trackQtyInput" min="1" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />';
+        '<div style="display:flex; align-items:stretch; gap:6px; margin-top:4px;">' +
+          '<button type="button" onclick="stepTrackQty_(-1)" style="width:46px; font-size:22px; font-weight:bold; border:1px solid #ccc; border-radius:6px; background:#f5f5f5; cursor:pointer;">&minus;</button>' +
+          '<input type="number" id="trackQtyInput" min="1" style="flex:1; padding:8px; box-sizing:border-box; font-size:15px; text-align:center;" />' +
+          '<button type="button" onclick="stepTrackQty_(1)" style="width:46px; font-size:22px; font-weight:bold; border:1px solid #ccc; border-radius:6px; background:#f5f5f5; cursor:pointer;">&plus;</button>' +
+        '</div>';
       document.getElementById('trackLsxInput').value = '';
       document.getElementById('trackSttInput').value = '';
       document.getElementById('trackMsctInput').value = '';
       document.getElementById('trackTenCtInput').value = '';
       document.getElementById('trackOrderQtyInput').value = '';
 
-      const sel = document.getElementById('trackNguoiSelect');
+       const sel = document.getElementById('trackNguoiSelect');
       sel.innerHTML = WORKER_NAMES.map(function(n) { return '<option value="' + n + '">' + n + '</option>'; }).join('');
+      const lastNguoi = getLastNguoi_(mode);
+      if (lastNguoi && WORKER_NAMES.indexOf(lastNguoi) !== -1) sel.value = lastNguoi;
       document.getElementById('trackNguoiOther').style.display = 'none';
       document.getElementById('trackNguoiOther').value = '';
 
@@ -2638,6 +2602,7 @@ function refreshGiaoHangTab() {
         showToast('Vui lòng chọn/nhập người thực hiện.', 'error');
         return;
       }
+      saveLastNguoi_(trackingMode, nguoi);
 
       // Mang theo TOÀN BỘ quy cách đã tra được (nếu có) - phòng trường hợp server tra
       // lại không khớp (VD gõ tắt khác cách BOM lưu), vẫn còn dữ liệu dự phòng để hiển
@@ -2699,19 +2664,57 @@ function refreshGiaoHangTab() {
 
     // QR trên phiếu hiện tại dạng "LSX | STT | ... " -> tách theo "|". Nếu QR thực tế khác
     // format, chỉnh lại 2 dòng gán bên dưới cho khớp.
-    function onQrScanSuccess_(decodedText) {
+   function onQrScanSuccess_(decodedText) {
       const parts = decodedText.split('|').map(function(s) { return s.trim(); });
-      if (parts[0]) document.getElementById('trackLsxInput').value = parts[0];
-      if (parts[1]) document.getElementById('trackSttInput').value = parts[1];
+
+      if (!parts[0] || !parts[1]) {
+        qrFeedback_(false);
+        showToast('Mã QR không đúng định dạng (thiếu LSX/STT).', 'error');
+        return;
+      }
+
+      document.getElementById('trackLsxInput').value = parts[0];
+      document.getElementById('trackSttInput').value = parts[1];
       if (parts[2]) document.getElementById('trackMsctInput').value = parts[2];
       if (parts[3]) document.getElementById('trackTenCtInput').value = parts[3];
       if (parts[4]) {
         document.getElementById('trackOrderQtyInput').value = parts[4];
         const qtyInput = document.getElementById('trackQtyInput');
-        if (qtyInput) qtyInput.value = parts[4]; // mặc định = SL đơn hàng, vẫn sửa được tay
+        if (qtyInput) qtyInput.value = parts[4];
       }
       stopQrScan_();
-      showToast('Đã đọc mã QR, kiểm tra lại thông tin trước khi thêm vào danh sách.', 'success');
+      qrFeedback_(true);
+
+      const nguoi = getSelectedNguoi_();
+      const qtyVal = Number(document.getElementById('trackQtyInput').value);
+
+      if (qtyVal > 0 && nguoi) {
+        addToTrackingList_(); // đủ dữ liệu -> thêm luôn, giảm 1 bước chạm
+        showToast('Đã quét QR và thêm vào danh sách.', 'success');
+      } else {
+        showToast('Đã đọc mã QR, kiểm tra lại thông tin trước khi thêm vào danh sách.', 'info');
+      }
+    }
+
+    // Phản hồi rung + âm thanh khi quét, để công nhân không cần nhìn màn hình liên tục
+    function qrFeedback_(success) {
+      try { if (navigator.vibrate) navigator.vibrate(success ? 80 : [80, 60, 80]); } catch (e) {}
+      playQrBeep_(success);
+    }
+
+    let qrAudioCtx_ = null;
+    function playQrBeep_(success) {
+      try {
+        if (!qrAudioCtx_) qrAudioCtx_ = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = qrAudioCtx_;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = success ? 880 : 220;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + (success ? 0.12 : 0.25));
+      } catch (e) {}
     }
 
     function todayDisplayStr_() {
@@ -2776,11 +2779,73 @@ function refreshGiaoHangTab() {
           if (mode === 'nhanphoi') refreshNhanPhoiTab(); else refreshGiaoHangTab();
         })
         .withFailureHandler(function(err) {
-          showToast('Lưu thất bại: ' + err.message, 'error');
-          if (mode === 'nhanphoi') refreshNhanPhoiTab(); else refreshGiaoHangTab();
+          // Không lưu được (thường do mất mạng) -> giữ trong hàng đợi offline,
+          // tự động gửi lại khi có mạng, tránh mất dữ liệu công nhân vừa nhập.
+          queueOfflineBatch_(mode, items);
+          showToast('Mất mạng, đã lưu tạm trên máy. Sẽ tự động gửi lại khi có mạng.', 'info');
         })
         [fnName](items);
     }
+
+    /* ================= LÀM VIỆC OFFLINE TẠM THỜI ================= */
+    const OFFLINE_QUEUE_KEY = 'gcck_offline_queue';
+
+    function getOfflineQueue_() {
+      try {
+        const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) { return []; }
+    }
+
+    function setOfflineQueue_(queue) {
+      try { localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue)); } catch (e) {}
+    }
+
+    function queueOfflineBatch_(mode, items) {
+      const queue = getOfflineQueue_();
+      queue.push({ mode: mode, items: items, ts: Date.now() });
+      setOfflineQueue_(queue);
+      updateOfflineBadge_();
+    }
+
+    let isSyncingOfflineQueue_ = false;
+
+    function trySyncOfflineQueue_() {
+      if (isSyncingOfflineQueue_) return;
+      const queue = getOfflineQueue_();
+      if (queue.length === 0) return;
+
+      isSyncingOfflineQueue_ = true;
+      const batch = queue[0];
+      const fnName = batch.mode === 'nhanphoi' ? 'recordNhanPhoiBatch' : 'recordGiaoHangBatch';
+
+      google.script.run
+        .withSuccessHandler(function() {
+          const remaining = getOfflineQueue_();
+          remaining.shift();
+          setOfflineQueue_(remaining);
+          updateOfflineBadge_();
+          isSyncingOfflineQueue_ = false;
+          if (batch.mode === 'nhanphoi') refreshNhanPhoiTab(); else refreshGiaoHangTab();
+          if (remaining.length > 0) trySyncOfflineQueue_();
+          else showToast('Đã đồng bộ xong dữ liệu lưu tạm khi mất mạng.', 'success');
+        })
+        .withFailureHandler(function() {
+          isSyncingOfflineQueue_ = false; // vẫn chưa có mạng -> thử lại lần sau
+        })
+        [fnName](batch.items);
+    }
+
+    function updateOfflineBadge_() {
+      const el = document.getElementById('syncStatus');
+      if (!el) return;
+      const queue = getOfflineQueue_();
+      el.title = queue.length > 0 ? (queue.length + ' lô dữ liệu đang chờ đồng bộ (mất mạng)') : '';
+    }
+
+    window.addEventListener('online', trySyncOfflineQueue_);
+    setInterval(trySyncOfflineQueue_, 20000); // phòng khi sự kiện 'online' không bắn trên mobile
+    updateOfflineBadge_();
 
         /* ================= IN DỮ LIỆU ĐANG LỌC ================= */
     function printFilteredTable() {
