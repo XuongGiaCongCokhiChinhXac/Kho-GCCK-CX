@@ -429,6 +429,11 @@
 .icon-btn:hover { background: #f2f2f2; color: #000; }
 .icon-btn.spinning i { animation: spinIconRotate 0.8s linear infinite; }
 @keyframes spinIconRotate { to { transform: rotate(360deg); } }
+.btn-spinner {
+  display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff; border-radius: 50%; animation: spinIconRotate 0.7s linear infinite;
+  margin-right: 8px; vertical-align: -2px;
+}
 
 .app-layout { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 .sidebar {
@@ -629,6 +634,19 @@
       font-weight: bold; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.25); cursor: pointer;
     }
     .dash-date-input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+    .dash-date-card {
+      display: inline-flex; flex-direction: column; align-items: flex-start; gap: 6px;
+      padding: 8px 14px; border-radius: 10px; min-width: 150px;
+      background: #fff; border: 1px solid #e3e6ea; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .dash-stat-card { cursor: pointer; transition: outline 0.1s ease, transform 0.1s ease; }
+    .dash-stat-card:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.12); }
+    .dash-stat-card.active { outline: 3px solid #333; outline-offset: 2px; }
+    .dash-reset-btn {
+      background: #c62828; color: #fff; font-weight: bold; border: none; border-radius: 6px;
+      padding: 6px 14px; font-size: 12px; cursor: pointer;
+    }
+    .dash-reset-btn:hover { background: #a51f1f; }
     .dash-stats-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 16px 14px 16px; }
     .dash-stat-card {
       flex: 1; min-width: 140px; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
@@ -781,7 +799,7 @@
   </header>
 
   <div class="app-layout">
-    <nav class="sidebar" id="mainSidebar">
+    <nav class="sidebar collapsed" id="mainSidebar">
       <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
       <button class="sidebar-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
         <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
@@ -824,7 +842,7 @@
     <div id="cellInfoBar" class="cell-info-bar">Chưa chọn ô nào</div>
 
     <div class="title-row">
-      <h2>GCCK-CX</h2>
+      <h2>Kiểm Tra Đơn Hàng</h2>
       <div class="title-row-actions">
         <span id="syncStatus" class="sync-status"></span>
         <button id="refreshBtn" class="icon-btn" title="Làm mới dữ liệu" onclick="refreshCurrentData()">
@@ -906,18 +924,20 @@
         <div class="tracking-toolbar" style="flex-wrap:wrap;">
           <h2 style="margin:0;">Dashboard tiến độ đơn hàng</h2>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <label class="dash-date-label">Từ ngày
-              <input type="date" id="dashFromDate" class="dash-date-input" onchange="renderDashboard_()" />
-            </label>
-            <label class="dash-date-label">Đến ngày
-              <input type="date" id="dashToDate" class="dash-date-input" onchange="renderDashboard_()" />
-            </label>
+            <span id="progressSyncStatus" class="sync-status"></span>
             <button id="refreshDashboardBtn" class="icon-btn" title="Làm mới" onclick="refreshDashboard_()">
               <i class="fa-solid fa-arrows-rotate"></i>
             </button>
           </div>
         </div>
-        <div id="dashboardStats" class="dash-stats-row"></div>
+        <div id="dashboardStats" class="dash-stats-row">
+          <div class="dash-date-card">
+            <div class="dash-stat-label">Lọc theo ngày KHGH</div>
+            <input type="date" id="dashFilterDate" class="dash-date-input" onchange="onDashDateChange_()" />
+          </div>
+          <div id="dashboardStatCards" style="display:contents;"></div>
+        </div>
+        <div id="dashboardFilterInfo" style="padding:0 16px 6px 16px; font-size:13px;"></div>
         <div id="dashboardSummary" style="padding:0 16px 10px 16px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px;"></div>
         <div id="dashboardResult" class="tracking-table-wrap"></div>
       </div>
@@ -984,7 +1004,7 @@
 
       errEl.textContent = '';
       btn.disabled = true;
-      btn.textContent = 'Đang kiểm tra...';
+      btn.innerHTML = '<span class="btn-spinner"></span>Đang đăng nhập...';
 
       google.script.run
         .withSuccessHandler(function(user) {
@@ -1020,7 +1040,7 @@
 
       errEl.textContent = '';
       btn.disabled = true;
-      btn.textContent = 'Đang kiểm tra...';
+      btn.innerHTML = '<span class="btn-spinner"></span>Đang đăng nhập...';
 
       if (isNewAccount) {
         if (!hoTen) {
@@ -2726,7 +2746,66 @@ function refreshGiaoHangTab() {
     /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
     let dashboardRows = [];
     let dashboardTypeFilter = null; // loại đơn đang được lọc trên bảng, null = không lọc
+    let dashCardFilter = 'default'; // 'default'|'all'|'completed'|'remaining'|'overdue'|'today'|'almost'
+    let dashDateFilter = '';        // yyyy-mm-dd, khi có giá trị sẽ ưu tiên hơn dashCardFilter
     const DASHBOARD_CACHE_KEY = 'gcck_dashboard_cache_v1';
+
+    function getTodayStr_() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function applyDashCardFilter_(key) {
+      dashCardFilter = key;
+      dashDateFilter = '';
+      const dateEl = document.getElementById('dashFilterDate');
+      if (dateEl) dateEl.value = '';
+      renderDashboard_();
+    }
+
+    function onDashDateChange_() {
+      dashDateFilter = document.getElementById('dashFilterDate').value;
+      dashCardFilter = dashDateFilter ? null : 'default';
+      renderDashboard_();
+    }
+
+    function resetDashFilter_() {
+      dashCardFilter = 'default';
+      dashDateFilter = '';
+      const dateEl = document.getElementById('dashFilterDate');
+      if (dateEl) dateEl.value = '';
+      renderDashboard_();
+    }
+
+    function getDashFilteredRows_(rows, todayStr) {
+      if (dashDateFilter) {
+        return rows.filter(function(r) { return r.khgh === dashDateFilter; });
+      }
+      switch (dashCardFilter) {
+        case 'all': return rows;
+        case 'completed': return rows.filter(function(r) { return r.percent >= 100; });
+        case 'remaining': return rows.filter(function(r) { return r.percent < 100; });
+        case 'overdue': return rows.filter(function(r) { return r.percent < 100 && r.khgh && r.khgh < todayStr; });
+        case 'today': return rows.filter(function(r) { return r.khgh === todayStr; });
+        case 'almost': return rows.filter(function(r) { return r.percent >= 80 && r.percent < 100; });
+        default:
+          return rows.filter(function(r) { return r.khgh === todayStr || (r.percent >= 80 && r.percent < 100); });
+      }
+    }
+
+    function renderDashboardFilterInfo_() {
+      const el = document.getElementById('dashboardFilterInfo');
+      if (!el) return;
+      const labelMap = {
+        all: 'Tất cả đơn hàng', completed: 'Đã hoàn thành', remaining: 'Còn lại',
+        overdue: 'Trễ KHGH', today: 'KHGH hôm nay', almost: 'Sắp xong (>80%)',
+        default: 'KHGH hôm nay & sắp xong (mặc định)'
+      };
+      const text = dashDateFilter
+        ? 'Đang lọc theo ngày KHGH: <b>' + formatDate(dashDateFilter) + '</b>'
+        : 'Đang xem: <b>' + (labelMap[dashCardFilter] || 'Tất cả') + '</b>';
+      el.innerHTML = text + ' &nbsp; <button type="button" class="dash-reset-btn" onclick="resetDashFilter_()">Bỏ lọc</button>';
+    }
 
     function loadDashboardCache_() {
       try {
@@ -2766,18 +2845,31 @@ function refreshGiaoHangTab() {
         })
         .withFailureHandler(function(err) {
           showToast('Lỗi tải dashboard: ' + err.message, 'error');
-          markDashboardReadyForSplash_(); // vẫn phải mở app dù lỗi, tránh kẹt màn hình chờ
+          markDashboardReadyForSplash_();
           stop();
         })
         .getDashboardData();
+
+      google.script.run
+        .withSuccessHandler(renderProgressSyncStatus_)
+        .withFailureHandler(function() {})
+        .getLastSyncTimeTienDo();
     }
 
-   function renderDashboardStats_(rows) {
-      const el = document.getElementById('dashboardStats');
-      const todayStr = (function() {
-        const d = new Date();
-        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-      })();
+    function renderProgressSyncStatus_(iso) {
+      const el = document.getElementById('progressSyncStatus');
+      if (!el) return;
+      if (!iso) { el.innerHTML = '<span class="sync-dot" style="background:#bbb;"></span>Chưa có dữ liệu Tiến độ'; return; }
+      const d = new Date(iso);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      el.innerHTML = '<span class="sync-dot"></span>Tiến độ cập nhật ' + hh + ':' + mm + ':' + ss;
+    }
+
+   function renderDashboardStats_(rows, todayStr) {
+      const el = document.getElementById('dashboardStatCards');
+      if (!el) return;
 
       const total = rows.length;
       const completed = rows.filter(function(r) { return r.percent >= 100; }).length;
@@ -2787,16 +2879,17 @@ function refreshGiaoHangTab() {
       const almostDone = rows.filter(function(r) { return r.percent >= 80 && r.percent < 100; }).length;
 
       const cards = [
-        { label: 'Tổng số đơn hàng', value: total, cls: '' },
-        { label: 'Đã hoàn thành', value: completed, cls: 'dash-stat-success' },
-        { label: 'Còn lại', value: remaining, cls: 'dash-stat-info' },
-        { label: 'Trễ KHGH', value: overdue, cls: 'dash-stat-danger' },
-        { label: 'KHGH hôm nay', value: dueToday, cls: 'dash-stat-warning' },
-        { label: 'Sắp xong (>80%)', value: almostDone, cls: 'dash-stat-warning' }
+        { key: 'all', label: 'Tổng số đơn hàng', value: total, cls: '' },
+        { key: 'completed', label: 'Đã hoàn thành', value: completed, cls: 'dash-stat-success' },
+        { key: 'remaining', label: 'Còn lại', value: remaining, cls: 'dash-stat-info' },
+        { key: 'overdue', label: 'Trễ KHGH', value: overdue, cls: 'dash-stat-danger' },
+        { key: 'today', label: 'KHGH hôm nay', value: dueToday, cls: 'dash-stat-warning' },
+        { key: 'almost', label: 'Sắp xong (>80%)', value: almostDone, cls: 'dash-stat-warning' }
       ];
 
       el.innerHTML = cards.map(function(c) {
-        return '<div class="dash-stat-card ' + c.cls + '">' +
+        const activeCls = (!dashDateFilter && dashCardFilter === c.key) ? ' active' : '';
+        return '<div class="dash-stat-card ' + c.cls + activeCls + '" onclick="applyDashCardFilter_(\'' + c.key + '\')">' +
           '<div class="dash-stat-label">' + c.label + '</div>' +
           '<div class="dash-stat-value">' + c.value + '</div>' +
         '</div>';
@@ -2809,18 +2902,11 @@ function refreshGiaoHangTab() {
     }
 
     function renderDashboard_() {
-      const fromDate = document.getElementById('dashFromDate').value;
-      const toDate = document.getElementById('dashToDate').value;
+      const todayStr = getTodayStr_();
+      renderDashboardStats_(dashboardRows, todayStr); // thẻ luôn tính trên toàn bộ dữ liệu
 
-      const filtered = dashboardRows.filter(function(r) {
-        if (!fromDate && !toDate) return true;
-        if (!r.khgh) return false;
-        if (fromDate && r.khgh < fromDate) return false;
-        if (toDate && r.khgh > toDate) return false;
-        return true;
-      });
-
-      renderDashboardStats_(filtered);
+      const filtered = getDashFilteredRows_(dashboardRows, todayStr);
+      renderDashboardFilterInfo_();
 
       const byType = {};
       filtered.forEach(function(r) {
@@ -2857,17 +2943,33 @@ function refreshGiaoHangTab() {
         html += '<div style="padding:8px 4px; font-size:13px; color:#333;">Đang lọc theo loại đơn: <b>' + dashboardTypeFilter +
           '</b> — <span onclick="filterDashboardByType_(\'' + dashboardTypeFilter + '\')" style="color:#1a73e8; cursor:pointer; text-decoration:underline;">Bỏ lọc</span></div>';
       }
-      html += '<table><tr><th>LSX</th><th>Loại đơn</th><th>KHGH</th><th>Đã giao/Tổng</th><th>% hoàn thành</th></tr>';
+      const CHUYEN_LABELS = [
+        { key: 'ducNhom', label: 'Đúc nhôm' }, { key: 'cuaVong', label: 'Cửa vòng' },
+        { key: 'tien', label: 'Tiện' }, { key: 'phay', label: 'Phay' },
+        { key: 'nguoi', label: 'Nguội' }, { key: 'nhiet', label: 'Nhiệt' }
+      ];
+      const chuyenHeaderHtml = CHUYEN_LABELS.map(function(c) { return '<th>' + c.label + '</th>'; }).join('');
+
+      html += '<table><tr><th>LSX</th><th>Loại đơn</th><th>KHGH</th>' +
+        chuyenHeaderHtml + '<th>Tiến độ SX</th><th>% Kho giao hàng</th></tr>';
       if (rows.length === 0) {
-        html += '<tr><td colspan="5" class="empty-state-cell">Không có dữ liệu.</td></tr>';
+        html += '<tr><td colspan="' + (5 + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr>';
       } else {
         rows.forEach(function(r) {
           const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ea4335');
+          let chuyenCells = '';
+          CHUYEN_LABELS.forEach(function(c) {
+            const info = (r.chuyen && r.chuyen[c.key]) || {};
+            chuyenCells += '<td style="font-size:11px;">' +
+              (info.gc || 0) + '/' + (info.tong || 0) + '<br><span style="color:#888;">' + (info.td || '') + '</span>' +
+            '</td>';
+          });
           html += '<tr>' +
             '<td>' + r.lsx + '</td>' +
             '<td>' + r.loai + '</td>' +
             '<td>' + formatDate(r.khgh) + '</td>' +
-            '<td>' + r.delivered + '/' + r.total + '</td>' +
+            chuyenCells +
+            '<td>' + (r.tienDoDonHang || '') + '</td>' +
             '<td style="min-width:120px;">' +
               '<div style="background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
                 '<div style="width:' + r.percent + '%; background:' + barColor + '; height:100%;"></div>' +
@@ -2954,10 +3056,21 @@ function stepTrackQty_(delta) {
 
        const sel = document.getElementById('trackNguoiSelect');
       sel.innerHTML = WORKER_NAMES.map(function(n) { return '<option value="' + n + '">' + n + '</option>'; }).join('');
-      const lastNguoi = getLastNguoi_(mode);
-      if (lastNguoi && WORKER_NAMES.indexOf(lastNguoi) !== -1) sel.value = lastNguoi;
-      document.getElementById('trackNguoiOther').style.display = 'none';
-      document.getElementById('trackNguoiOther').value = '';
+
+      // Mặc định là người đang đăng nhập; nếu tên chưa có trong danh sách thì chọn "Khác" và tự điền sẵn.
+      const defaultNguoi = (currentUser_ && currentUser_.hoTen) ? currentUser_.hoTen : getLastNguoi_(mode);
+      if (defaultNguoi && WORKER_NAMES.indexOf(defaultNguoi) !== -1) {
+        sel.value = defaultNguoi;
+        document.getElementById('trackNguoiOther').style.display = 'none';
+        document.getElementById('trackNguoiOther').value = '';
+      } else if (defaultNguoi) {
+        sel.value = 'Khác';
+        document.getElementById('trackNguoiOther').style.display = 'block';
+        document.getElementById('trackNguoiOther').value = defaultNguoi;
+      } else {
+        document.getElementById('trackNguoiOther').style.display = 'none';
+        document.getElementById('trackNguoiOther').value = '';
+      }
 
       renderTrackingPendingList_();
       document.getElementById('trackingOverlay').style.display = 'flex';
@@ -3133,7 +3246,9 @@ function stepTrackQty_(delta) {
       const dd = String(d.getDate()).padStart(2, '0');
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const yy = String(d.getFullYear()).slice(-2);
-      return dd + '/' + mm + '/' + yy;
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return dd + '/' + mm + '/' + yy + ' ' + hh + ':' + mi;
     }
 
     function saveTrackingBatch_() {
