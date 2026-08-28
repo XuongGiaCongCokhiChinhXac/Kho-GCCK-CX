@@ -555,6 +555,10 @@
   #trackingOverlay .upbom-footer button { flex: 1; padding: 14px; font-size: 15px; font-weight: bold; }
   #qrScanBtn, .btn-primary-blue { min-height: 46px; }
 
+  /* Đồng bộ toàn bộ nút icon (Làm mới/In/Chụp/Excel...) cùng 1 kích thước, dễ bấm hơn trên mobile */
+  .icon-btn { width: 42px; height: 42px; font-size: 16px; }
+  .title-row-actions { gap: 6px; }
+
   /* Bảng Nhận phôi/Giao hàng: chuyển sang dạng THẺ (card) thay vì bảng cuộn ngang,
      dễ đọc hơn nhiều trên màn hình hẹp. */
   .tracking-table-wrap table thead { display: none; }
@@ -673,8 +677,9 @@
       <div class="title-row-actions">
         <span id="syncStatus" class="sync-status"></span>
         <button id="refreshBtn" class="icon-btn" title="Làm mới dữ liệu" onclick="refreshCurrentData()">
-  <i class="fa-solid fa-arrows-rotate"></i>
-</button>
+          <i class="fa-solid fa-arrows-rotate"></i>
+        </button>
+        <button id="printBtn" class="icon-btn" title="In dữ liệu đang lọc" onclick="printFilteredTable()">
           <i class="fa-solid fa-print"></i>
         </button>
         <button id="captureBtn" class="icon-btn" title="Chụp ảnh dữ liệu đang lọc" onclick="captureFilteredTable()">
@@ -2628,6 +2633,10 @@
     const trackingFilters = { nhanphoi: {}, giaohang: {} }; // giống `filters` của bảng Check đơn hàng
     let activeFilterTarget = 'bom'; // 'bom' | 'nhanphoi' | 'giaohang' - popup lọc nào đang mở
 
+    let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
+    let trackingPollTimer_ = null;
+    const TRACKING_POLL_INTERVAL_MS = 10000; // 10 giây tự làm mới 1 lần cho mọi người cùng xem
+
     function switchTab(tabId) {
       document.querySelectorAll('.tab-pane').forEach(function(el) { el.classList.remove('active'); });
       // Bỏ active ở CẢ sidebar (desktop) lẫn bottom nav (mobile) - trước đây chỉ
@@ -2637,11 +2646,46 @@
       document.querySelectorAll('[data-tab="' + tabId + '"]').forEach(function(el) { el.classList.add('active'); });
 
       if (tabId === 'tab-nhanphoi') {
+        activeTrackingTab_ = 'nhanphoi';
         renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
         if (!trackingLoaded.nhanphoi) refreshNhanPhoiTab(); // lỡ dữ liệu ban đầu chưa tải xong -> âm thầm tải bù
       } else if (tabId === 'tab-giaohang') {
+        activeTrackingTab_ = 'giaohang';
         renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
         if (!trackingLoaded.giaohang) refreshGiaoHangTab();
+      } else {
+        activeTrackingTab_ = null;
+      }
+
+      startTrackingPolling_();
+    }
+
+    function startTrackingPolling_() {
+      if (trackingPollTimer_) { clearInterval(trackingPollTimer_); trackingPollTimer_ = null; }
+      if (!activeTrackingTab_) return;
+      trackingPollTimer_ = setInterval(pollActiveTrackingTab_, TRACKING_POLL_INTERVAL_MS);
+    }
+
+    // Âm thầm tải lại dữ liệu của đúng tab đang mở, không hiện spinner/toast để không
+    // làm phiền - chỉ cập nhật bảng nếu có gì thay đổi so với dữ liệu đang hiển thị.
+    function pollActiveTrackingTab_() {
+      if (!activeTrackingTab_) return;
+      if (activeTrackingTab_ === 'nhanphoi') {
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            nhanPhoiRows = rows;
+            renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(rows, trackingFilters.nhanphoi), 'nhanphoi');
+          })
+          .withFailureHandler(function() { /* im lặng bỏ qua, lần sau tự thử lại */ })
+          .getNhanPhoiData();
+      } else if (activeTrackingTab_ === 'giaohang') {
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            giaoHangRows = rows;
+            renderTrackingTable_('giaoHangResult', applyTrackingFilters_(rows, trackingFilters.giaohang), 'giaohang');
+          })
+          .withFailureHandler(function() {})
+          .getGiaoHangData();
       }
     }
 
@@ -2786,6 +2830,8 @@ function refreshGiaoHangTab() {
     let qrScanner_ = null;
 
     let autoFillReqId_ = 0;
+    let currentAutoFillDetail_ = null; // toàn bộ quy cách tra được lần gần nhất, gửi kèm khi lưu
+
     function autoFillTrackingDetail_() {
       const lsx = document.getElementById('trackLsxInput').value.trim();
       const stt = document.getElementById('trackSttInput').value.trim();
@@ -2793,11 +2839,13 @@ function refreshGiaoHangTab() {
       const myId = ++autoFillReqId_;
       google.script.run
         .withSuccessHandler(function(detail) {
-          if (myId !== autoFillReqId_ || !detail) return;
+          if (myId !== autoFillReqId_) return;
+          currentAutoFillDetail_ = detail || null;
+          if (!detail) return;
           if (detail.msct) document.getElementById('trackMsctInput').value = detail.msct;
           if (detail.ten_chi_tiet) document.getElementById('trackTenCtInput').value = detail.ten_chi_tiet;
         })
-        .withFailureHandler(function() {})
+        .withFailureHandler(function() { currentAutoFillDetail_ = null; })
         .lookupBomDetailForTracking(lsx, stt);
     }
 
@@ -2815,6 +2863,7 @@ function refreshGiaoHangTab() {
     function openTrackingModal(mode) {
       trackingMode = mode;
       trackingPendingList = [];
+      currentAutoFillDetail_ = null;
 
       document.getElementById('trackingModalTitle').textContent = mode === 'nhanphoi' ? 'Nhận phôi' : 'Giao hàng';
       document.getElementById('trackQtyLabel').innerHTML = (mode === 'nhanphoi' ? 'SL nhận' : 'SL Giao') +
@@ -2884,6 +2933,15 @@ function refreshGiaoHangTab() {
         return;
       }
 
+      // Mang theo TOÀN BỘ quy cách đã tra được (nếu có) - phòng trường hợp server tra
+      // lại không khớp (VD gõ tắt khác cách BOM lưu), vẫn còn dữ liệu dự phòng để hiển
+      // thị đúng ngay trên bảng, không phải đợi làm mới.
+      const detail = currentAutoFillDetail_;
+      const extra = detail ? {
+        vatLieu: detail.vat_lieu, dai: detail.dai, rong: detail.rong, day: detail.day,
+        hinhHop: detail.hinh_hop, dn: detail.dn, dt: detail.dt, slDh: detail.sl_dh
+      } : {};
+
       // Trùng LSX+STT trong danh sách đang chờ -> cộng dồn số lượng thay vì thêm dòng mới.
       const existing = trackingPendingList.find(function(it) { return it.lsx === lsx && it.stt === stt; });
       if (existing) {
@@ -2891,16 +2949,20 @@ function refreshGiaoHangTab() {
         existing.nguoi = nguoi;
         if (msct) existing.msct = msct;
         if (tenChiTiet) existing.tenChiTiet = tenChiTiet;
+        Object.assign(existing, extra);
       } else {
-        trackingPendingList.push({ lsx: lsx, stt: stt, soLuong: sl, nguoi: nguoi, msct: msct, tenChiTiet: tenChiTiet });
+        trackingPendingList.push(Object.assign({ lsx: lsx, stt: stt, soLuong: sl, nguoi: nguoi, msct: msct, tenChiTiet: tenChiTiet }, extra));
       }
+      currentAutoFillDetail_ = null;
 
       document.getElementById('trackLsxInput').value = '';
       document.getElementById('trackSttInput').value = '';
       document.getElementById('trackMsctInput').value = '';
       document.getElementById('trackTenCtInput').value = '';
       qtyInput.value = '';
-      document.getElementById('trackLsxInput').focus();
+      // Không tự focus lại ô LSX nữa - tránh tự bật bàn phím/phóng to màn hình
+      // trên mobile ngay sau khi thêm 1 món vào danh sách chờ lưu.
+      if (document.activeElement) document.activeElement.blur();
       renderTrackingPendingList_();
     }
 
@@ -2953,6 +3015,7 @@ function refreshGiaoHangTab() {
     }
 
     function saveTrackingBatch_() {
+      if (document.activeElement) document.activeElement.blur(); // đóng bàn phím ngay khi bấm Lưu
       // Nếu đang có dữ liệu trong 3 ô nhập mà CHƯA bấm "Thêm vào danh sách" -> tự thêm nốt,
       // để lưu đúng 1 món cũng không cần thao tác thừa.
       const lsx = document.getElementById('trackLsxInput').value.trim();
@@ -2981,10 +3044,14 @@ function refreshGiaoHangTab() {
           existing.so_luong = (Number(existing.so_luong) || 0) + item.soLuong;
           existing.nguoi = item.nguoi;
           existing.ngay = todayDisplay;
+          if (item.msct) existing.msct = item.msct;
+          if (item.tenChiTiet) existing.ten_chi_tiet = item.tenChiTiet;
         } else {
           rowsArr.unshift({
-            lsx_stt: lsxStt, lsx: item.lsx, stt: item.stt, ten_chi_tiet: '', vat_lieu: '',
-            dai: '', rong: '', day: '', hinh_hop: '', dn: '', dt: '', sl_dh: '',
+            lsx_stt: lsxStt, lsx: item.lsx, stt: item.stt,
+            msct: item.msct || '', ten_chi_tiet: item.tenChiTiet || '', vat_lieu: item.vatLieu || '',
+            dai: item.dai || '', rong: item.rong || '', day: item.day || '',
+            hinh_hop: item.hinhHop || '', dn: item.dn || '', dt: item.dt || '', sl_dh: item.slDh || '',
             so_luong: item.soLuong, nguoi: item.nguoi, ngay: todayDisplay
           });
         }
@@ -3245,6 +3312,7 @@ function refreshGiaoHangTab() {
 
     loadInitialAppData_();
     setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
+    startTrackingPolling_(); // vô hại nếu chưa mở tab nào - activeTrackingTab_ đang null
   </script>
 
   <div id="toastStack"></div>
@@ -3326,10 +3394,10 @@ function refreshGiaoHangTab() {
         <input type="text" id="trackSttInput" placeholder="VD: 7" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" onblur="autoFillTrackingDetail_()" />
       </label>
       <label>MSCT
-        <input type="text" id="trackMsctInput" placeholder="Tự điền khi quét QR / nhập LSX+STT" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px; background:#f5f5f5;" />
+        <input type="text" id="trackMsctInput" placeholder="Tự điền khi quét QR / nhập LSX+STT" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
       </label>
       <label>Tên chi tiết
-        <input type="text" id="trackTenCtInput" placeholder="Tự điền khi quét QR / nhập LSX+STT" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px; background:#f5f5f5;" />
+        <input type="text" id="trackTenCtInput" placeholder="Tự điền khi quét QR / nhập LSX+STT" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
       </label>
       <label id="trackQtyLabel">SL nhận
         <input type="number" id="trackQtyInput" min="1" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
