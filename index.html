@@ -382,32 +382,7 @@
     .sort-icon { margin-left: 4px; font-size: 10px; cursor: pointer; user-select: none; }
     th .th-label { cursor: pointer; }
 
-    /* ===== Modal Úp BOM ===== */
-    .upbom-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-      z-index: 200; display: flex; align-items: center; justify-content: center;
-    }
-    .upbom-modal {
-      background: #fff; width: 95vw; height: 90vh; border-radius: 8px;
-      display: flex; flex-direction: column; overflow: hidden;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-    }
-    .upbom-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #ddd; background: #f8f9fa; }
-    .upbom-header h3 { margin: 0; font-size: 16px; flex-shrink: 0; }
-    .upbom-header-actions { display: flex; gap: 8px; align-items: center; flex: 1; }
-    .upbom-header-actions button { padding: 5px 12px; font-size: 12px; border-radius: 4px; border: none; background: #1a73e8; color: #fff; cursor: pointer; }
-    #upBomStatus { font-size: 12px; color: #666; }
-    .upbom-close { cursor: pointer; font-size: 22px; color: #666; line-height: 1; }
-    .upbom-close:hover { color: #000; }
-    .upbom-hint { padding: 8px 16px; font-size: 12px; color: #b45309; background: #fff8e1; }
-    .upbom-table-wrap { flex: 1; overflow: auto; padding: 0 16px; }
-    #upBomTable { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 12px; }
-    #upBomTable th { position: sticky; top: 0; background: #003DA5; color: #fff; padding: 6px 4px; white-space: nowrap; z-index: 2; border: 1px solid #002a73; }
-    #upBomTable td { border: 1px solid #ddd; padding: 0; }
-    #upBomTable input { width: 110px; border: none; padding: 5px 6px; font-size: 12px; box-sizing: border-box; font-family: inherit; }
-    #upBomTable input:focus { outline: 2px solid #1a73e8; outline-offset: -2px; background: #eef4ff; }
-    #upBomTable input[type=date] { width: 130px; }
-    .upbom-row-del { width: 26px; text-align: center; cursor: pointer; color: #c62828; font-weight: bold; background: #fdecea; }
+    /* upbom-footer/cancel/save dùng chung với modal Nhận phôi/Giao hàng nên giữ lại */
     .upbom-footer { padding: 10px 16px; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px; }
     .upbom-footer button { padding: 8px 20px; border-radius: 4px; border: none; font-size: 14px; cursor: pointer; }
     .upbom-cancel { background: #eee; color: #333; }
@@ -509,6 +484,16 @@
   .category-buttons { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
   .cat-btn { flex-shrink: 0; }
 
+  /* Bỏ cố định cột trên mobile - cuộn ngang bình thường như 1 bảng thường */
+  .sticky-col, th.sticky-col, td.sticky-col {
+    position: static !important;
+    left: auto !important;
+  }
+  .sticky-col-end {
+    box-shadow: none !important;
+    border-right: 1px solid #ddd !important;
+  }
+
   .title-row { flex-direction: column; align-items: stretch; }
   .title-row-actions { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
 
@@ -517,7 +502,7 @@
   .btn-primary-blue { width: 100%; padding: 14px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .tracking-toolbar h2 { display: flex; align-items: center; gap: 8px; }
   .tracking-table-wrap th, .tracking-table-wrap td { padding: 8px 6px; font-size: 12px; }
-  .colvis-modal, .upbom-modal, .colvis-overlay .colvis-modal[style*="420px"] {
+  .colvis-modal, .colvis-overlay .colvis-modal[style*="420px"] {
     width: 100vw !important;
     height: 100vh !important;
     max-height: 100vh !important;
@@ -559,23 +544,16 @@
   .icon-btn { width: 42px; height: 42px; font-size: 16px; }
   .title-row-actions { gap: 6px; }
 
-  /* Bảng Nhận phôi/Giao hàng: chuyển sang dạng THẺ (card) thay vì bảng cuộn ngang,
-     dễ đọc hơn nhiều trên màn hình hẹp. */
-  .tracking-table-wrap table thead { display: none; }
-  .tracking-table-wrap table, .tracking-table-wrap tbody, .tracking-table-wrap tr, .tracking-table-wrap td {
-    display: block; width: 100%;
-  }
-  .tracking-table-wrap tr {
-    border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px;
-    padding: 8px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); background: #fff;
-  }
-  .tracking-table-wrap td {
-    border: none; text-align: left; padding: 4px 0; display: flex; justify-content: space-between; gap: 10px;
-  }
-  .tracking-table-wrap td::before {
-    content: attr(data-label); font-weight: bold; color: #666; flex-shrink: 0;
-  }
+  /* Giữ đúng dạng bảng cuộn ngang như desktop, không tách thành thẻ nữa */
+  .tracking-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tracking-table-wrap table { width: max-content; min-width: 100%; }
+  .tracking-table-wrap th, .tracking-table-wrap td { white-space: nowrap; text-align: center; }
 }
+    body.dark-mode { background: #1e1e1e; color: #e0e0e0; }
+    body.dark-mode td { background: #2a2a2a; color: #e0e0e0; }
+    body.dark-mode th { background: #002a73; }
+    body.dark-mode .cell-info-bar, body.dark-mode .colvis-modal, body.dark-mode .filter-popup { background: #2a2a2a; color: #e0e0e0; }
+    body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background: #333; color: #e0e0e0; border-color: #555; }
 
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -650,6 +628,9 @@
       <button class="sidebar-nav-btn" data-tab="tab-giaohang" onclick="switchTab('tab-giaohang')">
         <i class="fa-solid fa-truck"></i><span class="nav-label">Giao hàng</span>
       </button>
+      <button class="sidebar-nav-btn" data-tab="tab-settings" onclick="switchTab('tab-settings')">
+        <i class="fa-solid fa-gear"></i><span class="nav-label">Cài đặt</span>
+      </button>
     </nav>
 
     <!-- Thanh điều hướng dưới cùng - CHỈ hiện trên mobile (xem media query 768px),
@@ -663,6 +644,9 @@
       </button>
       <button class="mobile-nav-btn" data-tab="tab-giaohang" onclick="switchTab('tab-giaohang')">
         <i class="fa-solid fa-truck"></i><span>Giao hàng</span>
+      </button>
+      <button class="mobile-nav-btn" data-tab="tab-settings" onclick="switchTab('tab-settings')">
+        <i class="fa-solid fa-gear"></i><span>Cài đặt</span>
       </button>
     </nav>
 
@@ -689,7 +673,6 @@
           <i class="fa-solid fa-file-excel"></i>
         </button>
         <button id="colVisBtn" onclick="openColumnVisibilityModal()" style="background:#003DA5;color:#fff;font-weight:bold;">Hiển thị</button>
-        <button id="upBomBtn" onclick="openUpBomModal()" style="background:#00b894;color:#fff;font-weight:bold;">+ Úp BOM</button>
       </div>
     </div>
 
@@ -750,6 +733,23 @@
           </div>
         </div>
         <div id="giaoHangResult" class="tracking-table-wrap"></div>
+      </div>
+
+      <div id="tab-settings" class="tab-pane">
+        <div style="padding:20px; max-width:420px; display:flex; flex-direction:column; gap:24px;">
+          <div>
+            <h3 style="margin:0 0 8px 0;">Giao diện</h3>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+              <input type="checkbox" id="darkModeToggle" onchange="onDarkModeToggle_(this.checked)" />
+              Chế độ tối (Dark mode)
+            </label>
+          </div>
+          <div>
+            <h3 style="margin:0 0 8px 0;">Thu phóng: <span id="zoomValueLabel">100%</span></h3>
+            <input type="range" id="zoomSlider" min="0" max="150" value="100" step="5"
+              style="width:100%;" oninput="onZoomChange_(this.value)" />
+          </div>
+        </div>
       </div>
 
     </div><!-- /app-main -->
@@ -2334,197 +2334,6 @@
       batchSave_(saveItems);
     }
 
-    /* ================= ÚP BOM (thêm lô hàng mới, nối cuối Sheet) ================= */
-    // Thứ tự & tên field PHẢI khớp với tham số gửi lên hàm uploadBom() bên Code.gs
-    const UPBOM_COLUMNS = [
-      { key: 'ngay_gc',        label: 'Ngày GC',          type: 'date' },
-      { key: 'khgh',            label: 'KHGH',             type: 'date' },
-      { key: 'lsx',              label: 'LSX',              type: 'text' },
-      { key: 'san_pham',        label: 'Sản phẩm',        type: 'text' },
-      { key: 'stt_ct',          label: 'STT',              type: 'text' },
-      { key: 'msct',             label: 'MSCT',             type: 'text' },
-      { key: 'ten_chi_tiet',    label: 'Tên chi tiết',    type: 'text' },
-      { key: 'vat_lieu',        label: 'Vật liệu',        type: 'text' },
-      { key: 'dai',              label: 'Dài',              type: 'text' },
-      { key: 'rong',             label: 'Rộng',             type: 'text' },
-      { key: 'day',              label: 'Dày',              type: 'text' },
-      { key: 'hinh_hop',        label: 'Hình/Hộp',        type: 'text' },
-      { key: 'dn',               label: 'Dn',               type: 'text' },
-      { key: 'dt',               label: 'Dt',               type: 'text' },
-      { key: 'sl_bo',            label: 'SL/Bộ',            type: 'text' },
-      { key: 'sl_dh',            label: 'SL/ĐH',            type: 'text' },
-      { key: 'khoi_luong',      label: 'KL',               type: 'text' },
-      { key: 'cong_doan_truoc', label: 'CĐ.trước',        type: 'text' },
-      { key: 'duc_nhom',        label: 'ĐN',               type: 'text' },
-      { key: 'cua_vong',        label: 'CV',               type: 'text' },
-      { key: 'tien',             label: 'Tiện',             type: 'text' },
-      { key: 'phay',             label: 'Phay',             type: 'text' },
-      { key: 'nguoi',            label: 'Nguội',            type: 'text' },
-      { key: 'nhiet',            label: 'Nhiệt',            type: 'text' },
-      { key: 'cong_doan_sau',   label: 'CĐ.sau',          type: 'text' },
-      { key: 'ghi_chu_dmvt',    label: 'Ghi chú kỹ thuật', type: 'text' }
-    ];
-
-    function todayStr_() {
-      const d = new Date();
-      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    }
-
-    let upBomSaveToken = 0; // đánh dấu "phiên" mở modal hiện tại, tránh 1 lượt lưu cũ (đã đóng modal)
-                              // vô tình xóa mất dữ liệu người dùng đang nhập cho lượt mới hơn
-
-    function openUpBomModal() {
-      upBomSaveToken++;
-      document.getElementById('upBomOverlay').style.display = 'flex';
-      buildUpBomTable();
-      addUpBomRows(8);
-    }
-
-    function closeUpBomModal() {
-      document.getElementById('upBomOverlay').style.display = 'none';
-      document.getElementById('upBomTable').innerHTML = '';
-    }
-
-    function buildUpBomTable() {
-      const table = document.getElementById('upBomTable');
-      let head = '<tr><th></th>';
-      UPBOM_COLUMNS.forEach(function(col) { head += '<th>' + col.label + '</th>'; });
-      head += '</tr>';
-      table.innerHTML = head;
-      table.removeEventListener('paste', onUpBomPaste_); // tránh gắn trùng listener mỗi lần mở modal
-      table.addEventListener('paste', onUpBomPaste_);
-    }
-
-    function addUpBomRows(n) {
-      const table = document.getElementById('upBomTable');
-      for (let i = 0; i < n; i++) {
-        const tr = document.createElement('tr');
-        let html = '<td class="upbom-row-del" onclick="this.closest(\'tr\').remove()" title="Xóa dòng">&times;</td>';
-        UPBOM_COLUMNS.forEach(function(col) {
-          if (col.type === 'date') {
-            html += '<td><input type="date" data-key="' + col.key + '" value="' + todayStr_() + '" /></td>';
-          } else {
-            html += '<td><input type="text" data-key="' + col.key + '" /></td>';
-          }
-        });
-        tr.innerHTML = html;
-        table.appendChild(tr);
-      }
-    }
-
-    function clearUpBomEmptyRows() {
-      document.querySelectorAll('#upBomTable tr').forEach(function(tr, i) {
-        if (i === 0) return; // dòng header
-        const inputs = tr.querySelectorAll('input[type=text]');
-        const hasData = Array.from(inputs).some(function(inp) { return inp.value.trim() !== ''; });
-        if (!hasData) tr.remove();
-      });
-    }
-
-    // Dán dữ liệu TSV (copy từ Excel/Sheet) bắt đầu từ ô đang bấm, tự thêm dòng nếu thiếu.
-    function onUpBomPaste_(e) {
-      const target = e.target;
-      if (target.tagName !== 'INPUT') return;
-      const text = (e.clipboardData || window.clipboardData).getData('text');
-      if (!text || (text.indexOf('\t') === -1 && text.indexOf('\n') === -1)) return; // 1 giá trị đơn -> để trình duyệt tự dán
-      e.preventDefault();
-
-      const matrix = text.replace(/\r/g, '').split('\n')
-        .filter(function(line, idx, arr) { return !(idx === arr.length - 1 && line === ''); })
-        .map(function(line) { return line.split('\t'); });
-
-      const td = target.closest('td');
-      const startColIdx = Array.from(td.parentElement.children).indexOf(td) - 1; // trừ cột xóa dòng
-      let tr = target.closest('tr');
-
-      matrix.forEach(function(rowVals) {
-        if (!tr) {
-          addUpBomRows(1);
-          tr = document.querySelector('#upBomTable tr:last-child');
-        }
-        rowVals.forEach(function(val, j) {
-          const colIdx = startColIdx + j;
-          if (colIdx < 0 || colIdx >= UPBOM_COLUMNS.length) return;
-          const input = tr.children[colIdx + 1].querySelector('input');
-          if (!input) return;
-          if (input.type === 'date') {
-            const d = parseDateFlexible_(val);
-            if (d) input.value = d;
-          } else {
-            input.value = val.trim();
-          }
-        });
-        tr = tr.nextElementSibling;
-      });
-    }
-
-    // Chấp nhận vài định dạng ngày hay gặp khi dán từ Excel: dd/mm/yyyy hoặc yyyy-mm-dd
-    function parseDateFlexible_(val) {
-      val = (val || '').trim();
-      if (!val) return '';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-      const m = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-      if (m) {
-        const yyyy = m[3].length === 2 ? '20' + m[3] : m[3];
-        return yyyy + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
-      }
-      return '';
-    }
-
-    function collectUpBomRows_() {
-      const rows = [];
-      document.querySelectorAll('#upBomTable tr').forEach(function(tr, i) {
-        if (i === 0) return; // header
-        const row = {};
-        let hasData = false;
-        UPBOM_COLUMNS.forEach(function(col) {
-          const input = tr.querySelector('input[data-key="' + col.key + '"]');
-          const val = input ? input.value.trim() : '';
-          row[col.key] = val;
-          if (col.key !== 'ngay_gc' && col.key !== 'khgh' && val !== '') hasData = true;
-        });
-        if (hasData) rows.push(row);
-      });
-      return rows;
-    }
-
-    function saveUpBom() {
-      const rows = collectUpBomRows_();
-      if (rows.length === 0) { showToast('Chưa có dữ liệu để lưu.', 'error'); return; }
-      if (rows.some(function(r) { return !r.lsx; })) {
-        showToast('Có dòng thiếu LSX, vui lòng kiểm tra lại.', 'error');
-        return;
-      }
-      if (rows.some(function(r) { return !r.stt_ct; })) {
-        showToast('Có dòng thiếu STT, vui lòng kiểm tra lại.', 'error');
-        return;
-      }
-
-      const savingToken = upBomSaveToken; // ghi nhớ đúng phiên đang lưu
-      const saveBtn = document.querySelector('.upbom-save');
-      saveBtn.disabled = true;
-      document.getElementById('upBomStatus').textContent = 'Đang lưu ' + rows.length + ' dòng... (có thể đóng cửa sổ, việc lưu vẫn tiếp tục)';
-
-      google.script.run
-        .withSuccessHandler(function(result) {
-          saveBtn.disabled = false;
-          document.getElementById('upBomStatus').textContent = '';
-          showToast('Đã úp thành công ' + result.count + ' dòng (Sheet hàng ' + result.startRow + '-' + result.endRow + ').', 'success');
-          // Chỉ tự đóng modal nếu vẫn đang ở ĐÚNG phiên lúc bắt đầu lưu — nếu người dùng đã đóng
-          // rồi mở lại (phiên mới hơn) để nhập lô khác, KHÔNG được xóa mất dữ liệu họ đang gõ dở.
-          if (savingToken === upBomSaveToken && document.getElementById('upBomOverlay').style.display !== 'none') {
-            closeUpBomModal();
-          }
-          if (currentQuery) pollForUpdates(); // đang xem đúng LSX này thì tự làm mới ngay
-        })
-        .withFailureHandler(function(err) {
-          saveBtn.disabled = false;
-          document.getElementById('upBomStatus').textContent = '';
-          showToast('Lỗi khi lưu: ' + err.message, 'error');
-        })
-        .uploadBom(rows);
-    }
-
     /* ================= MÀN HÌNH CHỜ KHI MỞ APP ================= */
     let splashProgress = 0;
     let splashTimer = null;
@@ -2623,6 +2432,7 @@
     startSplashProgress_();
     renderCategoryButtons();
     renderEmptyTable();
+    applySavedDisplayPrefs_();
     splashStepDone_(); // bước 1: giao diện đã dựng xong
 
       /* ================= SIDEBAR + TAB ================= */
@@ -2691,6 +2501,30 @@
 
     function toggleSidebar() {
       document.getElementById('mainSidebar').classList.toggle('collapsed');
+    }
+
+        function onDarkModeToggle_(isDark) {
+      document.body.classList.toggle('dark-mode', isDark);
+      try { localStorage.setItem('gcck_dark_mode', isDark ? '1' : '0'); } catch (e) {}
+    }
+
+    function onZoomChange_(percent) {
+      document.getElementById('zoomValueLabel').textContent = percent + '%';
+      document.querySelector('.app-layout').style.zoom = (percent / 100);
+      try { localStorage.setItem('gcck_zoom', percent); } catch (e) {}
+    }
+
+    function applySavedDisplayPrefs_() {
+      let dark = '0', zoom = '100';
+      try {
+        dark = localStorage.getItem('gcck_dark_mode') || '0';
+        zoom = localStorage.getItem('gcck_zoom') || '100';
+      } catch (e) {}
+      document.getElementById('darkModeToggle').checked = (dark === '1');
+      document.body.classList.toggle('dark-mode', dark === '1');
+      document.getElementById('zoomSlider').value = zoom;
+      document.getElementById('zoomValueLabel').textContent = zoom + '%';
+      document.querySelector('.app-layout').style.zoom = (Number(zoom) / 100);
     }
 
     function getFilterDataset_() {
@@ -2872,6 +2706,7 @@ function refreshGiaoHangTab() {
       document.getElementById('trackSttInput').value = '';
       document.getElementById('trackMsctInput').value = '';
       document.getElementById('trackTenCtInput').value = '';
+      document.getElementById('trackOrderQtyInput').value = '';
 
       const sel = document.getElementById('trackNguoiSelect');
       sel.innerHTML = WORKER_NAMES.map(function(n) { return '<option value="' + n + '">' + n + '</option>'; }).join('');
@@ -2959,6 +2794,7 @@ function refreshGiaoHangTab() {
       document.getElementById('trackSttInput').value = '';
       document.getElementById('trackMsctInput').value = '';
       document.getElementById('trackTenCtInput').value = '';
+      document.getElementById('trackOrderQtyInput').value = '';
       qtyInput.value = '';
       // Không tự focus lại ô LSX nữa - tránh tự bật bàn phím/phóng to màn hình
       // trên mobile ngay sau khi thêm 1 món vào danh sách chờ lưu.
@@ -2999,8 +2835,9 @@ function refreshGiaoHangTab() {
       if (parts[2]) document.getElementById('trackMsctInput').value = parts[2];
       if (parts[3]) document.getElementById('trackTenCtInput').value = parts[3];
       if (parts[4]) {
+        document.getElementById('trackOrderQtyInput').value = parts[4];
         const qtyInput = document.getElementById('trackQtyInput');
-        if (qtyInput) qtyInput.value = parts[4];
+        if (qtyInput) qtyInput.value = parts[4]; // mặc định = SL đơn hàng, vẫn sửa được tay
       }
       stopQrScan_();
       showToast('Đã đọc mã QR, kiểm tra lại thông tin trước khi thêm vào danh sách.', 'success');
@@ -3330,31 +3167,6 @@ function refreshGiaoHangTab() {
       <button type="button" class="filter-ok" onclick="applyFilterPopup()">OK</button>
     </div>
   </div>
-
-  <div id="upBomOverlay" class="upbom-overlay" style="display:none;">
-    <div class="upbom-modal">
-      <div class="upbom-header">
-        <h3>Úp BOM mới</h3>
-        <div class="upbom-header-actions">
-          <button type="button" onclick="addUpBomRows(5)">+ Thêm 5 dòng</button>
-          <button type="button" onclick="clearUpBomEmptyRows()">Xóa dòng trống</button>
-          <span id="upBomStatus"></span>
-        </div>
-        <span class="upbom-close" onclick="closeUpBomModal()">&times;</span>
-      </div>
-      <div class="upbom-hint">
-        Dán dữ liệu từ Excel/Sheet trực tiếp vào bảng bên dưới: bấm vào 1 ô rồi Ctrl+V, dữ liệu sẽ tự điền
-        vào các ô kế tiếp và tự thêm dòng nếu thiếu. Ngày GC và KHGH mặc định là hôm nay, có thể sửa.
-      </div>
-      <div class="upbom-table-wrap">
-        <table id="upBomTable"></table>
-      </div>
-      <div class="upbom-footer">
-        <button type="button" class="upbom-cancel" onclick="closeUpBomModal()">Hủy</button>
-        <button type="button" class="upbom-save" onclick="saveUpBom()">Lưu (ghi vào Supabase + Sheet)</button>
-      </div>
-    </div>
-  </div>
   <div id="colVisOverlay" class="colvis-overlay" style="display:none;">
     <div class="colvis-modal">
       <div class="colvis-header">
@@ -3387,17 +3199,20 @@ function refreshGiaoHangTab() {
         <i class="fa-solid fa-qrcode"></i> Quét mã QR
       </button>
 
-      <label>Lệnh sản xuất (có thể viết tắt, VD: 710/08)
-        <input type="text" id="trackLsxInput" placeholder="VD: 710/08" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" onblur="autoFillTrackingDetail_()" />
+      <label>Lệnh sản xuất
+        <input type="text" id="trackLsxInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" onblur="autoFillTrackingDetail_()" />
       </label>
       <label>STT
-        <input type="text" id="trackSttInput" placeholder="VD: 7" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" onblur="autoFillTrackingDetail_()" />
+        <input type="text" id="trackSttInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" onblur="autoFillTrackingDetail_()" />
       </label>
       <label>MSCT
-        <input type="text" id="trackMsctInput" placeholder="Tự điền khi quét QR / nhập LSX+STT" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
+        <input type="text" id="trackMsctInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
       </label>
       <label>Tên chi tiết
-        <input type="text" id="trackTenCtInput" placeholder="Tự điền khi quét QR / nhập LSX+STT" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
+        <input type="text" id="trackTenCtInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
+      </label>
+      <label>SL đơn hàng
+        <input type="number" id="trackOrderQtyInput" min="1" readonly style="width:100%; padding:8px; box-sizing:border-box; font-size:15px; background:#f5f5f5;" />
       </label>
       <label id="trackQtyLabel">SL nhận
         <input type="number" id="trackQtyInput" min="1" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
