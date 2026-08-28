@@ -553,7 +553,93 @@
     body.dark-mode td { background: #2a2a2a; color: #e0e0e0; }
     body.dark-mode th { background: #002a73; }
     body.dark-mode .cell-info-bar, body.dark-mode .colvis-modal, body.dark-mode .filter-popup { background: #2a2a2a; color: #e0e0e0; }
-    body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background: #333; color: #e0e0e0; border-color: #555; }
+   body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background: #333; color: #e0e0e0; border-color: #555; }
+
+    /* ===== Thanh trên cùng (topbar) ===== */
+    .topbar {
+      height: 52px; background: #1a73e8; color: #fff; display: flex; align-items: center;
+      justify-content: space-between; padding: 0 18px; flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15); position: relative; z-index: 60;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 15px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .topbar-icon-btn {
+      background: rgba(255,255,255,0.12); border: none; color: #fff; width: 34px; height: 34px;
+      border-radius: 50%; cursor: pointer; font-size: 14px;
+    }
+    .topbar-icon-btn:hover { background: rgba(255,255,255,0.22); }
+    .topbar-user { position: relative; }
+    .topbar-user-btn {
+      background: rgba(255,255,255,0.12); border: none; color: #fff; padding: 6px 12px;
+      border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .topbar-user-btn:hover { background: rgba(255,255,255,0.22); }
+    .topbar-user-dropdown {
+      display: none; position: absolute; right: 0; top: 42px; background: #fff; color: #333;
+      border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); width: 190px; padding: 6px; z-index: 70;
+    }
+    .topbar-user-dropdown.open { display: block; }
+    .topbar-user-dropdown button {
+      width: 100%; text-align: left; background: none; border: none; padding: 9px 10px;
+      font-size: 13px; color: #333; border-radius: 6px; cursor: pointer; display: flex;
+      align-items: center; gap: 10px;
+    }
+    .topbar-user-dropdown button:hover { background: #f2f5fc; }
+    .topbar-menu-state { margin-left: auto; font-size: 11px; color: #999; }
+    .topbar-menu-divider { height: 1px; background: #eee; margin: 4px 2px; }
+    .topbar-menu-exit { color: #c62828 !important; }
+    .zoom-popover {
+      position: fixed; top: 58px; right: 18px; background: #fff; border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: 14px; width: 240px; z-index: 80;
+    }
+
+    /* ===== Nút loại đơn hàng xếp dọc trong sidebar ===== */
+    .sidebar-divider { height: 1px; background: rgba(255,255,255,0.15); margin: 8px 12px; }
+    .sidebar-section-label { padding: 4px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9db8e8; font-weight: bold; }
+    .sidebar-category-list {
+      display: flex; flex-direction: column; gap: 6px; padding: 6px 12px 14px 12px;
+      overflow-y: auto; flex: 1; min-height: 0;
+    }
+    .cat-btn-side { width: 100%; text-align: left; border-radius: 8px; padding: 9px 12px; box-shadow: none; font-size: 13px; }
+    .cat-btn-side:hover { transform: none; filter: brightness(1.08); }
+    .sidebar.collapsed .sidebar-category-list { padding: 6px 8px 14px 8px; }
+    .sidebar.collapsed .cat-btn-side {
+      text-align: center; padding: 9px 4px; font-size: 11px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .sidebar.collapsed .sidebar-section-label { display: none; }
+    .mobile-only-cats { display: none; }
+    @media (max-width: 768px) {
+      .mobile-only-cats { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 8px; padding-bottom: 4px; }
+    }
+
+    /* ===== Dashboard: chip loại đơn hàng + ô thống kê + ô chọn ngày ===== */
+    .dash-type-chip {
+      display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      padding: 8px 14px; border-radius: 10px; min-width: 108px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-family: Arial, sans-serif;
+    }
+    .dash-type-chip-name { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; opacity: 0.9; }
+    .dash-type-chip-pct { font-size: 20px; font-weight: 800; line-height: 1.1; }
+    .dash-type-chip-sub { font-size: 11px; opacity: 0.85; }
+    .dash-date-label { font-size: 13px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; }
+    .dash-date-input {
+      padding: 8px 10px; border: none; border-radius: 6px; background: #1a73e8; color: #fff;
+      font-weight: bold; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.25); cursor: pointer;
+    }
+    .dash-date-input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+    .dash-stats-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 16px 14px 16px; }
+    .dash-stat-card {
+      flex: 1; min-width: 140px; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
+      padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .dash-stat-card .dash-stat-label { font-size: 12px; color: #666; font-weight: 600; margin-bottom: 6px; }
+    .dash-stat-card .dash-stat-value { font-size: 24px; font-weight: 800; color: #1a1a1a; }
+    .dash-stat-card.dash-stat-danger .dash-stat-value { color: #c62828; }
+    .dash-stat-card.dash-stat-warning .dash-stat-value { color: #b45309; }
+    .dash-stat-card.dash-stat-success .dash-stat-value { color: #2e7d32; }
+    .dash-stat-card.dash-stat-info .dash-stat-value { color: #1a73e8; }
 
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -616,9 +702,47 @@
     </div>
   </div>
 
+  <header class="topbar">
+    <div class="topbar-left">
+      <i class="fa-solid fa-industry"></i>
+      <span>Xưởng Gia Công Cơ Khí Chính Xác</span>
+    </div>
+    <div class="topbar-right">
+      <button class="topbar-icon-btn" title="Thông báo" onclick="showToast('Chưa có thông báo mới.', 'info')">
+        <i class="fa-regular fa-bell"></i>
+      </button>
+      <div class="topbar-user" id="topbarUserMenu">
+        <button class="topbar-user-btn" onclick="toggleUserMenu_()">
+          <i class="fa-regular fa-circle-user"></i>
+          <span id="topbarUserName">Người dùng</span>
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+        </button>
+        <div class="topbar-user-dropdown" id="topbarUserDropdown">
+          <button type="button" onclick="refreshCurrentData(); closeUserMenu_();">
+            <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+          </button>
+          <button type="button" onclick="toggleDarkModeFromMenu_()">
+            <i class="fa-solid fa-moon"></i> Chế độ tối
+            <span id="darkModeMenuState" class="topbar-menu-state"></span>
+          </button>
+          <button type="button" onclick="openZoomPopover_()">
+            <i class="fa-solid fa-magnifying-glass-plus"></i> Thu phóng
+          </button>
+          <div class="topbar-menu-divider"></div>
+          <button type="button" class="topbar-menu-exit" onclick="exitApp_()">
+            <i class="fa-solid fa-right-from-bracket"></i> Thoát
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
   <div class="app-layout">
     <nav class="sidebar" id="mainSidebar">
       <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+      <button class="sidebar-nav-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+        <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
+      </button>
       <button class="sidebar-nav-btn active" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
         <i class="fa-solid fa-magnifying-glass"></i><span class="nav-label">Check đơn hàng</span>
       </button>
@@ -628,17 +752,17 @@
       <button class="sidebar-nav-btn" data-tab="tab-giaohang" onclick="switchTab('tab-giaohang')">
         <i class="fa-solid fa-truck"></i><span class="nav-label">Giao hàng</span>
       </button>
-     <button class="sidebar-nav-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
-        <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
-      </button>
-      <button class="sidebar-nav-btn" data-tab="tab-settings" onclick="switchTab('tab-settings')">
-        <i class="fa-solid fa-gear"></i><span class="nav-label">Cài đặt</span>
-      </button>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-label nav-label">Loại đơn hàng</div>
+      <div id="sidebarCategoryButtons" class="sidebar-category-list"></div>
     </nav>
 
     <!-- Thanh điều hướng dưới cùng - CHỈ hiện trên mobile (xem media query 768px),
          thay thế cho sidebar để không còn bị mất lối vào Nhận phôi / Giao hàng. -->
     <nav class="mobile-bottom-nav" id="mobileBottomNav">
+      <button class="mobile-nav-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+        <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+      </button>
       <button class="mobile-nav-btn active" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
         <i class="fa-solid fa-magnifying-glass"></i><span>Check đơn hàng</span>
       </button>
@@ -647,12 +771,6 @@
       </button>
       <button class="mobile-nav-btn" data-tab="tab-giaohang" onclick="switchTab('tab-giaohang')">
         <i class="fa-solid fa-truck"></i><span>Giao hàng</span>
-      </button>
-      <button class="mobile-nav-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
-        <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
-      </button>
-      <button class="mobile-nav-btn" data-tab="tab-settings" onclick="switchTab('tab-settings')">
-        <i class="fa-solid fa-gear"></i><span>Cài đặt</span>
       </button>
     </nav>
 
@@ -683,9 +801,9 @@
     </div>
 
     <div class="toolbar-row">
-      <div id="categoryButtons" class="category-buttons"></div>
       <div id="summary" class="summary"></div>
     </div>
+    <div id="mobileCategoryButtons" class="category-buttons mobile-only-cats"></div>
     <div id="todayWidget"></div>
     <div id="quickFilters" class="quick-filters" style="display:none;"></div>
 
@@ -744,46 +862,24 @@
       <div id="tab-dashboard" class="tab-pane">
         <div class="tracking-toolbar" style="flex-wrap:wrap;">
           <h2 style="margin:0;">Dashboard tiến độ đơn hàng</h2>
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <label style="font-size:13px;">Từ ngày
-              <input type="date" id="dashFromDate" onchange="renderDashboard_()" style="padding:6px; margin-left:4px;" />
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <label class="dash-date-label">Từ ngày
+              <input type="date" id="dashFromDate" class="dash-date-input" onchange="renderDashboard_()" />
             </label>
-            <label style="font-size:13px;">Đến ngày
-              <input type="date" id="dashToDate" onchange="renderDashboard_()" style="padding:6px; margin-left:4px;" />
+            <label class="dash-date-label">Đến ngày
+              <input type="date" id="dashToDate" class="dash-date-input" onchange="renderDashboard_()" />
             </label>
             <button id="refreshDashboardBtn" class="icon-btn" title="Làm mới" onclick="refreshDashboard_()">
               <i class="fa-solid fa-arrows-rotate"></i>
             </button>
           </div>
         </div>
+        <div id="dashboardStats" class="dash-stats-row"></div>
         <div id="dashboardSummary" style="padding:0 16px 10px 16px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px;"></div>
         <div id="dashboardResult" class="tracking-table-wrap"></div>
       </div>
 
-      <div id="tab-settings" class="tab-pane">
-        <div style="padding:20px; max-width:420px; display:flex; flex-direction:column; gap:24px;">
-          <div>
-            <h3 style="margin:0 0 8px 0;">Giao diện</h3>
-            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-              <input type="checkbox" id="darkModeToggle" onchange="onDarkModeToggle_(this.checked)" />
-              Chế độ tối (Dark mode)
-            </label>
-          </div>
-          <div>
-            <h3 style="margin:0 0 8px 0;">Thu phóng</h3>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <input type="range" id="zoomSlider" min="10" max="150" value="100" step="1"
-                style="flex:1;" oninput="onZoomChange_(this.value)" />
-              <input type="number" id="zoomNumberInput" min="10" max="150" step="1" value="100"
-                style="width:68px; padding:6px; box-sizing:border-box; font-size:14px; text-align:center;"
-                onchange="onZoomNumberChange_(this.value)" />
-              <span>%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /app-main -->
+      </div><!-- /app-main -->
   </div><!-- /app-layout -->
 
   <script>
@@ -1014,13 +1110,19 @@
     ];
 
     function renderCategoryButtons() {
-      const container = document.getElementById('categoryButtons');
-      container.innerHTML = CATEGORIES.map(function(cat) {
+      const buildBtn = function(cat, sideVariant) {
         const textColor = cat.dark ? '#333' : '#fff';
-        return '<button type="button" class="cat-btn" data-cat="' + cat.code +
+        const cls = sideVariant ? 'cat-btn cat-btn-side' : 'cat-btn';
+        return '<button type="button" class="' + cls + '" data-cat="' + cat.code +
           '" style="background:' + cat.color + ';color:' + textColor + ';" ' +
-          'onclick="searchByCategory(\'' + cat.code + '\', this)">' + cat.code + '</button>';
-      }).join('');
+          'onclick="searchByCategory(\'' + cat.code + '\', this); switchTab(\'tab-checkdon\');">' + cat.code + '</button>';
+      };
+      // Bản dọc trong sidebar (desktop) - tự co gọn khi sidebar thu nhỏ (xem CSS .sidebar.collapsed)
+      document.getElementById('sidebarCategoryButtons').innerHTML =
+        CATEGORIES.map(function(cat) { return buildBtn(cat, true); }).join('');
+      // Bản ngang cho mobile (sidebar bị ẩn hoàn toàn trên mobile - xem media query)
+      document.getElementById('mobileCategoryButtons').innerHTML =
+        CATEGORIES.map(function(cat) { return buildBtn(cat, false); }).join('');
     }
 
     function searchByCategory(prefix, btnEl) {
@@ -1423,9 +1525,9 @@
         let plainText;
 
         if (col.bool) {
-          // Chỉ đọc: hiện dấu tick hoặc để trống, không còn cho sửa từ app nữa
-          plainText = value ? 'TRUE' : '';
-          display = value ? '&#10003;' : '';
+          // Chỉ đọc: ô vuông xanh lá có tick trắng khi TRUE, ô trắng khi FALSE
+          plainText = value ? 'TRUE' : 'FALSE';
+          display = '<span class="chk' + (value ? ' checked' : '') + '">' + (value ? '&#10003;' : '') + '</span>';
         } else if (col.key === 'khgh') {
           plainText = formatDate(value);
           display = plainText;
@@ -1726,7 +1828,8 @@
           if (local[key] !== fresh[key]) {
             local[key] = fresh[key];
             summaryNeedsUpdate = true;
-            if (tr) tr.cells[colIndex[key]].innerHTML = fresh[key] ? '&#10003;' : '';
+            if (tr) tr.cells[colIndex[key]].innerHTML =
+              '<span class="chk' + (fresh[key] ? ' checked' : '') + '">' + (fresh[key] ? '&#10003;' : '') + '</span>';
           }
         });
 
@@ -2215,6 +2318,48 @@
       document.getElementById('mainSidebar').classList.toggle('collapsed');
     }
 
+    /* ================= THANH TRÊN CÙNG: MENU NGƯỜI DÙNG ================= */
+    function toggleUserMenu_() {
+      document.getElementById('topbarUserDropdown').classList.toggle('open');
+    }
+    function closeUserMenu_() {
+      document.getElementById('topbarUserDropdown').classList.remove('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#topbarUserMenu')) closeUserMenu_();
+      if (!e.target.closest('#zoomPopover') && !e.target.closest('.topbar-user-dropdown')) {
+        const pop = document.getElementById('zoomPopover');
+        if (pop) pop.style.display = 'none';
+      }
+    });
+
+    function openZoomPopover_() {
+      const pop = document.getElementById('zoomPopover');
+      pop.style.display = (pop.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function refreshDarkModeMenuState_() {
+      const isDark = document.body.classList.contains('dark-mode');
+      const stateEl = document.getElementById('darkModeMenuState');
+      if (stateEl) stateEl.textContent = isDark ? 'Đang bật' : 'Đang tắt';
+    }
+
+    function toggleDarkModeFromMenu_() {
+      onDarkModeToggle_(!document.body.classList.contains('dark-mode'));
+      refreshDarkModeMenuState_();
+    }
+
+    function exitApp_() {
+      closeUserMenu_();
+      // App không có hệ thống đăng nhập riêng, "Thoát" chỉ đóng tab hiện tại.
+      // Trình duyệt có thể chặn window.close() nếu tab không do script tự mở,
+      // nên vẫn hiện thông báo dự phòng để người dùng tự đóng tay.
+      window.close();
+      setTimeout(function() {
+        showToast('Bạn có thể đóng tab này để thoát khỏi ứng dụng.', 'info');
+      }, 300);
+    }
+
         function onDarkModeToggle_(isDark) {
       document.body.classList.toggle('dark-mode', isDark);
       try { localStorage.setItem('gcck_dark_mode', isDark ? '1' : '0'); } catch (e) {}
@@ -2259,11 +2404,11 @@
         dark = localStorage.getItem('gcck_dark_mode') || '0';
         zoom = localStorage.getItem('gcck_zoom') || '100';
       } catch (e) {}
-      document.getElementById('darkModeToggle').checked = (dark === '1');
       document.body.classList.toggle('dark-mode', dark === '1');
       document.getElementById('zoomSlider').value = zoom;
       document.getElementById('zoomNumberInput').value = zoom;
       document.querySelector('.app-layout').style.zoom = (Number(zoom) / 100);
+      refreshDarkModeMenuState_();
     }
 
     function getFilterDataset_() {
@@ -2416,6 +2561,37 @@ function refreshGiaoHangTab() {
         .getDashboardData();
     }
 
+   function renderDashboardStats_(rows) {
+      const el = document.getElementById('dashboardStats');
+      const todayStr = (function() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      })();
+
+      const total = rows.length;
+      const completed = rows.filter(function(r) { return r.percent >= 100; }).length;
+      const remaining = total - completed;
+      const overdue = rows.filter(function(r) { return r.percent < 100 && r.khgh && r.khgh < todayStr; }).length;
+      const dueToday = rows.filter(function(r) { return r.khgh === todayStr; }).length;
+      const almostDone = rows.filter(function(r) { return r.percent >= 80 && r.percent < 100; }).length;
+
+      const cards = [
+        { label: 'Tổng số đơn hàng', value: total, cls: '' },
+        { label: 'Đã hoàn thành', value: completed, cls: 'dash-stat-success' },
+        { label: 'Còn lại', value: remaining, cls: 'dash-stat-info' },
+        { label: 'Trễ KHGH', value: overdue, cls: 'dash-stat-danger' },
+        { label: 'KHGH hôm nay', value: dueToday, cls: 'dash-stat-warning' },
+        { label: 'Sắp xong (>80%)', value: almostDone, cls: 'dash-stat-warning' }
+      ];
+
+      el.innerHTML = cards.map(function(c) {
+        return '<div class="dash-stat-card ' + c.cls + '">' +
+          '<div class="dash-stat-label">' + c.label + '</div>' +
+          '<div class="dash-stat-value">' + c.value + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
     function renderDashboard_() {
       const fromDate = document.getElementById('dashFromDate').value;
       const toDate = document.getElementById('dashToDate').value;
@@ -2428,6 +2604,8 @@ function refreshGiaoHangTab() {
         return true;
       });
 
+      renderDashboardStats_(filtered);
+
       const byType = {};
       filtered.forEach(function(r) {
         if (!byType[r.loai]) byType[r.loai] = { total: 0, delivered: 0 };
@@ -2437,11 +2615,19 @@ function refreshGiaoHangTab() {
 
       const summaryEl = document.getElementById('dashboardSummary');
       const typeKeys = Object.keys(byType).sort();
+      const typeColorMap = {};
+      CATEGORIES.forEach(function(c) { typeColorMap[c.code] = c; });
+
       summaryEl.innerHTML = typeKeys.map(function(t) {
         const g = byType[t];
         const pct = g.total ? Math.round((g.delivered / g.total) * 100) : 0;
-        return '<div style="background:#f5f5f5; border:1px solid #ddd; border-radius:6px; padding:8px 12px;">' +
-          '<b>' + t + '</b>: ' + pct + '% (' + g.delivered + '/' + g.total + ' lệnh)</div>';
+        const meta = typeColorMap[t] || { color: '#576574', dark: false };
+        const textColor = meta.dark ? '#333' : '#fff';
+        return '<div class="dash-type-chip" style="background:' + meta.color + '; color:' + textColor + ';">' +
+          '<span class="dash-type-chip-name">' + t + '</span>' +
+          '<span class="dash-type-chip-pct">' + pct + '%</span>' +
+          '<span class="dash-type-chip-sub">' + g.delivered + '/' + g.total + ' lệnh</span>' +
+        '</div>';
       }).join('') || '<div style="color:#999;">Không có dữ liệu phù hợp bộ lọc.</div>';
 
       const rows = filtered.slice().sort(function(a, b) { return a.percent - b.percent; });
@@ -3086,7 +3272,28 @@ function stepTrackQty_(delta) {
     loadInitialAppData_();
     setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
     startTrackingPolling_(); // vô hại nếu chưa mở tab nào - activeTrackingTab_ đang null
+
+    // Hiện tên người dùng lên thanh trên cùng nếu lấy được (phụ thuộc cấu hình
+    // "Execute as" khi deploy Web App) - nếu không lấy được, vẫn giữ chữ "Người dùng".
+    google.script.run
+      .withSuccessHandler(function(email) {
+        if (email) document.getElementById('topbarUserName').textContent = email.split('@')[0];
+      })
+      .withFailureHandler(function() {})
+      .getCurrentUserEmail();
   </script>
+
+<div id="zoomPopover" class="zoom-popover" style="display:none;">
+    <div style="font-size:12px; font-weight:bold; margin-bottom:8px; color:#333;">Thu phóng giao diện</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <input type="range" id="zoomSlider" min="10" max="150" value="100" step="1"
+        style="flex:1;" oninput="onZoomChange_(this.value)" />
+      <input type="number" id="zoomNumberInput" min="10" max="150" step="1" value="100"
+        style="width:60px; padding:6px; box-sizing:border-box; font-size:13px; text-align:center;"
+        onchange="onZoomNumberChange_(this.value)" />
+      <span style="font-size:12px;">%</span>
+    </div>
+  </div>
 
   <div id="toastStack"></div>
 
