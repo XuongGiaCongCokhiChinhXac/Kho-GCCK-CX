@@ -895,12 +895,10 @@
     let searchRequestId = 0;       // dùng để bỏ qua kết quả trả về trễ/đã bị hủy
     const categoryCache = {};      // prefix -> rows, hiện ngay lập tức lần bấm sau (SWR)
     const POLL_INTERVAL_MS = 15000; // 15 giây kiểm tra người khác vừa cập nhật gì mới
-    const pendingSaves = new Set(); // các ô đang chờ lưu xong -> poll tạm bỏ qua, tránh ghi đè nhấp nháy
-    function pendingKey_(lsxStt, field) { return lsxStt + '|' + field; }
 
     /* ================= CHỌN Ô KIỂU EXCEL (hỗ trợ Ctrl+Click / Shift+Click) ================= */
     let displayedRows = [];   // danh sách dòng đang hiển thị (sau lọc) theo đúng thứ tự trên bảng
-    const EDITABLE_KEYS = ['nhan_vat_tu', 'giao_hang', 'nmk', 'ghi_chu'];
+    const EDITABLE_KEYS = []; // không còn cột nào cho phép sửa từ app - chỉ xem/tra cứu
     let selRegions = [];              // danh sách các vùng đang chọn: [{r1,r2,c1,c2}, ...]
     let selAnchorR = -1, selAnchorC = -1;   // ô neo (gốc) của vùng đang chọn hiện tại - dùng khi kéo chuột hoặc Shift+Click
     let activeR = -1, activeC = -1;         // ô vừa thao tác gần nhất - dùng để tô sáng cả hàng và vẽ khung ô active
@@ -1418,10 +1416,9 @@
         let plainText;
 
         if (col.bool) {
-          const checked = value ? 'checked' : '';
-          display = '<input type="checkbox" class="row-chk" ' + checked +
-            ' onchange="onBoolChange(this,\'' + col.key + '\')" />';
-          plainText = '';
+          // Chỉ đọc: hiện dấu tick hoặc để trống, không còn cho sửa từ app nữa
+          plainText = value ? 'TRUE' : '';
+          display = value ? '&#10003;' : '';
         } else if (col.key === 'khgh') {
           plainText = formatDate(value);
           display = plainText;
@@ -1431,16 +1428,9 @@
             ? '<span class="copyable" onclick="copyCell(this)">' + value + '</span>'
             : '';
         } else if (col.key === 'ghi_chu') {
+          // Chỉ đọc: hiện text thường như các cột khác, không còn textarea để sửa
           plainText = value || '';
-          const safeNote = escapeHtml_(plainText);
-          const lineCount = plainText ? plainText.split('\n').length : 1;
-          const rowsAttr = Math.min(Math.max(lineCount, 1), 6);
-          display = '<textarea class="row-note" rows="' + rowsAttr + '"' +
-            ' data-old="' + safeNote.replace(/"/g, '&quot;') + '"' +
-            ' onchange="onNoteChange(this)"' +
-            ' oninput="autoGrowNote(this)"' +
-            ' onfocus="autoGrowNote(this)"' +
-            ' onkeydown="handleNoteKeydown(event,this)">' + safeNote + '</textarea>';
+          display = escapeHtml_(plainText).replace(/\n/g, '<br>');
         } else {
           plainText = value || '';
           display = plainText;
@@ -1681,101 +1671,6 @@
       el.style.height = el.scrollHeight + 'px';
     }
 
-    // Bấm tick là hiện đúng trạng thái ngay lập tức (UI lạc quan), việc lưu chạy ngầm phía sau.
-    // Nếu lưu thất bại mới trả checkbox về trạng thái cũ.
-    function onBoolChange(checkbox, field, recordUndo) {
-      if (recordUndo === undefined) recordUndo = true;
-      const tr = checkbox.closest('tr');
-      const lsxStt = tr.getAttribute('data-lsxstt');
-      const value = checkbox.checked;
-      const pKey = pendingKey_(lsxStt, field);
-
-      const row = findRowData(lsxStt);
-      if (recordUndo) pushUndo([{ lsxStt: lsxStt, field: field, oldValue: row ? row[field] : !value }]);
-      if (row) row[field] = value;
-      updateSummary(lastRows);
-      pendingSaves.add(pKey);
-      const sheetRow = tr.getAttribute('data-row');
-
-      google.script.run
-        .withSuccessHandler(function() { pendingSaves.delete(pKey); refreshSyncStatus(); })
-        .withFailureHandler(function(err) {
-          pendingSaves.delete(pKey);
-          checkbox.checked = !value;
-          if (row) row[field] = !value;
-          updateSummary(lastRows);
-          showToast('Không thể lưu: ' + err.message, 'error');
-        })
-        .updateBomField(lsxStt, field, value, sheetRow);
-    }
-
-    // Lưu ghi chú (gọi khi rời ô hoặc bấm Enter chuyển dòng). UI lạc quan tương tự checkbox.
-    function onNoteChange(input, recordUndo) {
-      if (recordUndo === undefined) recordUndo = true;
-      const tr = input.closest('tr');
-      const lsxStt = tr.getAttribute('data-lsxstt');
-      const value = input.value;
-      const oldValue = input.getAttribute('data-old') || '';
-      if (value === oldValue) return;
-      const pKey = pendingKey_(lsxStt, 'ghi_chu');
-
-      if (recordUndo) pushUndo([{ lsxStt: lsxStt, field: 'ghi_chu', oldValue: oldValue }]);
-      input.setAttribute('data-old', value);
-      const row = findRowData(lsxStt);
-      if (row) row.ghi_chu = value;
-      pendingSaves.add(pKey);
-      const sheetRow = tr.getAttribute('data-row');
-
-      google.script.run
-        .withSuccessHandler(function() { pendingSaves.delete(pKey); refreshSyncStatus(); })
-        .withFailureHandler(function(err) {
-          pendingSaves.delete(pKey);
-          input.value = oldValue;
-          input.setAttribute('data-old', oldValue);
-          autoGrowNote(input);
-          if (row) row.ghi_chu = oldValue;
-          showToast('Không thể lưu ghi chú: ' + err.message, 'error');
-        })
-        .updateBomField(lsxStt, 'ghi_chu', value, sheetRow);
-    }
-
-    // Điều hướng phím kiểu Excel trong ô Ghi chú:
-    // Enter        -> lưu và chuyển xuống ô Ghi chú của dòng kế tiếp
-    // Ctrl + Enter -> xuống dòng trong cùng ô
-    // Esc          -> hủy chỉnh sửa, khôi phục giá trị cũ, thoát khỏi ô
-    function handleNoteKeydown(event, el) {
-      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-        el.value = el.value.slice(0, start) + '\n' + el.value.slice(end);
-        el.selectionStart = el.selectionEnd = start + 1;
-        autoGrowNote(el);
-        return;
-      }
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        if (el.value !== el.getAttribute('data-old')) onNoteChange(el);
-        const tr = el.closest('tr');
-        const nextTr = tr ? tr.nextElementSibling : null;
-        const nextNote = nextTr ? nextTr.querySelector('.row-note') : null;
-        if (nextNote) {
-          nextNote.focus();
-          const len = nextNote.value.length;
-          nextNote.selectionStart = nextNote.selectionEnd = len;
-        } else {
-          el.blur();
-        }
-        return;
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        el.value = el.getAttribute('data-old') || '';
-        autoGrowNote(el);
-        el.blur();
-      }
-    }
-
     /* ================= TỰ LÀM MỚI CHO NGƯỜI KHÁC ĐANG XEM CÙNG LỆNH ================= */
 
     function startPolling() {
@@ -1821,32 +1716,16 @@
         const tr = trMap[fresh.lsx_stt];
 
         BOOL_KEYS.forEach(function(key) {
-          if (pendingSaves.has(pendingKey_(fresh.lsx_stt, key))) return; // đang chờ lưu -> chưa ghi đè
           if (local[key] !== fresh[key]) {
             local[key] = fresh[key];
             summaryNeedsUpdate = true;
-            if (tr) {
-              const cell = tr.cells[colIndex[key]];
-              const cb = cell ? cell.querySelector('.row-chk') : null;
-              if (cb) cb.checked = fresh[key];
-            }
+            if (tr) tr.cells[colIndex[key]].innerHTML = fresh[key] ? '&#10003;' : '';
           }
         });
 
-        if (pendingSaves.has(pendingKey_(fresh.lsx_stt, 'ghi_chu'))) return; // đang chờ lưu -> chưa ghi đè
         if (local.ghi_chu !== fresh.ghi_chu) {
-          const cell = tr ? tr.cells[colIndex['ghi_chu']] : null;
-          const noteEl = cell ? cell.querySelector('.row-note') : null;
-          if (noteEl && document.activeElement === noteEl) {
-            // Đang gõ dở đúng ô này -> không ghi đè, đợi lần poll sau
-          } else {
-            local.ghi_chu = fresh.ghi_chu;
-            if (noteEl) {
-              noteEl.value = fresh.ghi_chu || '';
-              noteEl.setAttribute('data-old', fresh.ghi_chu || '');
-              autoGrowNote(noteEl);
-            }
-          }
+          local.ghi_chu = fresh.ghi_chu;
+          if (tr) tr.cells[colIndex['ghi_chu']].innerHTML = escapeHtml_(fresh.ghi_chu || '').replace(/\n/g, '<br>');
         }
       });
 
@@ -2080,14 +1959,6 @@
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
         copySelection();
         clearSelectionValues();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-        pasteSelection();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
-        fillDown();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
-        fillRight();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        performUndo();
       } else {
         handled = false;
       }
