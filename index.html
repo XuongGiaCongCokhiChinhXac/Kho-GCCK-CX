@@ -419,7 +419,7 @@
     .splash-box { width: 320px; text-align: center; font-family: Arial, sans-serif; }
     .splash-greeting { font-size: 20px; font-weight: bold; color: #003DA5; margin-bottom: 22px; }
     .splash-bar-track { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; }
-    .splash-bar-fill { height: 100%; width: 0%; background: #1a73e8; border-radius: 4px; transition: width 0.15s ease; }
+    .splash-bar-fill { height: 100%; width: 0%; background: #34a853; border-radius: 4px; transition: width 0.15s ease; }
     .splash-status-row {
       margin-top: 10px; font-size: 13px; color: #666; display: flex; justify-content: center; gap: 6px;
     }
@@ -808,45 +808,33 @@
 </script>
 
    <div id="loginOverlay" class="splash-overlay" style="z-index:600;">
-    <div class="splash-box" style="width:300px;">
+    <div class="splash-box" style="width:340px;">
+      <div style="background:#fff; border:1px solid #eee; border-radius:16px; padding:28px 26px; box-shadow:0 8px 30px rgba(0,0,0,0.08); text-align:left;">
+        <div style="font-size:22px; font-weight:800; color:#003DA5; margin-bottom:4px;">Đăng nhập</div>
+        <div style="font-size:13px; color:#888; margin-bottom:20px;">Điền thông tin để đăng nhập</div>
 
-      <!-- Đăng nhập nhanh: đã từng đăng nhập trên máy này -->
-      <div id="quickLoginView">
-        <div class="splash-greeting" style="margin-bottom:4px;">Xin chào,</div>
-        <div id="quickLoginName" style="font-size:17px; font-weight:bold; color:#003DA5; margin-bottom:18px;"></div>
-        <input type="tel" id="quickPasswordInput" placeholder="Nhập MSNV làm mật khẩu"
-          inputmode="numeric" pattern="[0-9]*" autocomplete="off"
-          style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; text-align:center; letter-spacing:1px;" />
-        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#555; margin-bottom:14px; cursor:pointer;">
-          <input type="checkbox" id="quickRememberCheck" /> Nhớ mật khẩu cho lần sau
-        </label>
-        <button type="button" id="quickLoginBtn" onclick="submitQuickLogin_()"
-          style="width:100%; padding:11px; background:#1a73e8; color:#fff; border:none; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer;">Đăng nhập</button>
-        <div id="quickLoginError" style="color:#c62828; font-size:13px; margin-top:10px; min-height:16px;"></div>
-        <div style="margin-top:6px;">
-          <span onclick="switchToFullLogin_()" style="color:#1a73e8; font-size:13px; cursor:pointer; text-decoration:underline;">Không phải bạn? Đăng nhập tài khoản khác</span>
-        </div>
-      </div>
-
-      <!-- Đăng nhập đầy đủ: lần đầu trên máy này, hoặc chuyển tài khoản -->
-      <div id="fullLoginView" style="display:none;">
-        <div class="splash-greeting" style="margin-bottom:6px;">Đăng nhập</div>
-        <div style="font-size:13px; color:#666; margin-bottom:18px;">Vui lòng nhập MSNV để tiếp tục</div>
-        <input type="text" id="loginMsnvInput" placeholder="MSNV" autocomplete="off"
+        <label style="font-size:13px; font-weight:700; color:#333; display:block; margin-bottom:6px;">MSNV</label>
+        <input type="text" id="loginMsnvInput" placeholder="Nhập MSNV" autocomplete="off"
           inputmode="numeric" pattern="[0-9]*"
-          style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;" />
-        <input type="text" id="loginHoTenInput" placeholder="Họ và tên (tài khoản mới)" autocomplete="off"
-          style="display:none; width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;" />
-        <input type="password" id="loginPasswordInput" placeholder="Mật khẩu (mặc định là MSNV)" autocomplete="off"
-          style="width:100%; padding:10px; box-sizing:border-box; font-size:15px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;" />
-        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#555; margin-bottom:14px; cursor:pointer;">
-          <input type="checkbox" id="fullRememberCheck" /> Nhớ mật khẩu cho lần sau
+          style="width:100%; padding:11px 12px; box-sizing:border-box; font-size:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:14px;" />
+
+        <label id="loginHoTenLabel" style="display:none; font-size:13px; font-weight:700; color:#333; margin-bottom:6px;">Họ và tên (tài khoản mới)</label>
+        <input type="text" id="loginHoTenInput" placeholder="Họ và tên" autocomplete="off"
+          style="display:none; width:100%; padding:11px 12px; box-sizing:border-box; font-size:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:14px;" />
+
+        <label style="font-size:13px; font-weight:700; color:#333; display:block; margin-bottom:6px;">Mật khẩu</label>
+        <input type="password" id="loginPasswordInput" placeholder="Nhập mật khẩu (mặc định là MSNV)" autocomplete="off"
+          style="width:100%; padding:11px 12px; box-sizing:border-box; font-size:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:12px;" />
+
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#555; margin-bottom:18px; cursor:pointer;">
+          <input type="checkbox" id="loginRememberCheck" /> Ghi nhớ mật khẩu
         </label>
-        <button type="button" id="loginSubmitBtn" onclick="submitFullLogin_()"
-          style="width:100%; padding:11px; background:#1a73e8; color:#fff; border:none; border-radius:6px; font-size:15px; font-weight:bold; cursor:pointer;">Đăng nhập</button>
+
+        <button type="button" id="loginSubmitBtn" onclick="submitLogin_()"
+          style="width:100%; padding:13px; background:#1a73e8; color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer;">Đăng nhập</button>
+
         <div id="loginError" style="color:#c62828; font-size:13px; margin-top:10px; min-height:16px;"></div>
       </div>
-
     </div>
   </div>
 
@@ -1085,7 +1073,7 @@
 
         let currentUser_ = null; // { msnv, hoTen }
 
-    // Gọi khi đăng nhập THÀNH CÔNG (dù qua đường nào) - lưu lại thông tin cho lần sau.
+    // Gọi khi đăng nhập THÀNH CÔNG - lưu lại thông tin cho lần sau, rồi bật màn hình chờ.
     function finishLogin_(user, remember, passUsed) {
       currentUser_ = user;
       try {
@@ -1100,6 +1088,11 @@
       document.getElementById('topbarUserName').textContent = user.hoTen;
       document.getElementById('loginOverlay').style.display = 'none';
 
+      // Bắt đầu màn hình chờ NGAY SAU KHI đăng nhập thành công (không chạy ngầm từ trước nữa).
+      showGreeting_(user.hoTen);
+      startSplashProgress_();
+      splashStepDone_(); // bước 1: giao diện đã dựng sẵn từ trước lúc load trang
+
       // Tải Dashboard TRƯỚC (số liệu ở các ô), màn hình chờ sẽ đợi đúng bước này.
       loadDashboardOnLogin_();
 
@@ -1108,89 +1101,6 @@
       setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
       setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
       startTrackingPolling_();
-    }
-
-    /* ---- Đăng nhập nhanh (đã từng đăng nhập trên máy này) ---- */
-    function submitQuickLogin_() {
-      let lastUser = null;
-      try { lastUser = JSON.parse(localStorage.getItem('gcck_last_user') || 'null'); } catch (e) {}
-      if (!lastUser) { switchToFullLogin_(); return; }
-
-      const pass = document.getElementById('quickPasswordInput').value;
-      const errEl = document.getElementById('quickLoginError');
-      const btn = document.getElementById('quickLoginBtn');
-      const remember = document.getElementById('quickRememberCheck').checked;
-
-      if (!pass) { errEl.textContent = 'Vui lòng nhập MSNV làm mật khẩu.'; return; }
-
-      errEl.textContent = '';
-      btn.disabled = true;
-      btn.innerHTML = '<span class="btn-spinner"></span>Đang đăng nhập...';
-
-      google.script.run
-        .withSuccessHandler(function(user) {
-          finishLogin_(user, remember, pass);
-          btn.disabled = false; btn.textContent = 'Đăng nhập';
-        })
-        .withFailureHandler(function(err) {
-          errEl.textContent = err.message;
-          btn.disabled = false; btn.textContent = 'Đăng nhập';
-        })
-        .loginUser(lastUser.msnv, pass);
-    }
-
-    function switchToFullLogin_() {
-      document.getElementById('quickLoginView').style.display = 'none';
-      document.getElementById('fullLoginView').style.display = 'block';
-      document.getElementById('loginMsnvInput').focus();
-    }
-
-    /* ---- Đăng nhập đầy đủ (lần đầu trên máy này / chuyển tài khoản) ---- */
-    let msnvCheckTimer_ = null;
-
-    function submitFullLogin_() {
-      const msnv = document.getElementById('loginMsnvInput').value.trim();
-      const hoTen = document.getElementById('loginHoTenInput').value.trim();
-      const pass = document.getElementById('loginPasswordInput').value;
-      const errEl = document.getElementById('loginError');
-      const btn = document.getElementById('loginSubmitBtn');
-      const remember = document.getElementById('fullRememberCheck').checked;
-      const isNewAccount = document.getElementById('loginHoTenInput').style.display !== 'none';
-
-      if (!msnv) { errEl.textContent = 'Vui lòng nhập MSNV.'; return; }
-
-      errEl.textContent = '';
-      btn.disabled = true;
-      btn.innerHTML = '<span class="btn-spinner"></span>Đang đăng nhập...';
-
-      if (isNewAccount) {
-        if (!hoTen) {
-          errEl.textContent = 'Vui lòng nhập họ và tên.';
-          btn.disabled = false; btn.textContent = 'Đăng nhập';
-          return;
-        }
-        google.script.run
-          .withSuccessHandler(function(user) {
-            finishLogin_(user, remember, msnv); // tài khoản mới -> mật khẩu = MSNV
-            btn.disabled = false; btn.textContent = 'Đăng nhập';
-          })
-          .withFailureHandler(function(err) {
-            errEl.textContent = err.message;
-            btn.disabled = false; btn.textContent = 'Đăng nhập';
-          })
-          .registerUser(msnv, hoTen);
-      } else {
-        google.script.run
-          .withSuccessHandler(function(user) {
-            finishLogin_(user, remember, pass);
-            btn.disabled = false; btn.textContent = 'Đăng nhập';
-          })
-          .withFailureHandler(function(err) {
-            errEl.textContent = err.message;
-            btn.disabled = false; btn.textContent = 'Đăng nhập';
-          })
-          .loginUser(msnv, pass);
-      }
     }
 
     function openChangePasswordModal_() {
@@ -2494,10 +2404,11 @@
     }
 
     // Phòng trường hợp tải Dashboard không phản hồi (mất mạng, server treo...) - vẫn
-    // đóng màn hình chờ sau tối đa 8 giây, không để người dùng bị kẹt mãi.
-    setTimeout(markDashboardReadyForSplash_, 8000);
+    // đóng màn hình chờ sau tối đa 12 giây, không để người dùng bị kẹt mãi
+    // (nằm trong khoảng 10-15s theo yêu cầu tối ưu tốc độ tải).
+    setTimeout(markDashboardReadyForSplash_, 12000);
 
-    function showGreeting_() {
+    function showGreeting_(hoTen) {
       const hour = new Date().getHours();
       let text;
       if (hour >= 5 && hour < 11) text = 'Chào buổi sáng!';
@@ -2505,7 +2416,7 @@
       else if (hour >= 13 && hour < 18) text = 'Chào buổi chiều!';
       else text = 'Chào buổi tối!';
       const el = document.getElementById('splashGreeting');
-      if (el) el.textContent = text;
+      if (el) el.textContent = hoTen ? (text + ' ' + hoTen) : text;
     }
 
     function startSplashProgress_() {
@@ -2571,13 +2482,10 @@
         .getLastSyncTime();
     }
 
-    showGreeting_();
-    startSplashProgress_();
     renderCategoryButtons();
     renderEmptyTable();
     applySavedDisplayPrefs_();
     initDashSearchBox_();
-    splashStepDone_(); // bước 1: giao diện đã dựng xong
 
       /* ================= SIDEBAR + TAB ================= */
     // Dữ liệu Nhận phôi / Giao hàng được tải 1 LẦN DUY NHẤT lúc mở app (xem loadInitialAppData_),
@@ -3291,6 +3199,7 @@ function savePriorityTags_() {
 }
 let priorityTags_ = loadPriorityTags_();
 let dashLsxSearch_ = []; // mảng các từ khoá LSX, chỉ áp dụng khi bấm Enter / chọn gợi ý
+let priorityFilterActive_ = new Set(); // các nhãn ưu tiên (gap/ut1/ut2) đang bật để lọc bảng
 
 function priorityMeta_(tag) {
   switch (tag) {
@@ -4217,53 +4126,47 @@ function stepTrackQty_(delta) {
         .getInitialAppData();
     }
         (function initLoginScreen_() {
-    let remembered = null, lastUser = null;
-    try {
-      remembered = JSON.parse(localStorage.getItem('gcck_remember_creds') || 'null');
-      lastUser = JSON.parse(localStorage.getItem('gcck_last_user') || 'null');
-    } catch (e) {}
+    let lastUser = null;
+    try { lastUser = JSON.parse(localStorage.getItem('gcck_last_user') || 'null'); } catch (e) {}
 
-    if (remembered && remembered.msnv) {
-      // Đã lưu mật khẩu -> đăng nhập ngầm luôn, không cần hỏi lại gì
-      google.script.run
-        .withSuccessHandler(function(user) { finishLogin_(user, true, remembered.matKhau); })
-        .withFailureHandler(function() {
-          try { localStorage.removeItem('gcck_remember_creds'); } catch (e) {}
-          showLoginScreenFallback_(lastUser);
-        })
-        .loginUser(remembered.msnv, remembered.matKhau);
-      return;
+    let remembered = null;
+    try { remembered = JSON.parse(localStorage.getItem('gcck_remember_creds') || 'null'); } catch (e) {}
+
+    // Chỉ HIỆN SẴN tên/MSNV và mật khẩu (dạng dấu chấm vì input type="password") của lần
+    // đăng nhập trước - KHÔNG tự đăng nhập ngầm, người dùng vẫn bấm Enter/Đăng nhập để xác nhận.
+    if (lastUser && lastUser.msnv) {
+      document.getElementById('loginMsnvInput').value = lastUser.msnv;
     }
-    showLoginScreenFallback_(lastUser);
+    if (remembered && remembered.matKhau) {
+      document.getElementById('loginPasswordInput').value = remembered.matKhau;
+      document.getElementById('loginRememberCheck').checked = true;
+    }
+
+    setTimeout(function() {
+      const focusEl = (remembered && remembered.matKhau)
+        ? document.getElementById('loginPasswordInput')
+        : document.getElementById('loginMsnvInput');
+      if (focusEl) focusEl.focus();
+    }, 100);
   })();
 
-  function showLoginScreenFallback_(lastUser) {
-    if (lastUser && lastUser.msnv) {
-      document.getElementById('quickLoginView').style.display = 'block';
-      document.getElementById('fullLoginView').style.display = 'none';
-      document.getElementById('quickLoginName').textContent = lastUser.hoTen;
-      setTimeout(function() {
-        const pwEl = document.getElementById('quickPasswordInput');
-        if (pwEl) pwEl.focus();
-      }, 100);
-    } else {
-      document.getElementById('quickLoginView').style.display = 'none';
-      document.getElementById('fullLoginView').style.display = 'block';
-    }
-  }
+  let msnvCheckTimer_ = null;
 
   // Gõ MSNV xong -> hỏi ngay server có tài khoản này chưa, tự hiện ô "Họ và tên"
   // nếu là tài khoản mới (hiển thị "realtime" khi đang gõ, có debounce 250ms).
   document.getElementById('loginMsnvInput').addEventListener('input', function() {
     const msnv = this.value.trim();
     const hoTenInput = document.getElementById('loginHoTenInput');
+    const hoTenLabel = document.getElementById('loginHoTenLabel');
     clearTimeout(msnvCheckTimer_);
-    if (!msnv) { hoTenInput.style.display = 'none'; return; }
+    if (!msnv) { hoTenInput.style.display = 'none'; hoTenLabel.style.display = 'none'; return; }
 
     msnvCheckTimer_ = setTimeout(function() {
       google.script.run
         .withSuccessHandler(function(res) {
-          hoTenInput.style.display = res.exists ? 'none' : 'block';
+          const show = !res.exists;
+          hoTenInput.style.display = show ? 'block' : 'none';
+          hoTenLabel.style.display = show ? 'block' : 'none';
           if (!res.exists) hoTenInput.value = '';
         })
         .withFailureHandler(function() { /* im lặng, submit sẽ tự báo lỗi nếu có */ })
@@ -4271,22 +4174,59 @@ function stepTrackQty_(delta) {
     }, 250);
   });
 
-  document.getElementById('quickPasswordInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') submitQuickLogin_();
-  });
   document.getElementById('loginMsnvInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      const hoTenVisible = document.getElementById('loginHoTenInput').style.display !== 'none';
-      if (hoTenVisible) document.getElementById('loginHoTenInput').focus();
-      else document.getElementById('loginPasswordInput').focus();
-    }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const hoTenVisible = document.getElementById('loginHoTenInput').style.display !== 'none';
+    if (hoTenVisible) document.getElementById('loginHoTenInput').focus();
+    else document.getElementById('loginPasswordInput').focus();
   });
   document.getElementById('loginHoTenInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') document.getElementById('loginPasswordInput').focus();
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('loginPasswordInput').focus(); }
   });
   document.getElementById('loginPasswordInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') submitFullLogin_();
+    if (e.key === 'Enter') { e.preventDefault(); submitLogin_(); }
   });
+
+  // Đăng nhập THỐNG NHẤT (thay cho submitQuickLogin_/submitFullLogin_ cũ):
+  // - Nếu MSNV đã tồn tại -> loginUser(msnv, mật khẩu đã nhập).
+  // - Nếu MSNV CHƯA tồn tại (ô Họ và tên đang hiện) -> registerUser(msnv, hoTen), mật khẩu mặc định = MSNV.
+  function submitLogin_() {
+    const msnv = document.getElementById('loginMsnvInput').value.trim();
+    const hoTenInput = document.getElementById('loginHoTenInput');
+    const isNewAccount = hoTenInput.style.display !== 'none';
+    const hoTen = hoTenInput.value.trim();
+    const pass = document.getElementById('loginPasswordInput').value;
+    const remember = document.getElementById('loginRememberCheck').checked;
+    const errEl = document.getElementById('loginError');
+    const btn = document.getElementById('loginSubmitBtn');
+
+    if (!msnv) { errEl.textContent = 'Vui lòng nhập MSNV.'; return; }
+    if (isNewAccount && !hoTen) { errEl.textContent = 'Vui lòng nhập họ và tên.'; return; }
+    if (!isNewAccount && !pass) { errEl.textContent = 'Vui lòng nhập mật khẩu.'; return; }
+
+    errEl.textContent = '';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner"></span>Đang đăng nhập...';
+
+    function onFail(err) {
+      errEl.textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = 'Đăng nhập';
+    }
+
+    if (isNewAccount) {
+      google.script.run
+        .withSuccessHandler(function(user) { finishLogin_(user, remember, msnv); })
+        .withFailureHandler(onFail)
+        .registerUser(msnv, hoTen);
+    } else {
+      google.script.run
+        .withSuccessHandler(function(user) { finishLogin_(user, remember, pass); })
+        .withFailureHandler(onFail)
+        .loginUser(msnv, pass);
+    }
+  }
   </script>
 
 <div id="zoomPopover" class="zoom-popover" style="display:none;">
