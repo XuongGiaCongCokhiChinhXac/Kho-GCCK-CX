@@ -7,8 +7,19 @@
     body { font-family: Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box; }
     .header-area { padding: 16px 16px 0 16px; }
     .title-row { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; }
-    .summary { display: flex; gap: 16px; font-size: 14px; white-space: nowrap; }
-    .summary span { white-space: nowrap; }
+    .summary { display: flex; gap: 10px; font-size: 14px; flex-wrap: wrap; }
+    .summary-card {
+      display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px;
+      min-width: 140px; box-shadow: 0 1px 4px rgba(0,0,0,0.15); color: #fff;
+    }
+    .summary-icon { font-size: 18px; opacity: 0.9; width: 22px; text-align: center; }
+    .summary-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .summary-value { font-size: 17px; font-weight: 800; }
+    .summary-label { font-size: 11px; opacity: 0.9; white-space: nowrap; }
+    .summary-total { background: #1a73e8; }
+    .summary-received { background: #8e44ad; }
+    .summary-delivered { background: #2e7d32; }
+    .summary-pending { background: #e17055; }
     .toolbar-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin: 4px 0; }
     .toolbar-row .category-buttons { margin: 0; flex: 1; }
     .title-row-actions { display: flex; gap: 8px; }
@@ -455,9 +466,14 @@
 .sidebar-nav-btn {
   background: transparent; border: none; color: #cfe0ff; text-align: left;
   padding: 12px 16px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; white-space: nowrap;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 .sidebar-nav-btn i { width: 18px; text-align: center; }
-.sidebar-nav-btn:hover { background: rgba(255,255,255,0.12); }
+.sidebar-nav-btn:hover {
+  background: rgba(255,255,255,0.16);
+  transform: translateX(3px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+}
 .sidebar-nav-btn.active { background: #fff; color: #003DA5; font-weight: bold; }
 .sidebar.collapsed .nav-label { display: none; }
 .app-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
@@ -606,8 +622,8 @@
       display: flex; flex-direction: column; gap: 6px; padding: 6px 12px 14px 12px;
       overflow-y: auto; flex: 1; min-height: 0;
     }
-    .cat-btn-side { width: 100%; text-align: left; border-radius: 8px; padding: 9px 12px; box-shadow: none; font-size: 13px; }
-    .cat-btn-side:hover { transform: none; filter: brightness(1.08); }
+    .cat-btn-side { width: 100%; text-align: left; border-radius: 8px; padding: 9px 12px; box-shadow: none; font-size: 13px; transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease; }
+    .cat-btn-side:hover { transform: translateX(3px); filter: brightness(1.08); box-shadow: 0 3px 10px rgba(0,0,0,0.3); }
     .sidebar.collapsed .sidebar-category-list { padding: 6px 8px 14px 8px; }
     .sidebar.collapsed .cat-btn-side {
       text-align: center; padding: 9px 4px; font-size: 11px; overflow: hidden;
@@ -647,6 +663,25 @@
       padding: 6px 14px; font-size: 12px; cursor: pointer;
     }
     .dash-reset-btn:hover { background: #a51f1f; }
+
+    /* ===== Ô chi tiết từng chuyền: chia 4 ô Tổng/Gia công/Còn lại/Tiến độ ===== */
+    .chuyen-cell { padding: 4px !important; min-width: 118px; vertical-align: middle; }
+    .chuyen-empty { color: #bbb; font-size: 13px; }
+    .chuyen-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+    .chuyen-box {
+      background: #f3f4f6; border-radius: 5px; padding: 4px 5px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      line-height: 1.25; min-height: 34px;
+    }
+    .chuyen-label { font-size: 10px; color: #777; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2px; }
+    .chuyen-value { font-size: 14px; font-weight: 800; color: #222; }
+    .chuyen-box.chuyen-done { background: #34a853; }
+    .chuyen-box.chuyen-done .chuyen-label, .chuyen-box.chuyen-done .chuyen-value { color: #fff; }
+    .chuyen-box.chuyen-mid { background: #fff3cd; }
+    .chuyen-box.chuyen-mid .chuyen-value { color: #7a5b00; }
+    .chuyen-box.chuyen-low { background: #ffe1cc; }
+    .chuyen-box.chuyen-low .chuyen-value { color: #a24a00; }
+
     .dash-stats-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 16px 14px 16px; }
     .dash-stat-card {
       flex: 1; min-width: 140px; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
@@ -805,7 +840,7 @@
         <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
       </button>
       <button class="sidebar-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
-        <i class="fa-solid fa-magnifying-glass"></i><span class="nav-label">Check đơn hàng</span>
+        <i class="fa-solid fa-magnifying-glass-chart"></i><span class="nav-label">Tra cứu</span>
       </button>
       <button class="sidebar-nav-btn" data-tab="tab-nhanphoi" onclick="switchTab('tab-nhanphoi')">
         <i class="fa-solid fa-box-open"></i><span class="nav-label">Nhận phôi</span>
@@ -825,7 +860,7 @@
         <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
       </button>
       <button class="mobile-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
-        <i class="fa-solid fa-magnifying-glass"></i><span>Check đơn hàng</span>
+        <i class="fa-solid fa-magnifying-glass-chart"></i><span>Tra cứu</span>
       </button>
       <button class="mobile-nav-btn" data-tab="tab-nhanphoi" onclick="switchTab('tab-nhanphoi')">
         <i class="fa-solid fa-box-open"></i><span>Nhận phôi</span>
@@ -839,10 +874,8 @@
       <div id="tab-checkdon" class="tab-pane">
 
    <div class="header-area">
-    <div id="cellInfoBar" class="cell-info-bar">Chưa chọn ô nào</div>
-
     <div class="title-row">
-      <h2>Kiểm Tra Đơn Hàng</h2>
+      <h2>Tra Cứu Đơn Hàng</h2>
       <div class="title-row-actions">
         <span id="syncStatus" class="sync-status"></span>
         <button id="refreshBtn" class="icon-btn" title="Làm mới dữ liệu" onclick="refreshCurrentData()">
@@ -881,6 +914,7 @@
   </div>
 
   <div id="resultWrap" class="result-wrap" style="flex-direction:column;">
+    <div id="cellInfoBar" class="cell-info-bar">Chưa chọn ô nào</div>
     <div id="result" style="flex:1; overflow:auto;"></div>
     <div id="selectionBar"></div>
     <div id="loadingOverlay" class="loading-overlay" style="display:none;">
@@ -922,9 +956,11 @@
 
       <div id="tab-dashboard" class="tab-pane active">
         <div class="tracking-toolbar" style="flex-wrap:wrap;">
-          <h2 style="margin:0;">Dashboard tiến độ đơn hàng</h2>
+          <h2 style="margin:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            Dashboard tiến độ đơn hàng
+            <span id="progressSyncStatus" class="sync-status" style="font-weight:bold; font-size:13px;"></span>
+          </h2>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <span id="progressSyncStatus" class="sync-status"></span>
             <button id="refreshDashboardBtn" class="icon-btn" title="Làm mới" onclick="refreshDashboard_()">
               <i class="fa-solid fa-arrows-rotate"></i>
             </button>
@@ -933,7 +969,8 @@
         <div id="dashboardStats" class="dash-stats-row">
           <div class="dash-date-card">
             <div class="dash-stat-label">Lọc theo ngày KHGH</div>
-            <input type="date" id="dashFilterDate" class="dash-date-input" onchange="onDashDateChange_()" />
+            <input type="date" id="dashFilterDate" class="dash-date-input" onchange="onDashDateChange_()"
+              onclick="if (this.showPicker) { try { this.showPicker(); } catch (e) {} }" />
           </div>
           <div id="dashboardStatCards" style="display:contents;"></div>
         </div>
@@ -986,6 +1023,7 @@
       // Dữ liệu còn lại tải NGẦM phía sau, không chặn màn hình chờ.
       loadInitialAppData_();
       setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
+      setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
       startTrackingPolling_();
     }
 
@@ -1348,7 +1386,7 @@
         currentQuery = prefix;
         currentQueryMode = 'prefix';
         render(applyFilters(lastRows));
-        status.textContent = 'Tìm thấy ' + lastRows.length + '/' + lastRows.length + ' dòng. (đang cập nhật...)';
+        status.textContent = 'Đang cập nhật dữ liệu mới nhất...';
       } else {
         status.textContent = 'Đang tìm...';
         setLoading(true);
@@ -1379,11 +1417,20 @@
       const delivered = rows.filter(function(r) { return r.giao_hang; }).length;
       const notDelivered = total - delivered;
 
-      summary.innerHTML =
-        '<span>Tổng số món: <b>' + total + '</b></span>' +
-        '<span>Đã nhận vật tư: <b>' + received + '</b></span>' +
-        '<span>Đã giao hàng: <b>' + delivered + '</b></span>' +
-        '<span>Chưa giao: <b>' + notDelivered + '</b></span>';
+      const cards = [
+        { icon: 'fa-solid fa-list-ol',              label: 'Tổng số món',    value: total,        cls: 'summary-total' },
+        { icon: 'fa-solid fa-boxes-packing',        label: 'Đã nhận vật tư', value: received,     cls: 'summary-received' },
+        { icon: 'fa-solid fa-truck-fast',           label: 'Đã giao hàng',   value: delivered,    cls: 'summary-delivered' },
+        { icon: 'fa-solid fa-triangle-exclamation', label: 'Chưa giao',      value: notDelivered, cls: 'summary-pending' }
+      ];
+
+      summary.innerHTML = cards.map(function(c) {
+        return '<div class="summary-card ' + c.cls + '">' +
+          '<div class="summary-icon"><i class="' + c.icon + '"></i></div>' +
+          '<div class="summary-text"><span class="summary-value">' + c.value + '</span>' +
+          '<span class="summary-label">' + c.label + '</span></div>' +
+        '</div>';
+      }).join('');
     }
 
     function copyCell(el) {
@@ -1814,7 +1861,7 @@
         rows = reverseByLsxGroup_(rows);
       }
 
-      status.textContent = 'Tìm thấy ' + rows.length + '/' + lastRows.length + ' dòng.';
+      status.textContent = '';
       displayedRows = rows;
       updateSummary(rows); // đếm theo đúng dữ liệu đang hiển thị (sau khi lọc), không phải toàn bộ lastRows
       clearSelection();
@@ -2746,7 +2793,7 @@ function refreshGiaoHangTab() {
     /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
     let dashboardRows = [];
     let dashboardTypeFilter = null; // loại đơn đang được lọc trên bảng, null = không lọc
-    let dashCardFilter = 'default'; // 'default'|'all'|'completed'|'remaining'|'overdue'|'today'|'almost'
+    let dashCardFilter = 'all'; // 'all'|'completed'|'remaining'|'overdue'|'today'|'almost' - mặc định hiện TẤT CẢ
     let dashDateFilter = '';        // yyyy-mm-dd, khi có giá trị sẽ ưu tiên hơn dashCardFilter
     const DASHBOARD_CACHE_KEY = 'gcck_dashboard_cache_v1';
 
@@ -2765,12 +2812,12 @@ function refreshGiaoHangTab() {
 
     function onDashDateChange_() {
       dashDateFilter = document.getElementById('dashFilterDate').value;
-      dashCardFilter = dashDateFilter ? null : 'default';
+      dashCardFilter = dashDateFilter ? null : 'all';
       renderDashboard_();
     }
 
     function resetDashFilter_() {
-      dashCardFilter = 'default';
+      dashCardFilter = 'all';
       dashDateFilter = '';
       const dateEl = document.getElementById('dashFilterDate');
       if (dateEl) dateEl.value = '';
@@ -2830,6 +2877,8 @@ function refreshGiaoHangTab() {
       refreshDashboard_();
     }
 
+    const DASHBOARD_AUTO_REFRESH_MS = 15 * 60 * 1000; // 15 phút - khớp chu kỳ đồng bộ Sheet -> Supabase
+
     function refreshDashboard_() {
       const btn = document.getElementById('refreshDashboardBtn');
       if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
@@ -2848,6 +2897,24 @@ function refreshGiaoHangTab() {
           markDashboardReadyForSplash_();
           stop();
         })
+        .getDashboardData();
+
+      google.script.run
+        .withSuccessHandler(renderProgressSyncStatus_)
+        .withFailureHandler(function() {})
+        .getLastSyncTimeTienDo();
+    }
+
+    // Tự làm mới Dashboard mỗi 15 phút - ÂM THẦM, không spinner/toast để không làm
+    // phiền người đang xem, chỉ âm thầm cập nhật lại số liệu trên các ô/thẻ.
+    function refreshDashboardSilently_() {
+      google.script.run
+        .withSuccessHandler(function(rows) {
+          dashboardRows = rows || [];
+          saveDashboardCache_(dashboardRows);
+          renderDashboard_();
+        })
+        .withFailureHandler(function() { /* im lặng, 15 phút sau tự thử lại */ })
         .getDashboardData();
 
       google.script.run
@@ -2917,6 +2984,30 @@ function refreshGiaoHangTab() {
         pct + '%</span>';
     }
 
+    // Vẽ 1 ô chi tiết chuyền dạng lưới 2x2: Tổng / Gia công / Còn lại / Tiến độ - to, rõ,
+    // giống cách quản lý xem trên Google Sheet "TỔNG HỢP CÁC ĐƠN HÀNG".
+    function buildChuyenCell_(info) {
+      const tong = Number(info && info.tong) || 0;
+      if (tong === 0) {
+        return '<td class="chuyen-cell"><span class="chuyen-empty">-</span></td>';
+      }
+      const gc = Number(info.gc) || 0;
+      const conRaw = info.con;
+      const conLai = (conRaw === null || conRaw === undefined || conRaw === '')
+        ? Math.max(tong - gc, 0)
+        : Number(conRaw);
+      const pctNum = Number(info.td);
+      const pct = isNaN(pctNum) ? Math.round((gc / tong) * 1000) / 10 : Math.round(pctNum * 1000) / 10;
+      const pctClass = pct >= 100 ? 'chuyen-done' : (pct >= 50 ? 'chuyen-mid' : 'chuyen-low');
+
+      return '<td class="chuyen-cell"><div class="chuyen-grid">' +
+        '<div class="chuyen-box"><span class="chuyen-label">Tổng</span><span class="chuyen-value">' + tong + '</span></div>' +
+        '<div class="chuyen-box"><span class="chuyen-label">Gia công</span><span class="chuyen-value">' + gc + '</span></div>' +
+        '<div class="chuyen-box"><span class="chuyen-label">Còn lại</span><span class="chuyen-value">' + conLai + '</span></div>' +
+        '<div class="chuyen-box ' + pctClass + '"><span class="chuyen-label">Tiến độ</span><span class="chuyen-value">' + pct + '%</span></div>' +
+      '</div></td>';
+    }
+
     function renderDashboard_() {
       const todayStr = getTodayStr_();
       renderDashboardStats_(dashboardRows, todayStr); // thẻ luôn tính trên toàn bộ dữ liệu
@@ -2924,11 +3015,16 @@ function refreshGiaoHangTab() {
       const filtered = getDashFilteredRows_(dashboardRows, todayStr);
       renderDashboardFilterInfo_();
 
+      // Gộp theo loại đơn hàng bằng SỐ LỆNH (LSX) + % TRUNG BÌNH, thay vì total/delivered
+      // (2 field này luôn null khi đọc từ bảng tien_do_don_hang) - đây là lý do các ô loại
+      // đơn hàng trước đây luôn hiện 0% / 0/0 lệnh dù bảng bên dưới có dữ liệu.
       const byType = {};
       filtered.forEach(function(r) {
-        if (!byType[r.loai]) byType[r.loai] = { total: 0, delivered: 0 };
-        byType[r.loai].total += r.total;
-        byType[r.loai].delivered += r.delivered;
+        if (!byType[r.loai]) byType[r.loai] = { totalOrders: 0, doneOrders: 0, sumPercent: 0 };
+        const g = byType[r.loai];
+        g.totalOrders += 1;
+        if (r.percent >= 100) g.doneOrders += 1;
+        g.sumPercent += (Number(r.percent) || 0);
       });
 
       const summaryEl = document.getElementById('dashboardSummary');
@@ -2938,7 +3034,7 @@ function refreshGiaoHangTab() {
 
       summaryEl.innerHTML = typeKeys.map(function(t) {
         const g = byType[t];
-        const pct = g.total ? Math.round((g.delivered / g.total) * 100) : 0;
+        const pct = g.totalOrders ? Math.round(g.sumPercent / g.totalOrders) : 0;
         const meta = typeColorMap[t] || { color: '#576574', dark: false };
         const textColor = meta.dark ? '#333' : '#fff';
         const isActive = dashboardTypeFilter === t;
@@ -2947,7 +3043,7 @@ function refreshGiaoHangTab() {
           'onclick="filterDashboardByType_(\'' + t + '\')" title="Bấm để lọc bảng theo loại ' + t + '">' +
           '<span class="dash-type-chip-name">' + t + '</span>' +
           '<span class="dash-type-chip-pct">' + pct + '%</span>' +
-          '<span class="dash-type-chip-sub">' + g.delivered + '/' + g.total + ' lệnh</span>' +
+          '<span class="dash-type-chip-sub">' + g.doneOrders + '/' + g.totalOrders + ' lệnh</span>' +
         '</div>';
       }).join('') || '<div style="color:#999;">Không có dữ liệu phù hợp bộ lọc.</div>';
 
@@ -2972,23 +3068,7 @@ function refreshGiaoHangTab() {
           const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ff8a3d');
           let chuyenCells = '';
           CHUYEN_LABELS.forEach(function(c) {
-            const info = (r.chuyen && r.chuyen[c.key]) || {};
-            const tong = Number(info.tong) || 0;
-            if (tong === 0) {
-              // Chuyền này không có chi tiết nào cần gia công -> hiện dấu gạch ngang, nền trắng
-              chuyenCells += '<td style="font-size:11px; color:#aaa;">-</td>';
-            } else {
-              const pctNum = Number(info.td);
-              const pct = isNaN(pctNum) ? null : Math.round(pctNum * 1000) / 10;
-              const isDone = pct !== null && pct >= 100;
-              const cellStyle = isDone
-                ? 'background:#34a853; color:#fff; font-weight:bold; font-size:11px;'
-                : 'font-size:11px;';
-              chuyenCells += '<td style="' + cellStyle + '">' +
-                (info.gc || 0) + '/' + tong +
-                (isDone ? '' : ('<br>' + (pct !== null ? pct + '%' : ''))) +
-              '</td>';
-            }
+            chuyenCells += buildChuyenCell_(r.chuyen && r.chuyen[c.key]);
           });
           html += '<tr>' +
             '<td>' + r.lsx + '</td>' +
