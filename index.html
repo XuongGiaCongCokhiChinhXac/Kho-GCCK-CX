@@ -1194,6 +1194,7 @@
 
         // Tải Dashboard TRƯỚC (số liệu ở các ô), màn hình chờ sẽ đợi đúng bước này.
         loadDashboardOnLogin_();
+        loadPriorityTagsFromServer_();
 
         // Dữ liệu còn lại tải NGẦM phía sau, không chặn màn hình chờ.
         loadInitialAppData_();
@@ -3309,15 +3310,21 @@
         '</div></td>';
       }
 
-      const PRIORITY_TAGS_KEY = 'gcck_priority_tags_v1';
+         const PRIORITY_TAGS_CACHE_KEY = 'gcck_priority_tags_cache_v1'; // chỉ để hiện tạm lúc chưa tải xong từ server
+let priorityTags_ = {};
+try { priorityTags_ = JSON.parse(localStorage.getItem(PRIORITY_TAGS_CACHE_KEY) || '{}'); } catch (e) { priorityTags_ = {}; }
 
-  function loadPriorityTags_() {
-    try { return JSON.parse(localStorage.getItem(PRIORITY_TAGS_KEY) || '{}'); } catch (e) { return {}; }
-  }
-  function savePriorityTags_() {
-    try { localStorage.setItem(PRIORITY_TAGS_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
-  }
-  let priorityTags_ = loadPriorityTags_();
+// Tải nhãn ưu tiên THẬT từ Supabase - dùng chung cho mọi máy/mọi tài khoản, gọi lúc đăng nhập.
+function loadPriorityTagsFromServer_() {
+  google.script.run
+    .withSuccessHandler(function(tags) {
+      priorityTags_ = tags || {};
+      try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
+      renderDashboard_();
+    })
+    .withFailureHandler(function() { /* mất mạng -> tạm giữ cache cũ, không chặn app */ })
+    .getPriorityTags();
+}
   let dashLsxSearch_ = []; // mảng các từ khoá LSX, chỉ áp dụng khi bấm Enter / chọn gợi ý
   let priorityFilterActive_ = new Set(); // các nhãn ưu tiên (gap/ut1/ut2) đang bật để lọc bảng
 
@@ -3393,22 +3400,32 @@
     priorityPopupLsx_ = null;
   }
   function pickPriority_(value) {
-    if (!priorityPopupLsx_) return;
-    if (value) priorityTags_[priorityPopupLsx_] = value; else delete priorityTags_[priorityPopupLsx_];
-    savePriorityTags_();
-    closePriorityPopup_();
-    renderDashboard_();
-  }
+  if (!priorityPopupLsx_) return;
+  const lsx = priorityPopupLsx_;
+  if (value) priorityTags_[lsx] = value; else delete priorityTags_[lsx];
+  try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
+  closePriorityPopup_();
+  renderDashboard_();
+
+  google.script.run
+    .withFailureHandler(function(err) { showToast('Lưu nhãn ưu tiên thất bại: ' + err.message, 'error'); })
+    .savePriorityTag(lsx, value);
+}
   function pickPriorityCustom_() {
-    const lsx = priorityPopupLsx_;
-    closePriorityPopup_();
-    if (!lsx) return;
-    const custom = prompt('Nhập nhãn ưu tiên mới cho ' + lsx + ':');
-    if (!custom) return;
-    priorityTags_[lsx] = custom.trim();
-    savePriorityTags_();
-    renderDashboard_();
-  }
+  const lsx = priorityPopupLsx_;
+  closePriorityPopup_();
+  if (!lsx) return;
+  const custom = prompt('Nhập nhãn ưu tiên mới cho ' + lsx + ':');
+  if (!custom) return;
+  const tag = custom.trim();
+  priorityTags_[lsx] = tag;
+  try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
+  renderDashboard_();
+
+  google.script.run
+    .withFailureHandler(function(err) { showToast('Lưu nhãn ưu tiên thất bại: ' + err.message, 'error'); })
+    .savePriorityTag(lsx, tag);
+}
   document.addEventListener('click', function(e) {
     if (!e.target.closest('#priorityPopup') && !e.target.closest('.priority-pill')) closePriorityPopup_();
   });
