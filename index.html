@@ -914,7 +914,7 @@
           style="display:none; width:100%; padding:11px 12px; box-sizing:border-box; font-size:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:14px;" />
 
         <label style="font-size:13px; font-weight:700; color:#333; display:block; margin-bottom:6px;">Mật khẩu</label>
-        <input type="password" id="loginPasswordInput" placeholder="Nhập mật khẩu (mặc định là MSNV)" autocomplete="off"
+        <input type="password" id="loginPasswordInput" placeholder="Nhập mật khẩu" autocomplete="off"
           style="width:100%; padding:11px 12px; box-sizing:border-box; font-size:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:12px;" />
 
         <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#555; margin-bottom:18px; cursor:pointer;">
@@ -3684,20 +3684,38 @@ function togglePriorityFilter_(tag) {
     ];
 
     function openLsxDetailModal_(lsx) {
-      document.getElementById('lsxDetailTitle').textContent = 'Chi tiết chưa giao hàng - ' + lsx;
+      document.getElementById('lsxDetailTitle').textContent = lsx;
       document.getElementById('lsxDetailTable').innerHTML =
         '<tr><td style="padding:20px; text-align:center; color:#999;">Đang tải...</td></tr>';
       document.getElementById('lsxDetailOverlay').style.display = 'flex';
 
       google.script.run
         .withSuccessHandler(function(rows) {
-          renderLsxDetailTable_((rows || []).filter(function(r) { return !r.giao_hang; }));
+          rows = rows || [];
+          renderLsxDetailSummary_(lsx, rows);
+          renderLsxDetailTable_(rows.filter(function(r) { return !r.giao_hang; }));
         })
         .withFailureHandler(function(err) {
           document.getElementById('lsxDetailTable').innerHTML =
             '<tr><td style="padding:20px; text-align:center; color:#c62828;">Lỗi: ' + err.message + '</td></tr>';
         })
         .searchByLSX(lsx);
+    }
+
+    // Dòng thống kê: Tổng chi tiết / Đã giao / % Giao hàng / % Nhận VT, hiện ngay cạnh tiêu đề modal.
+    function renderLsxDetailSummary_(lsx, rows) {
+      const total = rows.length;
+      const delivered = rows.filter(function(r) { return r.giao_hang; }).length;
+      const receivedVT = rows.filter(function(r) { return r.nhan_vat_tu; }).length;
+      const deliveredPct = total ? Math.round((delivered / total) * 100) : 0;
+      const vtPct = total ? Math.round((receivedVT / total) * 100) : 0;
+
+      document.getElementById('lsxDetailTitle').innerHTML =
+        '<b style="font-size:15px;">' + escapeHtml_(lsx) + '</b>' +
+        ' &nbsp;•&nbsp; Tổng: <b>' + total + '</b>' +
+        ' &nbsp;•&nbsp; Đã giao: <b>' + delivered + '</b>' +
+        ' &nbsp;•&nbsp; Giao hàng: <b style="color:#2e7d32;">' + deliveredPct + '%</b>' +
+        ' &nbsp;•&nbsp; Nhận VT: <b style="color:#8e44ad;">' + vtPct + '%</b>';
     }
 
     function closeLsxDetailModal_() {
@@ -3708,7 +3726,8 @@ function togglePriorityFilter_(tag) {
       const table = document.getElementById('lsxDetailTable');
       let html = '<thead><tr>';
       LSX_DETAIL_COLUMNS.forEach(function(c) {
-        html += '<th style="background:#003DA5; color:#fff; padding:6px 8px; border:1px solid #ddd; white-space:nowrap; position:sticky; top:0;">' + c.label + '</th>';
+        const boldStyle = c.key === 'lsx' ? 'font-weight:800;' : '';
+        html += '<th style="background:#003DA5; color:#fff; padding:6px 8px; border:1px solid #ddd; white-space:normal; position:sticky; top:0;' + boldStyle + '">' + c.label + '</th>';
       });
       html += '</tr></thead><tbody>';
 
@@ -3720,13 +3739,14 @@ function togglePriorityFilter_(tag) {
           LSX_DETAIL_COLUMNS.forEach(function(c) {
             let val;
             if (c.bool) {
-              val = r[c.key] ? '&#10003;' : '';
+              val = '<span class="chk' + (r[c.key] ? ' checked' : '') + '">' + (r[c.key] ? '&#10003;' : '') + '</span>';
             } else if (c.key === 'khgh') {
               val = formatDate(r[c.key]);
             } else {
               val = (r[c.key] === null || r[c.key] === undefined) ? '' : escapeHtml_(String(r[c.key]));
             }
-            html += '<td style="padding:6px 8px; border:1px solid #ddd; white-space:nowrap; text-align:center;">' + val + '</td>';
+            const boldStyle = c.key === 'lsx' ? 'font-weight:800;' : '';
+            html += '<td style="padding:6px 8px; border:1px solid #ddd; white-space:normal; word-break:break-word; text-align:center;' + boldStyle + '">' + val + '</td>';
           });
           html += '</tr>';
         });
@@ -4563,9 +4583,9 @@ function stepTrackQty_(delta) {
   </div>
 
   <div id="lsxDetailOverlay" class="colvis-overlay" style="display:none;">
-    <div class="colvis-modal" style="width:min(96vw, 1100px); max-height:88vh;">
-      <div class="colvis-header">
-        <h3 id="lsxDetailTitle">Chi tiết chưa giao hàng</h3>
+    <div class="colvis-modal" style="width:min(96vw, 1400px); height:min(90vh, 900px); max-width:96vw; max-height:92vh; min-width:520px; min-height:300px; resize:both; overflow:auto;">
+      <div class="colvis-header" style="flex-wrap:wrap; align-items:flex-start;">
+        <h3 id="lsxDetailTitle" style="font-size:14px; font-weight:normal; flex:1; min-width:260px; margin-right:10px; line-height:1.6;">Chi tiết chưa giao hàng</h3>
         <span class="upbom-close" onclick="closeLsxDetailModal_()">&times;</span>
       </div>
       <div style="overflow:auto; flex:1;">
