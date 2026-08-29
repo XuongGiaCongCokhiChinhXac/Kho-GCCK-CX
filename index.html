@@ -741,8 +741,15 @@
 
     .dash-lsx-cell {
       font-size: 13px; font-weight: 900; color: #003DA5; cursor: pointer;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
+    .dash-lsx-cell .dash-lsx-text {
+      flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .dash-lsx-eye {
+      flex-shrink: 0; color: #7a8aa6; cursor: pointer; font-size: 13px;
+    }
+    .dash-lsx-eye:hover { color: #1a73e8; }
 
         /* ===== Popup chọn Ưu tiên (thay cho <select> xấu) ===== */
     .priority-pill {
@@ -768,7 +775,7 @@
     .dash-khgh-cell { font-size: 12px; font-weight: 800; color: #222; white-space: nowrap; }
     .dash-progress-col { width: 70px; min-width: 70px; max-width: 70px; }
     /* Vừa đủ dữ liệu, không chiếm hết bề ngang bảng như trước */
-    .dash-lsx-col { width: 100px; min-width: 100px; max-width: 100px; }
+    .dash-lsx-col { width: 116px; min-width: 116px; max-width: 116px; }
     .dash-priority-col { width: 74px; min-width: 74px; max-width: 74px; }
     .dash-khgh-col { width: 80px; min-width: 80px; max-width: 80px; }
     .dash-sanpham-col { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -813,6 +820,21 @@
 .dash-cal-day.dash-cal-muted { color: #ccc; }
 .dash-cal-footer { display: flex; justify-content: space-between; margin-top: 10px; }
 .dash-cal-footer button { border: none; background: none; color: #1a73e8; font-weight: 700; font-size: 13px; cursor: pointer; }
+
+    /* ===== Màn hình đăng nhập 2 cột (ảnh trái + form phải) ===== */
+    .login-card {
+      display: flex; width: min(94vw, 860px); min-height: 480px;
+      background: #fff; border-radius: 20px; overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+    .login-card-image { flex: 0 0 46%; background: #eef3fb; }
+    .login-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .login-card-form { flex: 1; padding: 40px 38px; text-align: left; overflow-y: auto; }
+    @media (max-width: 768px) {
+      .login-card { flex-direction: column; width: 92vw; min-height: 0; }
+      .login-card-image { flex: 0 0 160px; }
+      .login-card-form { padding: 26px 22px; }
+    }
 
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -862,15 +884,30 @@
 </script>
 
    <div id="loginOverlay" class="splash-overlay" style="z-index:600;">
-    <div class="splash-box" style="width:340px;">
-      <div style="background:#fff; border:1px solid #eee; border-radius:16px; padding:28px 26px; box-shadow:0 8px 30px rgba(0,0,0,0.08); text-align:left;">
-        <div style="font-size:22px; font-weight:800; color:#003DA5; margin-bottom:4px;">Đăng nhập</div>
-        <div style="font-size:13px; color:#888; margin-bottom:20px;">Điền thông tin để đăng nhập</div>
+    <div class="login-card">
+      <div class="login-card-image">
+        <img src="https://drive.google.com/uc?export=view&id=1fUaKy2xgt2P_KXRbRpUtje3pUQBbWQIE" alt="THACO Industries" />
+      </div>
+      <div class="login-card-form">
+        <div style="font-size:24px; font-weight:800; color:#003DA5; margin-bottom:4px;">Đăng nhập</div>
+        <div style="font-size:13px; color:#888; margin-bottom:22px;">Điền thông tin để đăng nhập</div>
 
-        <label style="font-size:13px; font-weight:700; color:#333; display:block; margin-bottom:6px;">MSNV</label>
-        <input type="text" id="loginMsnvInput" placeholder="Nhập MSNV" autocomplete="off"
-          inputmode="numeric" pattern="[0-9]*"
-          style="width:100%; padding:11px 12px; box-sizing:border-box; font-size:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:14px;" />
+        <div id="loginWelcomeBack" style="display:none; margin-bottom:16px;">
+          <div style="display:flex; align-items:center; gap:10px; background:#f2f6fd; border-radius:10px; padding:10px 12px;">
+            <i class="fa-regular fa-circle-user" style="font-size:26px; color:#1a73e8;"></i>
+            <div>
+              <div style="font-size:11px; color:#888;">Xin chào</div>
+              <div id="loginWelcomeName" style="font-size:15px; font-weight:700; color:#222;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="loginMsnvGroup">
+          <label style="font-size:13px; font-weight:700; color:#333; display:block; margin-bottom:6px;">MSNV</label>
+          <input type="text" id="loginMsnvInput" placeholder="Nhập MSNV" autocomplete="off"
+            inputmode="numeric" pattern="[0-9]*"
+            style="width:100%; padding:11px 12px; box-sizing:border-box; font-size:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:14px;" />
+        </div>
 
         <label id="loginHoTenLabel" style="display:none; font-size:13px; font-weight:700; color:#333; margin-bottom:6px;">Họ và tên (tài khoản mới)</label>
         <input type="text" id="loginHoTenInput" placeholder="Họ và tên" autocomplete="off"
@@ -886,6 +923,10 @@
 
         <button type="button" id="loginSubmitBtn" onclick="submitLogin_()"
           style="width:100%; padding:13px; background:#1a73e8; color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer;">Đăng nhập</button>
+
+        <div id="loginSwitchAccountRow" style="display:none; text-align:center; margin-top:14px;">
+          <a href="javascript:void(0)" onclick="switchLoginAccount_()" style="font-size:13px; color:#1a73e8; text-decoration:none;">Đăng nhập tài khoản khác</a>
+        </div>
 
         <div id="loginError" style="color:#c62828; font-size:13px; margin-top:10px; min-height:16px;"></div>
       </div>
@@ -1140,11 +1181,10 @@
       } catch (e) {}
 
       document.getElementById('topbarUserName').textContent = user.hoTen;
-      document.getElementById('loginOverlay').style.display = 'none';
 
-      // Bắt đầu màn hình chờ NGAY SAU KHI đăng nhập thành công (không chạy ngầm từ trước nữa).
+      // Màn hình chờ đã mở sẵn từ lúc bấm nút Đăng nhập (xem submitLogin_) - ở đây chỉ cần
+      // cập nhật lại lời chào cho đúng tên thật (phòng lúc bấm nút chưa đoán được tên).
       showGreeting_(user.hoTen);
-      startSplashProgress_();
       splashStepDone_(); // bước 1: giao diện đã dựng sẵn từ trước lúc load trang
 
       // Tải Dashboard TRƯỚC (số liệu ở các ô), màn hình chờ sẽ đợi đúng bước này.
@@ -2460,6 +2500,17 @@
       splashStepDone_();
     }
 
+    // Dọn lại toàn bộ trạng thái màn chờ trước mỗi lần đăng nhập mới, để lần đăng nhập
+    // thất bại trước đó (đã set splashFinished/splashStepsDone) không làm sai lệch lần sau.
+    function resetSplashUI_() {
+      splashFinished = false;
+      splashStepsDone = 0;
+      dashboardSplashDone_ = false;
+      splashProgress = 0;
+      if (splashTimer) { clearInterval(splashTimer); splashTimer = null; }
+      updateSplashUI_(0, 'Đang tải dữ liệu...');
+    }
+
     // Phòng trường hợp tải Dashboard không phản hồi (mất mạng, server treo...) - vẫn
     // đóng màn hình chờ sau tối đa 12 giây, không để người dùng bị kẹt mãi
     // (nằm trong khoảng 10-15s theo yêu cầu tối ưu tốc độ tải).
@@ -3572,8 +3623,13 @@ function togglePriorityFilter_(tag) {
         const tag = priorityTags_[r.lsx] || '';
         const rowStyle = priorityRowStyle_(tag);
         const rowClass = tag ? ' class="dash-row-priority"' : '';
+        const safeLsxAttr = escapeHtml_(r.lsx).replace(/'/g, "\\'");
         return '<tr' + rowClass + ' style="' + rowStyle + '">' +
-          '<td class="dash-lsx-cell"' + nextAttrs() + '>' + escapeHtml_(r.lsx) + '</td>' +
+          '<td class="dash-lsx-cell"' + nextAttrs() + '>' +
+            '<span class="dash-lsx-text">' + escapeHtml_(r.lsx) + '</span>' +
+            '<i class="fa-solid fa-eye dash-lsx-eye" title="Xem chi tiết chưa giao hàng" ' +
+              'onclick="event.stopPropagation(); openLsxDetailModal_(\'' + safeLsxAttr + '\')"></i>' +
+          '</td>' +
           '<td class="dash-sanpham-col"' + nextAttrs() + '>' + escapeHtml_(r.sanPham || '') + '</td>' +
           '<td' + nextAttrs() + '>' + buildPriorityDropdown_(r.lsx, tag) + '</td>' +
           '<td class="dash-khgh-cell"' + nextAttrs() + '>' + formatDate(r.khgh) + '</td>' +
@@ -3603,6 +3659,81 @@ function togglePriorityFilter_(tag) {
         }
       }
       requestAnimationFrame(renderChunk);
+    }
+
+    /* ================= MODAL XEM CHI TIẾT CHƯA GIAO HÀNG (con mắt cạnh LSX) ================= */
+    const LSX_DETAIL_COLUMNS = [
+      { key: 'khgh', label: 'KHGH' },
+      { key: 'lsx', label: 'LSX' },
+      { key: 'stt_ct', label: 'STT CT' },
+      { key: 'msct', label: 'MSCT' },
+      { key: 'ten_chi_tiet', label: 'Tên chi tiết' },
+      { key: 'vat_lieu', label: 'Vật liệu' },
+      { key: 'dai', label: 'Dài' },
+      { key: 'rong', label: 'Rộng' },
+      { key: 'day', label: 'Dày' },
+      { key: 'hinh_hop', label: 'Hình/hộp' },
+      { key: 'dn', label: 'Dn' },
+      { key: 'dt', label: 'Dt' },
+      { key: 'sl_dh', label: 'SL/ĐH' },
+      { key: 'cong_doan_truoc', label: 'CĐ.trước' },
+      { key: 'cong_doan_sau', label: 'CĐ sau' },
+      { key: 'nhan_vat_tu', label: 'VT', bool: true },
+      { key: 'giao_hang', label: 'GH', bool: true },
+      { key: 'ghi_chu', label: 'Ghi chú' }
+    ];
+
+    function openLsxDetailModal_(lsx) {
+      document.getElementById('lsxDetailTitle').textContent = 'Chi tiết chưa giao hàng - ' + lsx;
+      document.getElementById('lsxDetailTable').innerHTML =
+        '<tr><td style="padding:20px; text-align:center; color:#999;">Đang tải...</td></tr>';
+      document.getElementById('lsxDetailOverlay').style.display = 'flex';
+
+      google.script.run
+        .withSuccessHandler(function(rows) {
+          renderLsxDetailTable_((rows || []).filter(function(r) { return !r.giao_hang; }));
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('lsxDetailTable').innerHTML =
+            '<tr><td style="padding:20px; text-align:center; color:#c62828;">Lỗi: ' + err.message + '</td></tr>';
+        })
+        .searchByLSX(lsx);
+    }
+
+    function closeLsxDetailModal_() {
+      document.getElementById('lsxDetailOverlay').style.display = 'none';
+    }
+
+    function renderLsxDetailTable_(rows) {
+      const table = document.getElementById('lsxDetailTable');
+      let html = '<thead><tr>';
+      LSX_DETAIL_COLUMNS.forEach(function(c) {
+        html += '<th style="background:#003DA5; color:#fff; padding:6px 8px; border:1px solid #ddd; white-space:nowrap; position:sticky; top:0;">' + c.label + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+
+      if (rows.length === 0) {
+        html += '<tr><td colspan="' + LSX_DETAIL_COLUMNS.length + '" style="padding:20px; text-align:center; color:#999;">Đơn hàng đã giao đủ, không còn món nào chưa giao.</td></tr>';
+      } else {
+        rows.forEach(function(r) {
+          html += '<tr>';
+          LSX_DETAIL_COLUMNS.forEach(function(c) {
+            let val;
+            if (c.bool) {
+              val = r[c.key] ? '&#10003;' : '';
+            } else if (c.key === 'khgh') {
+              val = formatDate(r[c.key]);
+            } else {
+              val = (r[c.key] === null || r[c.key] === undefined) ? '' : escapeHtml_(String(r[c.key]));
+            }
+            html += '<td style="padding:6px 8px; border:1px solid #ddd; white-space:nowrap; text-align:center;">' + val + '</td>';
+          });
+          html += '</tr>';
+        });
+      }
+
+      html += '</tbody>';
+      table.innerHTML = html;
     }
 
     /* ================= MODAL NHẬN PHÔI / GIAO HÀNG + QR ================= */
@@ -4228,15 +4359,20 @@ function stepTrackQty_(delta) {
         })
         .getInitialAppData();
     }
-        (function initLoginScreen_() {
+        function applyLoginScreenState_() {
     let lastUser = null;
     try { lastUser = JSON.parse(localStorage.getItem('gcck_last_user') || 'null'); } catch (e) {}
 
     let remembered = null;
     try { remembered = JSON.parse(localStorage.getItem('gcck_remember_creds') || 'null'); } catch (e) {}
 
-    // Chỉ HIỆN SẴN tên/MSNV và mật khẩu (dạng dấu chấm vì input type="password") của lần
-    // đăng nhập trước - KHÔNG tự đăng nhập ngầm, người dùng vẫn bấm Enter/Đăng nhập để xác nhận.
+    const msnvGroup = document.getElementById('loginMsnvGroup');
+    const welcomeBack = document.getElementById('loginWelcomeBack');
+    const welcomeName = document.getElementById('loginWelcomeName');
+    const switchRow = document.getElementById('loginSwitchAccountRow');
+
+    // Chỉ HIỆN SẴN MSNV/mật khẩu của lần đăng nhập trước - KHÔNG tự đăng nhập ngầm,
+    // người dùng vẫn bấm Enter/Đăng nhập để xác nhận.
     if (lastUser && lastUser.msnv) {
       document.getElementById('loginMsnvInput').value = lastUser.msnv;
     }
@@ -4245,13 +4381,45 @@ function stepTrackQty_(delta) {
       document.getElementById('loginRememberCheck').checked = true;
     }
 
+    // Từ lần đăng nhập thứ 2 trở đi: hiện TÊN người dùng thay vì ô MSNV. MSNV thật vẫn
+    // nằm trong ô input (đã gán giá trị ở trên) nên submitLogin_ vẫn đọc đúng, chỉ ẩn đi
+    // trên giao diện.
+    if (lastUser && lastUser.msnv && lastUser.hoTen) {
+      msnvGroup.style.display = 'none';
+      welcomeBack.style.display = 'block';
+      welcomeName.textContent = lastUser.hoTen;
+      switchRow.style.display = 'block';
+    } else {
+      msnvGroup.style.display = 'block';
+      welcomeBack.style.display = 'none';
+      switchRow.style.display = 'none';
+    }
+
     setTimeout(function() {
-      const focusEl = (remembered && remembered.matKhau)
+      const focusEl = (welcomeBack.style.display === 'block' || (remembered && remembered.matKhau))
         ? document.getElementById('loginPasswordInput')
         : document.getElementById('loginMsnvInput');
       if (focusEl) focusEl.focus();
     }, 100);
-  })();
+  }
+  applyLoginScreenState_();
+
+  // "Đăng nhập tài khoản khác": xoá thông tin đã nhớ, quay về form nhập MSNV trống.
+  function switchLoginAccount_() {
+    try {
+      localStorage.removeItem('gcck_last_user');
+      localStorage.removeItem('gcck_remember_creds');
+    } catch (e) {}
+    document.getElementById('loginMsnvInput').value = '';
+    document.getElementById('loginPasswordInput').value = '';
+    document.getElementById('loginRememberCheck').checked = false;
+    document.getElementById('loginHoTenInput').value = '';
+    document.getElementById('loginHoTenInput').style.display = 'none';
+    document.getElementById('loginHoTenLabel').style.display = 'none';
+    document.getElementById('loginError').textContent = '';
+    applyLoginScreenState_();
+    document.getElementById('loginMsnvInput').focus();
+  }
 
   let msnvCheckTimer_ = null;
 
@@ -4302,20 +4470,37 @@ function stepTrackQty_(delta) {
     const pass = document.getElementById('loginPasswordInput').value;
     const remember = document.getElementById('loginRememberCheck').checked;
     const errEl = document.getElementById('loginError');
-    const btn = document.getElementById('loginSubmitBtn');
 
     if (!msnv) { errEl.textContent = 'Vui lòng nhập MSNV.'; return; }
     if (isNewAccount && !hoTen) { errEl.textContent = 'Vui lòng nhập họ và tên.'; return; }
     if (!isNewAccount && !pass) { errEl.textContent = 'Vui lòng nhập mật khẩu.'; return; }
 
     errEl.textContent = '';
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn-spinner"></span>Đang đăng nhập...';
+
+    // Chuyển sang màn hình chờ NGAY khi bấm nút - không bắt người dùng đứng nhìn nút
+    // "Đang đăng nhập..." nữa. Việc xác thực + tải Dashboard diễn ra TRONG màn chờ này.
+    let guessedName = hoTen; // tài khoản mới đăng ký -> đã biết tên ngay từ ô nhập
+    if (!guessedName) {
+      try {
+        const lastUser = JSON.parse(localStorage.getItem('gcck_last_user') || 'null');
+        if (lastUser && lastUser.msnv === msnv) guessedName = lastUser.hoTen;
+      } catch (e) {}
+    }
+    document.getElementById('loginOverlay').style.display = 'none';
+    resetSplashUI_();
+    showGreeting_(guessedName);
+    const splashEl = document.getElementById('splashOverlay');
+    splashEl.style.display = 'flex';
+    splashEl.style.opacity = '1';
+    startSplashProgress_();
 
     function onFail(err) {
+      // Đăng nhập thất bại -> đóng màn chờ, quay lại form, giữ nguyên dữ liệu đã nhập.
+      if (splashTimer) { clearInterval(splashTimer); splashTimer = null; }
+      splashEl.style.opacity = '0';
+      splashEl.style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'flex';
       errEl.textContent = err.message;
-      btn.disabled = false;
-      btn.textContent = 'Đăng nhập';
     }
 
     if (isNewAccount) {
@@ -4373,6 +4558,21 @@ function stepTrackQty_(delta) {
       <div id="colVisList" class="colvis-list"></div>
       <div class="colvis-footer">
         <button type="button" onclick="closeColumnVisibilityModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="lsxDetailOverlay" class="colvis-overlay" style="display:none;">
+    <div class="colvis-modal" style="width:min(96vw, 1100px); max-height:88vh;">
+      <div class="colvis-header">
+        <h3 id="lsxDetailTitle">Chi tiết chưa giao hàng</h3>
+        <span class="upbom-close" onclick="closeLsxDetailModal_()">&times;</span>
+      </div>
+      <div style="overflow:auto; flex:1;">
+        <table id="lsxDetailTable" style="width:100%; border-collapse:collapse; font-size:12px;"></table>
+      </div>
+      <div class="upbom-footer">
+        <button type="button" class="upbom-cancel" onclick="closeLsxDetailModal_()">Đóng</button>
       </div>
     </div>
   </div>
