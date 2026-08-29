@@ -958,6 +958,10 @@
         <span>Xưởng Gia Công Cơ Khí Chính Xác</span>
       </div>
       <div class="topbar-right">
+        <span id="onlineBadge" style="display:none; align-items:center; gap:6px; font-size:12px; color:#e8f0ff; margin-right:2px;">
+          <span style="width:8px; height:8px; border-radius:50%; background:#4ade80; display:inline-block; animation: syncBlink 1.4s ease-in-out infinite; box-shadow:0 0 6px #4ade80;"></span>
+          <span id="onlineCountText">0 đang online</span>
+        </span>
         <div class="topbar-user" id="topbarUserMenu">
           <button class="topbar-user-btn" onclick="toggleUserMenu_()">
             <i class="fa-regular fa-circle-user"></i>
@@ -1172,6 +1176,21 @@
       const lsxInput = document.getElementById('lsxInput');
 
           let currentUser_ = null; // { msnv, hoTen }
+      const ONLINE_HEARTBEAT_MS = 20000; // 20 giây báo nhịp tim 1 lần
+
+      function sendHeartbeat_() {
+        if (!currentUser_) return;
+        google.script.run
+          .withSuccessHandler(function(count) {
+            const badge = document.getElementById('onlineBadge');
+            const text = document.getElementById('onlineCountText');
+            if (!badge || !text) return;
+            text.textContent = count + ' đang online';
+            badge.style.display = 'inline-flex';
+          })
+          .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
+          .heartbeatOnline(currentUser_.msnv);
+      }
 
       // Gọi khi đăng nhập THÀNH CÔNG - lưu lại thông tin cho lần sau, rồi bật màn hình chờ.
       function finishLogin_(user, remember, passUsed) {
@@ -1200,7 +1219,14 @@
         loadInitialAppData_();
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
         setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
-        setInterval(pollPriorityTagsSilently_, PRIORITY_TAGS_POLL_MS);
+        // Hoãn 4 giây, tránh gọi cùng lúc với các lệnh tải quan trọng lúc mới đăng nhập
+        // (nguyên nhân từng gây treo lâu ở màn hình chờ do Apps Script giới hạn số lượt gọi đồng thời).
+        setTimeout(function() {
+          setInterval(pollPriorityTagsSilently_, PRIORITY_TAGS_POLL_MS);
+        }, 4000);
+        // Nhịp tim báo "đang online" - gửi lần đầu ngay, sau đó lặp lại mỗi 20 giây.
+        sendHeartbeat_();
+        setInterval(sendHeartbeat_, ONLINE_HEARTBEAT_MS);
         startTrackingPolling_();
       }
 
