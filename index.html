@@ -778,6 +778,10 @@
     .chuyen-box.chuyen-mid .chuyen-value { color: #7a5b00; }
     .chuyen-box.chuyen-low { background: #ffe1cc; }
     .chuyen-box.chuyen-low .chuyen-value { color: #a24a00; }
+    /* Tô nhạt cả hàng theo ưu tiên nhưng KHÔNG đổi màu chữ. td vốn có nền trắng
+       riêng (.tracking-table-wrap td), nên phải ép nó "kế thừa" nền của tr —
+       thiếu dòng này thì ô nào không có color riêng (VD Sản phẩm) sẽ bị chữ trắng/trắng. */
+    .dash-row-priority td { background: inherit !important; }
 
     .dash-stats-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 16px 14px 16px; }
     .dash-stat-card {
@@ -1091,8 +1095,8 @@
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button type="button" class="quick-btn" id="prioFilterBtn-gap" onclick="togglePriorityFilter_('gap')" style="border-color:#d62828; color:#d62828;">Gấp</button>
-            <button type="button" class="quick-btn" id="prioFilterBtn-ut1" onclick="togglePriorityFilter_('ut1')" style="border-color:#ff8c00; color:#ff8c00;">ƯT1</button>
-            <button type="button" class="quick-btn" id="prioFilterBtn-ut2" onclick="togglePriorityFilter_('ut2')" style="border-color:#fbbc04; color:#a17d00;">ƯT2</button>
+            <button type="button" class="quick-btn" id="prioFilterBtn-ut1" onclick="togglePriorityFilter_('ut1')" style="border-color:#ff8c00; color:#ff8c00;">&#431;T1</button>
+            <button type="button" class="quick-btn" id="prioFilterBtn-ut2" onclick="togglePriorityFilter_('ut2')" style="border-color:#fbbc04; color:#a17d00;">&#431;T2</button>
           </div>
         </div>
         <div id="dashboardFilterInfo" style="padding:0 16px 6px 16px; font-size:13px;"></div>
@@ -2844,7 +2848,7 @@ function refreshGiaoHangTab() {
     /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
     let dashboardRows = [];
     let dashboardTypeFilter = null; // loại đơn đang được lọc trên bảng, null = không lọc
-    let dashCardFilter = 'all'; // 'all'|'completed'|'remaining'|'overdue'|'today'|'almost' - mặc định hiện TẤT CẢ
+    let dashCardFilter = 'priority_default'; // mặc định: hiện đơn Gấp/Ưu tiên; không có thì hiện đơn sắp xong
     let dashDateFilter = '';        // yyyy-mm-dd, khi có giá trị sẽ ưu tiên hơn dashCardFilter
     const DASHBOARD_CACHE_KEY = 'gcck_dashboard_cache_v1';
     let dashboardRenderedOnce_ = false; // đã build DOM bảng dashboard lần nào chưa
@@ -2965,8 +2969,14 @@ function dashCalClear_() {
         case 'overdue': return rows.filter(function(r) { return r.tienDoPercent < 100 && r.khgh && r.khgh < todayStr; });
         case 'today': return rows.filter(function(r) { return r.khgh === todayStr; });
         case 'almost': return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
-        default:
-          return rows.filter(function(r) { return r.khgh === todayStr || (r.tienDoPercent >= 80 && r.tienDoPercent < 100); });
+        case 'priority_default': {
+          // Mặc định: chỉ hiện các đơn đã gắn nhãn Gấp/ƯT1/ƯT2/ƯT3/nhãn tự đặt.
+          // Nếu chưa có đơn nào được gắn nhãn -> fallback sang "sắp xong" (>=80%, <100%).
+          const withPriority = rows.filter(function(r) { return !!priorityTags_[r.lsx]; });
+          if (withPriority.length > 0) return withPriority;
+          return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
+        }
+        default: return rows;
       }
     }
 
@@ -3059,7 +3069,7 @@ function dashCalClear_() {
       const labelMap = {
         all: 'Tất cả đơn hàng', completed: 'Đã hoàn thành', remaining: 'Còn lại',
         overdue: 'Trễ KHGH', today: 'KHGH hôm nay', almost: 'Sắp xong (>80%)',
-        default: 'KHGH hôm nay & sắp xong (mặc định)'
+        priority_default: 'Đơn Gấp/Ưu tiên (mặc định) — không có thì hiện đơn sắp xong'
       };
       const text = dashDateFilter
         ? 'Đang lọc theo ngày KHGH: <b>' + formatDate(dashDateFilter) + '</b>'
@@ -3257,17 +3267,18 @@ let priorityFilterActive_ = new Set(); // các nhãn ưu tiên (gap/ut1/ut2) đa
 
 function priorityMeta_(tag) {
   switch (tag) {
-    case 'gap': return { label: 'Gấp', bg: '#d62828', color: '#fff' };
-    case 'ut1': return { label: 'ƯT1', bg: '#ff8c00', color: '#fff' };
-    case 'ut2': return { label: 'ƯT2', bg: '#fbbc04', color: '#3a2e00' };
-    default:    return { label: tag || '', bg: '#fff', color: '#c62828' }; // ƯT3, +thêm, trống
+    case 'gap': return { label: 'Gấp', bg: '#d62828', color: '#fff', tint: '#fdecea' };
+    case 'ut1': return { label: '\u01AFT1', bg: '#ff8c00', color: '#fff', tint: '#fff1e0' };
+    case 'ut2': return { label: '\u01AFT2', bg: '#fbbc04', color: '#3a2e00', tint: '#fff8e1' };
+    case 'ut3': return { label: '\u01AFT3', bg: '#6c5ce7', color: '#fff', tint: '#f0edfd' };
+    default:    return { label: tag || '', bg: '#fff', color: '#c62828', tint: '' }; // nhãn tự đặt, trống
   }
 }
 
 function priorityRowStyle_(tag) {
   if (!tag) return '';
   const meta = priorityMeta_(tag);
-  return 'background:' + meta.bg + ' !important; color:' + meta.color + ';';
+  return meta.tint ? ('background:' + meta.tint + ';') : '';
 }
 
 // Pill nhỏ gọn: có tag -> hiện màu + chữ; trống -> để trắng, KHÔNG in chữ "(Trống)"
@@ -3284,9 +3295,9 @@ function buildPriorityDropdown_(lsx, tag) {
 const PRIORITY_POPUP_OPTIONS = [
   { value: '',    label: '(Trống)', bg: '#fff',     color: '#666', border: '1px solid #ddd' },
   { value: 'gap', label: 'Gấp',     bg: '#d62828',  color: '#fff' },
-  { value: 'ut1', label: 'ƯT1',     bg: '#ff8c00',  color: '#fff' },
-  { value: 'ut2', label: 'ƯT2',     bg: '#fbbc04',  color: '#3a2e00' },
-  { value: 'ut3', label: 'ƯT3',     bg: '#6c5ce7',  color: '#fff' }
+  { value: 'ut1', label: '\u01AFT1', bg: '#ff8c00',  color: '#fff' },
+  { value: 'ut2', label: '\u01AFT2', bg: '#fbbc04',  color: '#3a2e00' },
+  { value: 'ut3', label: '\u01AFT3', bg: '#6c5ce7',  color: '#fff' }
 ];
 
 let priorityPopupLsx_ = null;
@@ -3300,13 +3311,25 @@ function openPriorityPopup_(e, lsx) {
       (o.border ? '; border:' + o.border : '') + ';" onclick="pickPriority_(\'' + o.value + '\')">' + o.label + '</div>';
   }).join('') + '<div class="priority-popup-add" onclick="pickPriorityCustom_()">+ Thêm nhãn khác...</div>';
 
+  popup.style.display = 'block'; // hiện trước để đo được chiều cao thật (offsetHeight)
   const rect = e.target.getBoundingClientRect();
+  const popupHeight = popup.offsetHeight;
+  const popupWidth = popup.offsetWidth || 150;
+
   let top = rect.bottom + 4;
+  // Nếu popup mở xuống sẽ vượt đáy màn hình -> mở LÊN TRÊN ô bấm thay vào đó,
+  // để luôn thấy trọn popup kể cả khi ô nằm cuối bảng.
+  if (top + popupHeight > window.innerHeight - 8) {
+    top = rect.top - popupHeight - 4;
+    if (top < 8) top = 8; // phòng khi cả 2 phía đều không đủ chỗ
+  }
+
   let left = rect.left;
-  if (left + 150 > window.innerWidth) left = window.innerWidth - 158;
+  if (left + popupWidth > window.innerWidth) left = window.innerWidth - popupWidth - 8;
+  if (left < 8) left = 8;
+
   popup.style.top = top + 'px';
   popup.style.left = left + 'px';
-  popup.style.display = 'block';
 }
 function closePriorityPopup_() {
   const popup = document.getElementById('priorityPopup');
@@ -3432,9 +3455,27 @@ function togglePriorityFilter_(tag) {
       });
     }
 
+    function bucketPercent_(pct) {
+      pct = Number(pct) || 0;
+      if (pct >= 100) return '100%';
+      if (pct >= 80) return '80-99%';
+      if (pct >= 50) return '50-79%';
+      if (pct > 0) return '1-49%';
+      return '0%';
+    }
+
     function renderDashboard_() {
       dashboardRenderedOnce_ = true;
       const todayStr = getTodayStr_();
+
+      // Gán trường "ảo" để lọc được theo Ưu tiên / Tiến độ / % Kho giao hàng
+      // giống các cột khác (hệ thống lọc chỉ hoạt động trên field phẳng r[key]).
+      dashboardRows.forEach(function(r) {
+        r.uuTien = priorityMeta_(priorityTags_[r.lsx] || '').label || '(Trống)';
+        r.tienDoBucket = bucketPercent_(r.tienDoPercent);
+        r.khoGiaoHangBucket = bucketPercent_(r.percent);
+      });
+
       renderDashboardStats_(dashboardRows, todayStr); // thẻ luôn tính trên toàn bộ dữ liệu
 
       let filtered = getDashFilteredRows_(dashboardRows, todayStr);
@@ -3494,12 +3535,13 @@ function togglePriorityFilter_(tag) {
       const headerHtml = '<tr>' +
         '<th class="dash-lsx-col">LSX' + dashFilterIconHtml_('lsx') + '</th>' +
         '<th>Sản phẩm' + dashFilterIconHtml_('sanPham') + '</th>' +
-        '<th class="dash-priority-col">Ưu tiên</th>' +
+        '<th class="dash-priority-col">&#431;u ti&#234;n' + dashFilterIconHtml_('uuTien') + '</th>' +
         '<th class="dash-khgh-col">KHGH' + dashFilterIconHtml_('khgh') + '</th>' +
-        chuyenHeaderHtml + '<th class="dash-progress-col">Tiến độ</th><th>% Kho giao hàng</th></tr>';
+        chuyenHeaderHtml + '<th class="dash-progress-col">Tiến độ' + dashFilterIconHtml_('tienDoBucket') + '</th><th>% Kho giao hàng' + dashFilterIconHtml_('khoGiaoHangBucket') + '</th></tr>';
 
       const myToken = ++dashRenderToken_;
       dashClearSelection_();
+      const savedScrollTop = wrap.scrollTop; // giữ vị trí đang cuộn, không tự nhảy về đầu bảng
 
       if (rows.length === 0) {
         wrap.innerHTML = '<table>' + headerHtml +
@@ -3529,7 +3571,8 @@ function togglePriorityFilter_(tag) {
 
         const tag = priorityTags_[r.lsx] || '';
         const rowStyle = priorityRowStyle_(tag);
-        return '<tr style="' + rowStyle + '">' +
+        const rowClass = tag ? ' class="dash-row-priority"' : '';
+        return '<tr' + rowClass + ' style="' + rowStyle + '">' +
           '<td class="dash-lsx-cell"' + nextAttrs() + '>' + escapeHtml_(r.lsx) + '</td>' +
           '<td class="dash-sanpham-col"' + nextAttrs() + '>' + escapeHtml_(r.sanPham || '') + '</td>' +
           '<td' + nextAttrs() + '>' + buildPriorityDropdown_(r.lsx, tag) + '</td>' +
@@ -3551,7 +3594,13 @@ function togglePriorityFilter_(tag) {
         const limit = Math.min(index + CHUNK_SIZE, rows.length);
         for (; index < limit; index++) chunkHtml += buildRowHtml(rows[index], index);
         table.insertAdjacentHTML('beforeend', chunkHtml);
-        if (index < rows.length) requestAnimationFrame(renderChunk);
+        if (index < rows.length) {
+          requestAnimationFrame(renderChunk);
+        } else if (savedScrollTop) {
+          // Chỉ khôi phục sau khi dựng XONG toàn bộ, nếu không bảng đang thấp trong
+          // lúc dựng dở sẽ ép trình duyệt kẹp scrollTop về gần 0 rồi không tự nhảy lại.
+          wrap.scrollTop = savedScrollTop;
+        }
       }
       requestAnimationFrame(renderChunk);
     }
