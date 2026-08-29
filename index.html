@@ -1200,6 +1200,7 @@
         loadInitialAppData_();
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
         setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
+        setInterval(pollPriorityTagsSilently_, PRIORITY_TAGS_POLL_MS);
         startTrackingPolling_();
       }
 
@@ -3323,6 +3324,35 @@ function loadPriorityTagsFromServer_() {
       renderDashboard_();
     })
     .withFailureHandler(function() { /* mất mạng -> tạm giữ cache cũ, không chặn app */ })
+    .getPriorityTags();
+}
+
+// So sánh nhanh 2 object nhãn ưu tiên có khác nhau không (đủ dùng, không cần deep-equal phức tạp)
+function priorityTagsAreEqual_(a, b) {
+  const keysA = Object.keys(a), keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (let i = 0; i < keysA.length; i++) {
+    const k = keysA[i];
+    if (a[k] !== b[k]) return false;
+  }
+  return true;
+}
+
+// Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
+// Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
+const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime", không quá tải server
+function pollPriorityTagsSilently_() {
+  google.script.run
+    .withSuccessHandler(function(tags) {
+      tags = tags || {};
+      if (priorityTagsAreEqual_(tags, priorityTags_)) return; // không có gì đổi -> bỏ qua, không vẽ lại
+      priorityTags_ = tags;
+      try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
+      if (document.getElementById('tab-dashboard').classList.contains('active')) {
+        renderDashboard_();
+      }
+    })
+    .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
     .getPriorityTags();
 }
   let dashLsxSearch_ = []; // mảng các từ khoá LSX, chỉ áp dụng khi bấm Enter / chọn gợi ý
