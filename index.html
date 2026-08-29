@@ -3710,12 +3710,22 @@
         const deliveredPct = total ? Math.round((delivered / total) * 100) : 0;
         const vtPct = total ? Math.round((receivedVT / total) * 100) : 0;
 
+        function statBadge_(label, value, bg, fg) {
+          return '<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; ' +
+            'border-radius:20px; background:' + bg + '; color:' + fg + '; font-size:12px; font-weight:700; white-space:nowrap;">' +
+            '<span style="opacity:0.85; font-weight:600;">' + label + '</span>' +
+            '<span style="font-size:13px; font-weight:800;">' + value + '</span>' +
+          '</span>';
+        }
+
         document.getElementById('lsxDetailTitle').innerHTML =
-          '<b style="font-size:15px;">' + escapeHtml_(lsx) + '</b>' +
-          ' &nbsp;•&nbsp; Tổng: <b>' + total + '</b>' +
-          ' &nbsp;•&nbsp; Đã giao: <b>' + delivered + '</b>' +
-          ' &nbsp;•&nbsp; Giao hàng: <b style="color:#2e7d32;">' + deliveredPct + '%</b>' +
-          ' &nbsp;•&nbsp; Nhận VT: <b style="color:#8e44ad;">' + vtPct + '%</b>';
+          '<span style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;">' +
+            '<b style="font-size:15px; color:#003DA5;">' + escapeHtml_(lsx) + '</b>' +
+            statBadge_('Tổng', total, '#fdecea', '#c62828') +
+            statBadge_('Đã giao', delivered, '#e8f0fe', '#1a56c4') +
+            statBadge_('Giao hàng', deliveredPct + '%', '#e6f4ea', '#1e7e34') +
+            statBadge_('Nhận VT', vtPct + '%', '#fff8e1', '#8a6d00') +
+          '</span>';
       }
 
       function closeLsxDetailModal_() {
@@ -4582,8 +4592,8 @@
       </div>
     </div>
 
-    <div id="lsxDetailOverlay" class="colvis-overlay" style="display:none;">
-      <div class="colvis-modal" style="width:min(96vw, 1400px); height:min(90vh, 900px); max-width:96vw; max-height:92vh; min-width:520px; min-height:300px; resize:both; overflow:auto;">
+     <div id="lsxDetailOverlay" class="colvis-overlay" style="display:none;">
+    <div class="colvis-modal" style="width:min(96vw, 1400px); height:auto; max-width:96vw; max-height:92vh; min-width:520px; min-height:auto; resize:both; overflow:auto;">
         <div class="colvis-header" style="flex-wrap:wrap; align-items:flex-start;">
           <h3 id="lsxDetailTitle" style="font-size:14px; font-weight:normal; flex:1; min-width:260px; margin-right:10px; line-height:1.6;">Chi tiết chưa giao hàng</h3>
           <span class="upbom-close" onclick="closeLsxDetailModal_()">&times;</span>
