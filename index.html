@@ -632,6 +632,21 @@
       body.dark-mode .filter-empty { color: #7a808c; }
       body.dark-mode .empty-state-cell { background: #1c1f26; color: #7a808c; }
 
+      /* ===== Sửa lỗi các dòng Gấp/Ưu tiên "biến mất" trong Dashboard khi bật chế độ tối:
+        nền pastel nhạt (thiết kế cho nền sáng) + chữ xám sáng (mặc định dark-mode)
+        khiến gần như không đọc được. Ép hẳn 1 bộ màu tối, tương phản cao cho các dòng này. */
+      body.dark-mode .dash-row-priority td { background: #2a2430 !important; color: #e8e6ee !important; }
+      body.dark-mode .dash-row-priority .dash-lsx-cell { color: #8fc1ff !important; }
+      body.dark-mode .dash-row-priority .dash-lsx-eye { color: #b9c4d9 !important; }
+      body.dark-mode .dash-lsx-cell { color: #8fc1ff; }
+      body.dark-mode .dash-khgh-cell { color: #e8e6ee; }
+
+      /* ===== Làm tối sidebar + topbar theo đúng theme, thay vì giữ nguyên màu xanh dương sáng ===== */
+      body.dark-mode .sidebar, body.dark-mode .topbar { background: #0b1220; }
+      body.dark-mode .sidebar-nav-btn.active { background: #1c2b46; color: #fff; }
+      body.dark-mode .sidebar-divider { background: rgba(255,255,255,0.08); }
+      body.dark-mode .cat-btn-side { filter: brightness(0.85); }
+
       body.dark-mode .splash-overlay { background: #14171c; }
       body.dark-mode .splash-box > div { background: #1c1f26 !important; box-shadow: none !important; }
 
@@ -958,6 +973,13 @@
         <span>Xưởng Gia Công Cơ Khí Chính Xác</span>
       </div>
       <div class="topbar-right">
+        <div class="topbar-user" id="notifBellMenu" style="position:relative;">
+          <button class="topbar-icon-btn" onclick="toggleNotifDropdown_()" style="position:relative;">
+            <i class="fa-regular fa-bell"></i>
+            <span id="notifBadgeCount" style="display:none; position:absolute; top:-3px; right:-3px; background:#d62828; color:#fff; border-radius:50%; font-size:10px; font-weight:bold; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 3px;"></span>
+          </button>
+          <div class="topbar-user-dropdown" id="notifDropdown" style="width:320px; max-height:380px; overflow-y:auto; padding:0;"></div>
+        </div>
         <span id="onlineBadge" style="display:none; align-items:center; gap:6px; font-size:12px; color:#e8f0ff; margin-right:2px;">
           <span style="width:8px; height:8px; border-radius:50%; background:#4ade80; display:inline-block; animation: syncBlink 1.4s ease-in-out infinite; box-shadow:0 0 6px #4ade80;"></span>
           <span id="onlineCountText">0 đang online</span>
@@ -1192,6 +1214,77 @@
           .heartbeatOnline(currentUser_.msnv);
       }
 
+      /* ================= THÔNG BÁO ĐƠN GẤP/ƯU TIÊN ================= */
+      let lastNotifId_ = Number(localStorage.getItem('gcck_last_notif_id') || 0);
+      let notifList_ = [];
+      let notifUnreadCount_ = 0;
+      let notifFirstLoad_ = true; // lần tải đầu tiên -> chỉ nạp âm thầm, không toast dồn dập thông báo cũ
+
+      function toggleNotifDropdown_() {
+        const dd = document.getElementById('notifDropdown');
+        dd.classList.toggle('open');
+        if (dd.classList.contains('open')) {
+          notifUnreadCount_ = 0;
+          updateNotifBadge_();
+        }
+      }
+
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#notifBellMenu')) {
+          const dd = document.getElementById('notifDropdown');
+          if (dd) dd.classList.remove('open');
+        }
+      });
+
+      function updateNotifBadge_() {
+        const badge = document.getElementById('notifBadgeCount');
+        if (!badge) return;
+        if (notifUnreadCount_ > 0) {
+          badge.textContent = notifUnreadCount_ > 9 ? '9+' : notifUnreadCount_;
+          badge.style.display = 'block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
+      function renderNotifDropdown_() {
+        const el = document.getElementById('notifDropdown');
+        if (!el) return;
+        if (notifList_.length === 0) {
+          el.innerHTML = '<div style="padding:18px; text-align:center; color:#999; font-size:13px;">Chưa có thông báo nào.</div>';
+          return;
+        }
+        el.innerHTML = notifList_.slice().reverse().map(function(n) {
+          const d = new Date(n.created_at);
+          const timeStr = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') +
+            ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+          return '<div style="padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45;">' +
+            '<div>' + escapeHtml_(n.message) + '</div>' +
+            '<div style="font-size:11px; color:#999; margin-top:3px;">' + timeStr + '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      const NOTIF_POLL_MS = 10000; // 10 giây - đủ nhanh để cảm giác gần realtime
+      function pollNotifications_() {
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            if (!rows || rows.length === 0) { notifFirstLoad_ = false; return; }
+            rows.forEach(function(n) {
+              notifList_.push(n);
+              if (!notifFirstLoad_) showToast(n.message, 'info');
+              lastNotifId_ = n.id;
+            });
+            if (!notifFirstLoad_) notifUnreadCount_ += rows.length;
+            notifFirstLoad_ = false;
+            try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
+            updateNotifBadge_();
+            renderNotifDropdown_();
+          })
+          .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
+          .getNotifications(lastNotifId_);
+      }
+
       // Gọi khi đăng nhập THÀNH CÔNG - lưu lại thông tin cho lần sau, rồi bật màn hình chờ.
       function finishLogin_(user, remember, passUsed) {
         currentUser_ = user;
@@ -1227,6 +1320,9 @@
         // Nhịp tim báo "đang online" - gửi lần đầu ngay, sau đó lặp lại mỗi 20 giây.
         sendHeartbeat_();
         setInterval(sendHeartbeat_, ONLINE_HEARTBEAT_MS);
+        // Thông báo đơn Gấp/Ưu tiên - tải lần đầu ngay, sau đó kiểm tra định kỳ 10 giây.
+        pollNotifications_();
+        setInterval(pollNotifications_, NOTIF_POLL_MS);
         startTrackingPolling_();
       }
 
@@ -2718,6 +2814,15 @@
       });
 
       function openZoomPopover_() {
+        // Đồng bộ lại đúng % đã lưu MỖI LẦN mở popup - phòng trường hợp lúc trang vừa tải,
+        // ô input này chưa kịp tồn tại trong DOM nên chưa được gán giá trị đã lưu.
+        let zoom = '100';
+        try { zoom = localStorage.getItem('gcck_zoom') || '100'; } catch (e) {}
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomNumberInput = document.getElementById('zoomNumberInput');
+        if (zoomSlider) zoomSlider.value = zoom;
+        if (zoomNumberInput) zoomNumberInput.value = zoom;
+
         const pop = document.getElementById('zoomPopover');
         pop.style.display = (pop.style.display === 'block') ? 'none' : 'block';
       }
