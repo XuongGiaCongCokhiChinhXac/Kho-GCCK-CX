@@ -1221,6 +1221,13 @@
           let currentUser_ = null; // { msnv, hoTen }
       const ONLINE_HEARTBEAT_MS = 20000; // 20 giây báo nhịp tim 1 lần
 
+      // Khai báo SỚM các hằng số được dùng trong finishLogin_() (chạy ngay sau khi đăng
+      // nhập) để tránh lỗi "Cannot access ... before initialization" (TDZ) khi các const
+      // gốc nằm quá xa phía dưới chưa kịp chạy tới.
+      const SYNC_STATUS_REFRESH_MS = 30000; // 30 giây tự làm mới 1 lần
+      const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime"
+      const DASHBOARD_AUTO_REFRESH_MS = 15 * 60 * 1000; // 15 phút - khớp chu kỳ đồng bộ Sheet -> Supabase
+
       function sendHeartbeat_() {
         if (!currentUser_) return;
         google.script.run
@@ -2740,8 +2747,6 @@
       }
 
       /* ================= TRẠNG THÁI ĐỒNG BỘ SHEET -> SUPABASE ================= */
-      const SYNC_STATUS_REFRESH_MS = 30000; // 30 giây tự làm mới 1 lần
-
       function renderSyncStatus_(iso) {
         const el = document.getElementById('syncStatus');
         if (!el) return;
@@ -3348,8 +3353,6 @@
         refreshDashboard_();
       }
 
-      const DASHBOARD_AUTO_REFRESH_MS = 15 * 60 * 1000; // 15 phút - khớp chu kỳ đồng bộ Sheet -> Supabase
-
       function refreshDashboard_() {
         const btn = document.getElementById('refreshDashboardBtn');
         if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
@@ -3536,7 +3539,6 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
-const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime", không quá tải server
 function pollPriorityTagsSilently_() {
   google.script.run
     .withSuccessHandler(function(tags) {
