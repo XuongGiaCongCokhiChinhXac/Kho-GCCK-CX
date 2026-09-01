@@ -377,6 +377,13 @@
       }
       .quick-btn:hover { background: #eee; }
       .quick-btn.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+      /* Ép thắng inline style color trên các nút Gấp/ƯT1/ƯT2/Đơn hàng ưu tiên khi đang active */
+      #prioFilterBtnAll.active,
+      #prioFilterBtn-gap.active,
+      #prioFilterBtn-ut1.active,
+      #prioFilterBtn-ut2.active {
+        color: #fff !important;
+      }
 
       /* ===== Tô màu dòng theo trạng thái hạn giao ===== */
       tr.row-overdue td { background: #fdecea; }
@@ -629,6 +636,13 @@
       body.dark-mode .chuyen-value { color: #eceef0; }
 
       body.dark-mode .quick-btn { background: #23262d; border-color: #3a3f4a; color: #d8dadf; }
+      /* Trước đây rule này nằm sau .quick-btn.active nên "đè" mất hiệu ứng chọn ở dark mode.
+        Ép rõ ràng để nút đang chọn luôn nổi bật, không phụ thuộc thứ tự khai báo. */
+      body.dark-mode .quick-btn.active {
+        background: #1a73e8 !important;
+        color: #fff !important;
+        border-color: #1a73e8 !important;
+      }
       body.dark-mode .filter-empty { color: #7a808c; }
       body.dark-mode .empty-state-cell { background: #1c1f26; color: #7a808c; }
 
@@ -812,8 +826,8 @@
         flex: 1; min-width: 96px; background: #fff; border: 1px solid #e3e6ea; border-radius: 8px;
         padding: 8px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
       }
-      .dash-stat-card .dash-stat-label { font-size: 10px; color: #666; font-weight: 600; margin-bottom: 3px; white-space: nowrap; }
-      .dash-stat-card .dash-stat-value { font-size: 16px; font-weight: 800; color: #1a1a1a; }
+      .dash-stat-card .dash-stat-label { font-size: 11px; color: #666; font-weight: 700; margin-bottom: 3px; white-space: nowrap; }
+.dash-stat-card .dash-stat-value { font-size: 20px; font-weight: 800; color: #1a1a1a; }
       .dash-stat-card.dash-stat-danger .dash-stat-value { color: #c62828; }
       .dash-stat-card.dash-stat-warning .dash-stat-value { color: #b45309; }
       .dash-stat-card.dash-stat-success .dash-stat-value { color: #2e7d32; }
@@ -1822,6 +1836,8 @@
           renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
         } else if (activeFilterTarget === 'dashboard') {
           renderDashboard_();
+        } else if (activeFilterTarget === 'lsxdetail') {
+          renderLsxDetailTable_(applyDetailFilters_(lsxDetailRawRows));
         } else {
           render(applyFilters(lastRows));
         }
@@ -2754,6 +2770,19 @@
       let nhanPhoiRows = [];
       let giaoHangRows = [];
       const trackingFilters = { nhanphoi: {}, giaohang: {} }; // giống `filters` của bảng Check đơn hàng
+      let lsxDetailRawRows = [];     // dữ liệu chưa giao hàng của modal chi tiết (trước khi lọc)
+      const lsxDetailFilters = {};   // bộ lọc riêng cho modal chi tiết
+
+      function applyDetailFilters_(rows) {
+        return rows.filter(function(r) {
+          for (const key in lsxDetailFilters) {
+            const allowed = lsxDetailFilters[key];
+            if (!allowed) continue;
+            if (!allowed.has(normalizeValue(key, r[key]))) return false;
+          }
+          return true;
+        });
+      }
       let activeFilterTarget = 'bom'; // 'bom' | 'nhanphoi' | 'giaohang' - popup lọc nào đang mở
 
       let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
@@ -2932,6 +2961,7 @@
         if (activeFilterTarget === 'nhanphoi') return { rows: nhanPhoiRows, filters: trackingFilters.nhanphoi };
         if (activeFilterTarget === 'giaohang') return { rows: giaoHangRows, filters: trackingFilters.giaohang };
         if (activeFilterTarget === 'dashboard') return { rows: dashboardRows, filters: dashboardFilters };
+        if (activeFilterTarget === 'lsxdetail') return { rows: lsxDetailRawRows, filters: lsxDetailFilters };
         return { rows: lastRows, filters: filters };
       }
 
@@ -3915,11 +3945,14 @@ function pollPriorityTagsSilently_() {
           '<tr><td style="padding:20px; text-align:center; color:#999;">Đang tải...</td></tr>';
         document.getElementById('lsxDetailOverlay').style.display = 'flex';
 
+        for (const k in lsxDetailFilters) delete lsxDetailFilters[k]; // mỗi lần mở LSX khác, bỏ lọc cũ
+
         google.script.run
           .withSuccessHandler(function(rows) {
             rows = rows || [];
             renderLsxDetailSummary_(lsx, rows);
-            renderLsxDetailTable_(rows.filter(function(r) { return !r.giao_hang; }));
+            lsxDetailRawRows = rows.filter(function(r) { return !r.giao_hang; });
+            renderLsxDetailTable_(applyDetailFilters_(lsxDetailRawRows));
           })
           .withFailureHandler(function(err) {
             document.getElementById('lsxDetailTable').innerHTML =
@@ -3963,7 +3996,11 @@ function pollPriorityTagsSilently_() {
         let html = '<thead><tr>';
         LSX_DETAIL_COLUMNS.forEach(function(c) {
           const boldStyle = c.key === 'lsx' ? 'font-weight:800;' : '';
-          html += '<th style="background:#003DA5; color:#fff; padding:6px 8px; border:1px solid #ddd; white-space:normal; position:sticky; top:0;' + boldStyle + '">' + c.label + '</th>';
+          const activeCls = lsxDetailFilters[c.key] ? ' active' : '';
+          html += '<th style="background:#003DA5; color:#fff; padding:6px 8px; border:1px solid #ddd; white-space:normal; position:sticky; top:0;' + boldStyle + '">' +
+            c.label +
+            '<span class="filter-icon' + activeCls + '" onclick="openFilterPopup(\'' + c.key + '\', this, \'lsxdetail\')">&#9662;</span>' +
+            '</th>';
         });
         html += '</tr></thead><tbody>';
 
@@ -3990,6 +4027,74 @@ function pollPriorityTagsSilently_() {
 
         html += '</tbody>';
         table.innerHTML = html;
+      }
+
+            function captureLsxDetailModal_() {
+        if (typeof html2canvas === 'undefined') {
+          showToast('Chưa tải được thư viện chụp ảnh, vui lòng thử lại sau vài giây.', 'error');
+          return;
+        }
+        const rows = applyDetailFilters_(lsxDetailRawRows);
+        if (!rows || rows.length === 0) {
+          showToast('Không có dữ liệu để chụp.', 'error');
+          return;
+        }
+
+        showToast('Đang tạo ảnh, vui lòng đợi...', 'info');
+
+        const titleText = (document.getElementById('lsxDetailTitle').innerText || '').split('\n')[0].trim();
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.left = '-99999px';
+        wrapper.style.top = '0';
+        wrapper.style.background = '#fff';
+        wrapper.style.padding = '14px';
+
+        let html = '<div style="font-family:Arial,sans-serif; font-weight:800; font-size:16px; color:#003DA5; margin-bottom:10px;">' +
+          escapeHtml_(titleText) + ' &mdash; Chưa giao hàng</div>';
+        html += '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;"><tr>';
+        LSX_DETAIL_COLUMNS.forEach(function(c) {
+          html += '<th style="background:#003DA5;color:#fff;border:1px solid #ddd;padding:6px 8px;white-space:nowrap;">' + c.label + '</th>';
+        });
+        html += '</tr>';
+
+        rows.forEach(function(r) {
+          html += '<tr>';
+          LSX_DETAIL_COLUMNS.forEach(function(c) {
+            let val;
+            if (c.bool) val = r[c.key] ? '&#10003;' : '';
+            else if (c.key === 'khgh') val = formatDate(r[c.key]);
+            else val = (r[c.key] === null || r[c.key] === undefined) ? '' : escapeHtml_(String(r[c.key]));
+            html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;">' + val + '</td>';
+          });
+          html += '</tr>';
+        });
+        html += '</table>';
+        wrapper.innerHTML = html;
+        document.body.appendChild(wrapper);
+
+        html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2 }).then(function(canvas) {
+          document.body.removeChild(wrapper);
+
+          const link = document.createElement('a');
+          link.download = 'ChiTietChuaGiao_' + (titleText || 'export') + '.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+
+          canvas.toBlob(function(blob) {
+            if (!blob) return;
+            if (navigator.clipboard && window.ClipboardItem) {
+              navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+                .then(function() { showToast('Đã chụp ảnh và copy vào clipboard, dán (Ctrl+V) để gửi.', 'success'); })
+                .catch(function() { showToast('Đã tải ảnh, nhưng không copy được vào clipboard (trình duyệt chặn).', 'info'); });
+            } else {
+              showToast('Đã tải ảnh (trình duyệt không hỗ trợ copy ảnh vào clipboard).', 'info');
+            }
+          }, 'image/png');
+        }).catch(function(err) {
+          document.body.removeChild(wrapper);
+          showToast('Lỗi khi chụp ảnh: ' + err.message, 'error');
+        });
       }
 
       /* ================= MODAL NHẬN PHÔI / GIAO HÀNG + QR ================= */
@@ -4836,13 +4941,17 @@ function pollPriorityTagsSilently_() {
     <div class="colvis-modal" style="width:min(96vw, 1400px); height:auto; max-width:96vw; max-height:92vh; min-width:520px; min-height:auto; resize:both; overflow:auto;">
         <div class="colvis-header" style="flex-wrap:wrap; align-items:flex-start;">
           <h3 id="lsxDetailTitle" style="font-size:14px; font-weight:normal; flex:1; min-width:260px; margin-right:10px; line-height:1.6;">Chi tiết chưa giao hàng</h3>
+          <button type="button" class="icon-btn" title="Chụp ảnh dữ liệu đang xem" onclick="captureLsxDetailModal_()" style="margin-right:8px;">
+            <i class="fa-solid fa-camera"></i>
+          </button>
           <span class="upbom-close" onclick="closeLsxDetailModal_()">&times;</span>
         </div>
         <div style="overflow:auto; flex:1;">
           <table id="lsxDetailTable" style="width:100%; border-collapse:collapse; font-size:12px;"></table>
         </div>
         <div class="upbom-footer">
-          <button type="button" class="upbom-cancel" onclick="closeLsxDetailModal_()">Đóng</button>
+          <button type="button" onclick="closeLsxDetailModal_()"
+            style="background:#1a73e8; color:#fff; font-weight:bold; border:none; border-radius:4px; padding:8px 22px; cursor:pointer;">Đóng</button>
         </div>
       </div>
     </div>
