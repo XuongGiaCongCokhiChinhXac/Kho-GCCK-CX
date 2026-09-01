@@ -1228,6 +1228,11 @@
       const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime"
       const DASHBOARD_AUTO_REFRESH_MS = 15 * 60 * 1000; // 15 phút - khớp chu kỳ đồng bộ Sheet -> Supabase
 
+      // Cũng khai báo SỚM 2 biến này vì startTrackingPolling_() (gọi trong finishLogin_())
+      // cần dùng tới chúng - tránh lỗi TDZ y hệt các biến ở trên.
+      let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
+      let trackingPollTimer_ = null;
+
       function sendHeartbeat_() {
         if (!currentUser_) return;
         google.script.run
@@ -2781,8 +2786,6 @@
       const trackingFilters = { nhanphoi: {}, giaohang: {} }; // giống `filters` của bảng Check đơn hàng
       let activeFilterTarget = 'bom'; // 'bom' | 'nhanphoi' | 'giaohang' - popup lọc nào đang mở
 
-      let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
-      let trackingPollTimer_ = null;
       const TRACKING_POLL_INTERVAL_MS = 10000; // 10 giây tự làm mới 1 lần cho mọi người cùng xem
 
       function switchTab(tabId) {
