@@ -773,6 +773,8 @@
         font-size: 12px; font-weight: 800; cursor: pointer; border: 1px solid transparent;
         box-sizing: border-box;
       }
+      .priority-pill-empty { background: #fff; color: #999; border-color: #ddd; }
+      body.dark-mode .priority-pill-empty { background: #23262d; color: #7a808c; border-color: #3a3f4a; }
       .priority-popup {
         position: fixed; background: #fff; border: 1px solid #ccc; border-radius: 10px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 300; padding: 6px; width: 150px;
@@ -805,13 +807,13 @@
         thiếu dòng này thì ô nào không có color riêng (VD Sản phẩm) sẽ bị chữ trắng/trắng. */
       .dash-row-priority td { background: inherit !important; }
 
-      .dash-stats-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 16px 14px 16px; }
+      .dash-stats-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 10px 16px; }
       .dash-stat-card {
-        flex: 1; min-width: 140px; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
-        padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        flex: 1; min-width: 96px; background: #fff; border: 1px solid #e3e6ea; border-radius: 8px;
+        padding: 8px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
       }
-      .dash-stat-card .dash-stat-label { font-size: 12px; color: #666; font-weight: 600; margin-bottom: 6px; }
-      .dash-stat-card .dash-stat-value { font-size: 24px; font-weight: 800; color: #1a1a1a; }
+      .dash-stat-card .dash-stat-label { font-size: 10px; color: #666; font-weight: 600; margin-bottom: 3px; white-space: nowrap; }
+      .dash-stat-card .dash-stat-value { font-size: 16px; font-weight: 800; color: #1a1a1a; }
       .dash-stat-card.dash-stat-danger .dash-stat-value { color: #c62828; }
       .dash-stat-card.dash-stat-warning .dash-stat-value { color: #b45309; }
       .dash-stat-card.dash-stat-success .dash-stat-value { color: #2e7d32; }
@@ -974,11 +976,10 @@
       </div>
       <div class="topbar-right">
         <div class="topbar-user" id="notifBellMenu" style="position:relative;">
-          <button class="topbar-icon-btn" onclick="toggleNotifDropdown_()" style="position:relative;">
-            <i class="fa-regular fa-bell"></i>
+          <button class="topbar-icon-btn" onclick="openNotifModal_()" style="position:relative; display:flex; align-items:center; justify-content:center;">
+            <i class="fa-regular fa-bell" style="line-height:1;"></i>
             <span id="notifBadgeCount" style="display:none; position:absolute; top:-3px; right:-3px; background:#d62828; color:#fff; border-radius:50%; font-size:10px; font-weight:bold; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 3px;"></span>
           </button>
-          <div class="topbar-user-dropdown" id="notifDropdown" style="width:320px; max-height:380px; overflow-y:auto; padding:0;"></div>
         </div>
         <span id="onlineBadge" style="display:none; align-items:center; gap:6px; font-size:12px; color:#e8f0ff; margin-right:2px;">
           <span style="width:8px; height:8px; border-radius:50%; background:#4ade80; display:inline-block; animation: syncBlink 1.4s ease-in-out infinite; box-shadow:0 0 6px #4ade80;"></span>
@@ -1094,7 +1095,7 @@
     </div>
 
     <div id="resultWrap" class="result-wrap" style="flex-direction:column;">
-      <div id="cellInfoBar" class="cell-info-bar">Chưa chọn ô nào</div>
+      <div id="cellInfoBar" class="cell-info-bar" style="margin:0 16px 8px 16px;">Chưa chọn ô nào</div>
       <div id="result" style="flex:1; overflow:auto;"></div>
       <div id="selectionBar"></div>
       <div id="loadingOverlay" class="loading-overlay" style="display:none;">
@@ -1166,6 +1167,10 @@
               <div id="dashLsxSuggestions" class="suggestions" style="top:100%;"></div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="quick-btn" id="prioFilterBtnAll" onclick="togglePriorityShowAll_()"
+                style="border-color:#1a73e8; color:#1a73e8; font-weight:800;">
+                <i class="fa-solid fa-star" style="margin-right:4px;"></i>Đơn hàng ưu tiên
+              </button>
               <button type="button" class="quick-btn" id="prioFilterBtn-gap" onclick="togglePriorityFilter_('gap')" style="border-color:#d62828; color:#d62828;">Gấp</button>
               <button type="button" class="quick-btn" id="prioFilterBtn-ut1" onclick="togglePriorityFilter_('ut1')" style="border-color:#ff8c00; color:#ff8c00;">&#431;T1</button>
               <button type="button" class="quick-btn" id="prioFilterBtn-ut2" onclick="togglePriorityFilter_('ut2')" style="border-color:#fbbc04; color:#a17d00;">&#431;T2</button>
@@ -1217,50 +1222,70 @@
       /* ================= THÔNG BÁO ĐƠN GẤP/ƯU TIÊN ================= */
       let lastNotifId_ = Number(localStorage.getItem('gcck_last_notif_id') || 0);
       let notifList_ = [];
-      let notifUnreadCount_ = 0;
       let notifFirstLoad_ = true; // lần tải đầu tiên -> chỉ nạp âm thầm, không toast dồn dập thông báo cũ
 
-      function toggleNotifDropdown_() {
-        const dd = document.getElementById('notifDropdown');
-        dd.classList.toggle('open');
-        if (dd.classList.contains('open')) {
-          notifUnreadCount_ = 0;
-          updateNotifBadge_();
-        }
+      function loadReadNotifIds_() {
+        try { return new Set(JSON.parse(localStorage.getItem('gcck_read_notif_ids') || '[]')); } catch (e) { return new Set(); }
+      }
+      function saveReadNotifIds_(set) {
+        try { localStorage.setItem('gcck_read_notif_ids', JSON.stringify(Array.from(set))); } catch (e) {}
+      }
+      let readNotifIds_ = loadReadNotifIds_();
+
+      function openNotifModal_() {
+        document.getElementById('notifOverlay').style.display = 'flex';
+        renderNotifModal_();
+      }
+      function closeNotifModal_() {
+        document.getElementById('notifOverlay').style.display = 'none';
       }
 
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('#notifBellMenu')) {
-          const dd = document.getElementById('notifDropdown');
-          if (dd) dd.classList.remove('open');
-        }
-      });
+      function markNotifRead_(id) {
+        readNotifIds_.add(id);
+        saveReadNotifIds_(readNotifIds_);
+        updateNotifBadge_();
+        renderNotifModal_();
+      }
+
+      function markAllNotifsRead_() {
+        notifList_.forEach(function(n) { readNotifIds_.add(n.id); });
+        saveReadNotifIds_(readNotifIds_);
+        updateNotifBadge_();
+        renderNotifModal_();
+      }
 
       function updateNotifBadge_() {
         const badge = document.getElementById('notifBadgeCount');
         if (!badge) return;
-        if (notifUnreadCount_ > 0) {
-          badge.textContent = notifUnreadCount_ > 9 ? '9+' : notifUnreadCount_;
+        const unread = notifList_.filter(function(n) { return !readNotifIds_.has(n.id); }).length;
+        if (unread > 0) {
+          badge.textContent = unread > 9 ? '9+' : unread;
           badge.style.display = 'block';
         } else {
           badge.style.display = 'none';
         }
       }
 
-      function renderNotifDropdown_() {
-        const el = document.getElementById('notifDropdown');
+      function renderNotifModal_() {
+        const el = document.getElementById('notifModalBody');
         if (!el) return;
         if (notifList_.length === 0) {
-          el.innerHTML = '<div style="padding:18px; text-align:center; color:#999; font-size:13px;">Chưa có thông báo nào.</div>';
+          el.innerHTML = '<div style="padding:36px 18px; text-align:center; color:#999; font-size:13px;">' +
+            '<i class="fa-regular fa-bell-slash" style="font-size:28px; display:block; margin-bottom:10px; opacity:0.5;"></i>' +
+            'Không có thông báo mới.</div>';
           return;
         }
         el.innerHTML = notifList_.slice().reverse().map(function(n) {
+          const isRead = readNotifIds_.has(n.id);
           const d = new Date(n.created_at);
           const timeStr = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') +
             ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
-          return '<div style="padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45;">' +
-            '<div>' + escapeHtml_(n.message) + '</div>' +
-            '<div style="font-size:11px; color:#999; margin-top:3px;">' + timeStr + '</div>' +
+          const bg = isRead ? 'transparent' : '#eef4ff';
+          const dot = isRead ? '' : '<span style="width:7px; height:7px; border-radius:50%; background:#1a73e8; display:inline-block; margin-right:6px; flex-shrink:0; margin-top:5px;"></span>';
+          return '<div onclick="markNotifRead_(' + n.id + ')" style="cursor:pointer; display:flex; align-items:flex-start; padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45; background:' + bg + ';">' +
+            dot +
+            '<div style="flex:1;"><div style="font-weight:' + (isRead ? '400' : '700') + ';">' + escapeHtml_(n.message) + '</div>' +
+            '<div style="font-size:11px; color:#999; margin-top:3px;">' + timeStr + '</div></div>' +
           '</div>';
         }).join('');
       }
@@ -1275,11 +1300,10 @@
               if (!notifFirstLoad_) showToast(n.message, 'info');
               lastNotifId_ = n.id;
             });
-            if (!notifFirstLoad_) notifUnreadCount_ += rows.length;
             notifFirstLoad_ = false;
             try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
             updateNotifBadge_();
-            renderNotifDropdown_();
+            if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
           })
           .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
           .getNotifications(lastNotifId_);
@@ -3488,6 +3512,7 @@ function pollPriorityTagsSilently_() {
 }
   let dashLsxSearch_ = []; // mảng các từ khoá LSX, chỉ áp dụng khi bấm Enter / chọn gợi ý
   let priorityFilterActive_ = new Set(); // các nhãn ưu tiên (gap/ut1/ut2) đang bật để lọc bảng
+  let priorityShowAllActive_ = false; // nút "Đơn hàng ưu tiên" - hiện TẤT CẢ đơn đã gắn bất kỳ nhãn nào
 
   function priorityMeta_(tag) {
     switch (tag) {
@@ -3505,14 +3530,14 @@ function pollPriorityTagsSilently_() {
     return meta.tint ? ('background:' + meta.tint + ';') : '';
   }
 
-  // Pill nhỏ gọn: có tag -> hiện màu + chữ; trống -> để trắng, KHÔNG in chữ "(Trống)"
+  // Pill nhỏ gọn: có tag -> hiện màu + chữ; trống -> dùng class riêng để tự đổi màu theo
+  // sáng/tối (không hardcode nền trắng nữa - đây là nguyên nhân pill trống bị "nổi trắng" xấu ở chế độ tối).
   function buildPriorityDropdown_(lsx, tag) {
     const safeLsx = lsx.replace(/'/g, "\\'");
     const meta = priorityMeta_(tag);
-    const style = tag
-      ? ('background:' + meta.bg + '; color:' + meta.color + ';')
-      : 'background:#fff; color:#999; border-color:#ddd;';
-    return '<span class="priority-pill" style="' + style + '" onclick="openPriorityPopup_(event, \'' + safeLsx + '\')">' +
+    const style = tag ? ('background:' + meta.bg + '; color:' + meta.color + ';') : '';
+    const cls = 'priority-pill' + (tag ? '' : ' priority-pill-empty');
+    return '<span class="' + cls + '" style="' + style + '" onclick="openPriorityPopup_(event, \'' + safeLsx + '\')">' +
       (tag ? meta.label : '') + '</span>';
   }
 
@@ -3661,7 +3686,23 @@ function pollPriorityTagsSilently_() {
     hideDashSuggestions_();
     renderDashboard_();
   }
+  function togglePriorityShowAll_() {
+    priorityShowAllActive_ = !priorityShowAllActive_;
+    if (priorityShowAllActive_) priorityFilterActive_.clear(); // bật "tất cả ưu tiên" thì bỏ lọc theo từng nhãn riêng
+    const allBtn = document.getElementById('prioFilterBtnAll');
+    if (allBtn) allBtn.classList.toggle('active', priorityShowAllActive_);
+    ['gap','ut1','ut2'].forEach(function(t) {
+      const btn = document.getElementById('prioFilterBtn-' + t);
+      if (btn) btn.classList.remove('active');
+    });
+    renderDashboard_();
+  }
+
   function togglePriorityFilter_(tag) {
+    priorityShowAllActive_ = false; // chọn 1 nhãn cụ thể -> tắt "Đơn hàng ưu tiên" (tất cả)
+    const allBtn = document.getElementById('prioFilterBtnAll');
+    if (allBtn) allBtn.classList.remove('active');
+
     if (priorityFilterActive_.has(tag)) priorityFilterActive_.delete(tag);
     else priorityFilterActive_.add(tag);
     ['gap','ut1','ut2'].forEach(function(t) {
@@ -3719,7 +3760,9 @@ function pollPriorityTagsSilently_() {
             return dashLsxSearch_.some(function(tok) { return lsxLower.indexOf(tok) !== -1; });
           });
         }
-        if (priorityFilterActive_ && priorityFilterActive_.size > 0) {
+        if (priorityShowAllActive_) {
+          filtered = filtered.filter(function(r) { return !!priorityTags_[r.lsx]; });
+        } else if (priorityFilterActive_ && priorityFilterActive_.size > 0) {
           filtered = filtered.filter(function(r) { return priorityFilterActive_.has(priorityTags_[r.lsx]); });
         }
         filtered = applyDashboardColumnFilters_(filtered);
@@ -4771,6 +4814,20 @@ function pollPriorityTagsSilently_() {
         <div id="colVisList" class="colvis-list"></div>
         <div class="colvis-footer">
           <button type="button" onclick="closeColumnVisibilityModal()">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="notifOverlay" class="colvis-overlay" style="display:none;">
+      <div class="colvis-modal" style="width:min(94vw, 420px); max-height:80vh;">
+        <div class="colvis-header">
+          <h3><i class="fa-regular fa-bell" style="margin-right:8px;"></i>Thông báo</h3>
+          <span class="upbom-close" onclick="closeNotifModal_()">&times;</span>
+        </div>
+        <div id="notifModalBody" style="overflow-y:auto; flex:1;"></div>
+        <div class="upbom-footer">
+          <button type="button" class="upbom-cancel" onclick="markAllNotifsRead_()">Đánh dấu tất cả đã đọc</button>
+          <button type="button" class="upbom-save" onclick="closeNotifModal_()" style="background:#1a73e8;">Đóng</button>
         </div>
       </div>
     </div>
