@@ -632,25 +632,6 @@
       body.dark-mode .filter-empty { color: #7a808c; }
       body.dark-mode .empty-state-cell { background: #1c1f26; color: #7a808c; }
 
-      /* Ô gợi ý LSX (tra cứu + dashboard) đang giữ nền trắng/chữ xám mặc định -> gần
-        như vô hình trên nền tối xung quanh. Ép hẳn theme tối cho khớp. */
-      body.dark-mode .suggestions { background: #1c1f26; border-color: #2c313c; }
-      body.dark-mode .suggestions div { color: #d8dadf; }
-      body.dark-mode .suggestions div:hover, body.dark-mode .suggestions div.active { background: #26364d; }
-
-      /* Các dòng Gấp/Ưu tiên trong Dashboard dùng nền pastel nhạt (thiết kế cho nền sáng)
-        + chữ xám sáng mặc định của dark-mode -> gần như không đọc được (mất cả cột LSX).
-        Ép hẳn 1 bộ màu tối, tương phản cao riêng cho các dòng này. */
-      body.dark-mode .dash-row-priority td { background: #2a2430 !important; color: #e8e6ee !important; }
-      body.dark-mode .dash-row-priority .dash-lsx-cell { color: #8fc1ff !important; }
-      body.dark-mode .dash-row-priority .dash-lsx-eye { color: #b9c4d9 !important; }
-      body.dark-mode .dash-lsx-cell { color: #8fc1ff; }
-      body.dark-mode .dash-khgh-cell { color: #e8e6ee; }
-
-      body.dark-mode .sidebar, body.dark-mode .topbar { background: #0b1220; }
-      body.dark-mode .sidebar-nav-btn.active { background: #1c2b46; color: #fff; }
-      body.dark-mode .sidebar-divider { background: rgba(255,255,255,0.08); }
-
       /* ===== Sửa lỗi các dòng Gấp/Ưu tiên "biến mất" trong Dashboard khi bật chế độ tối:
         nền pastel nhạt (thiết kế cho nền sáng) + chữ xám sáng (mặc định dark-mode)
         khiến gần như không đọc được. Ép hẳn 1 bộ màu tối, tương phản cao cho các dòng này. */
@@ -992,11 +973,12 @@
         <span>Xưởng Gia Công Cơ Khí Chính Xác</span>
       </div>
       <div class="topbar-right">
-        <div style="position:relative;">
-          <button class="topbar-icon-btn" onclick="openNotifModal_()" style="position:relative; display:flex; align-items:center; justify-content:center;">
-            <i class="fa-regular fa-bell" style="line-height:1;"></i>
-            <span id="notifBadgeCount" style="display:none; position:absolute; top:-2px; right:-2px; background:#d62828; color:#fff; border-radius:50%; font-size:10px; font-weight:bold; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 3px;"></span>
+        <div class="topbar-user" id="notifBellMenu" style="position:relative;">
+          <button class="topbar-icon-btn" onclick="toggleNotifDropdown_()" style="position:relative;">
+            <i class="fa-regular fa-bell"></i>
+            <span id="notifBadgeCount" style="display:none; position:absolute; top:-3px; right:-3px; background:#d62828; color:#fff; border-radius:50%; font-size:10px; font-weight:bold; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 3px;"></span>
           </button>
+          <div class="topbar-user-dropdown" id="notifDropdown" style="width:320px; max-height:380px; overflow-y:auto; padding:0;"></div>
         </div>
         <span id="onlineBadge" style="display:none; align-items:center; gap:6px; font-size:12px; color:#e8f0ff; margin-right:2px;">
           <span style="width:8px; height:8px; border-radius:50%; background:#4ade80; display:inline-block; animation: syncBlink 1.4s ease-in-out infinite; box-shadow:0 0 6px #4ade80;"></span>
@@ -1183,17 +1165,14 @@
               <span id="dashLsxSearchClear" onclick="clearDashLsxSearch_()" style="display:none; position:absolute; right:8px; top:50%; transform:translateY(-50%); cursor:pointer; color:#999; font-size:16px;">&times;</span>
               <div id="dashLsxSuggestions" class="suggestions" style="top:100%;"></div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-              <button type="button" class="quick-btn" id="prioFilterBtnAll" onclick="togglePriorityShowAll_()"
-                style="border-color:#1a73e8; color:#1a73e8; font-weight:800; background:transparent;">
-                <i class="fa-solid fa-star" style="margin-right:4px;"></i>Đơn hàng ưu tiên
-              </button>
-              <div id="dashPriorityQuickFilters" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="quick-btn" id="prioFilterBtn-gap" onclick="togglePriorityFilter_('gap')" style="border-color:#d62828; color:#d62828;">Gấp</button>
+              <button type="button" class="quick-btn" id="prioFilterBtn-ut1" onclick="togglePriorityFilter_('ut1')" style="border-color:#ff8c00; color:#ff8c00;">&#431;T1</button>
+              <button type="button" class="quick-btn" id="prioFilterBtn-ut2" onclick="togglePriorityFilter_('ut2')" style="border-color:#fbbc04; color:#a17d00;">&#431;T2</button>
             </div>
           </div>
           <div id="dashboardFilterInfo" style="padding:0 16px 6px 16px; font-size:13px;"></div>
           <div id="dashboardSummary" style="padding:0 16px 10px 16px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px;"></div>
-          <div id="dashCellInfoBar" class="cell-info-bar" style="margin:0 16px 8px 16px;">Chưa chọn ô nào</div>
           <div id="dashboardResult" class="tracking-table-wrap"></div>
         </div>
 
@@ -1221,28 +1200,6 @@
           let currentUser_ = null; // { msnv, hoTen }
       const ONLINE_HEARTBEAT_MS = 20000; // 20 giây báo nhịp tim 1 lần
 
-      // Khai báo SỚM các hằng số được dùng trong finishLogin_() (chạy ngay sau khi đăng
-      // nhập) để tránh lỗi "Cannot access ... before initialization" (TDZ) khi các const
-      // gốc nằm quá xa phía dưới chưa kịp chạy tới.
-      const SYNC_STATUS_REFRESH_MS = 30000; // 30 giây tự làm mới 1 lần
-      const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime"
-      const DASHBOARD_AUTO_REFRESH_MS = 15 * 60 * 1000; // 15 phút - khớp chu kỳ đồng bộ Sheet -> Supabase
-
-      // Cũng khai báo SỚM 2 biến này vì startTrackingPolling_() (gọi trong finishLogin_())
-      // cần dùng tới chúng - tránh lỗi TDZ y hệt các biến ở trên.
-      let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
-      let trackingPollTimer_ = null;
-
-      // NGUYÊN NHÂN GỐC của toàn bộ chuỗi lỗi TDZ vừa qua: renderPriorityQuickFilters_()
-      // được gọi NGAY LÚC TẢI TRANG (renderCategoryButtons(); renderEmptyTable(); ...
-      // renderPriorityQuickFilters_();) nhưng bên trong nó dùng priorityTags_, vốn được
-      // khai báo bằng let/const tít phía dưới -> script bị dừng đột ngột ngay tại đây,
-      // khiến MỌI khai báo let/const phía sau (dashboardRows, priorityTags_, v.v.) không
-      // bao giờ chạy tới. Khai báo sớm priorityTags_ ở đây để chặn đứng nguyên nhân gốc.
-      const PRIORITY_TAGS_CACHE_KEY = 'gcck_priority_tags_cache_v1'; // chỉ để hiện tạm lúc chưa tải xong từ server
-      let priorityTags_ = {};
-      try { priorityTags_ = JSON.parse(localStorage.getItem(PRIORITY_TAGS_CACHE_KEY) || '{}'); } catch (e) { priorityTags_ = {}; }
-
       function sendHeartbeat_() {
         if (!currentUser_) return;
         google.script.run
@@ -1260,70 +1217,50 @@
       /* ================= THÔNG BÁO ĐƠN GẤP/ƯU TIÊN ================= */
       let lastNotifId_ = Number(localStorage.getItem('gcck_last_notif_id') || 0);
       let notifList_ = [];
+      let notifUnreadCount_ = 0;
       let notifFirstLoad_ = true; // lần tải đầu tiên -> chỉ nạp âm thầm, không toast dồn dập thông báo cũ
 
-      function loadReadNotifIds_() {
-        try { return new Set(JSON.parse(localStorage.getItem('gcck_read_notif_ids') || '[]')); } catch (e) { return new Set(); }
-      }
-      function saveReadNotifIds_(set) {
-        try { localStorage.setItem('gcck_read_notif_ids', JSON.stringify(Array.from(set))); } catch (e) {}
-      }
-      let readNotifIds_ = loadReadNotifIds_();
-
-      function openNotifModal_() {
-        document.getElementById('notifOverlay').style.display = 'flex';
-        renderNotifModal_();
-      }
-      function closeNotifModal_() {
-        document.getElementById('notifOverlay').style.display = 'none';
+      function toggleNotifDropdown_() {
+        const dd = document.getElementById('notifDropdown');
+        dd.classList.toggle('open');
+        if (dd.classList.contains('open')) {
+          notifUnreadCount_ = 0;
+          updateNotifBadge_();
+        }
       }
 
-      function markNotifRead_(id) {
-        readNotifIds_.add(id);
-        saveReadNotifIds_(readNotifIds_);
-        updateNotifBadge_();
-        renderNotifModal_();
-      }
-
-      function markAllNotifsRead_() {
-        notifList_.forEach(function(n) { readNotifIds_.add(n.id); });
-        saveReadNotifIds_(readNotifIds_);
-        updateNotifBadge_();
-        renderNotifModal_();
-      }
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#notifBellMenu')) {
+          const dd = document.getElementById('notifDropdown');
+          if (dd) dd.classList.remove('open');
+        }
+      });
 
       function updateNotifBadge_() {
         const badge = document.getElementById('notifBadgeCount');
         if (!badge) return;
-        const unread = notifList_.filter(function(n) { return !readNotifIds_.has(n.id); }).length;
-        if (unread > 0) {
-          badge.textContent = unread > 9 ? '9+' : unread;
+        if (notifUnreadCount_ > 0) {
+          badge.textContent = notifUnreadCount_ > 9 ? '9+' : notifUnreadCount_;
           badge.style.display = 'block';
         } else {
           badge.style.display = 'none';
         }
       }
 
-      function renderNotifModal_() {
-        const el = document.getElementById('notifModalBody');
+      function renderNotifDropdown_() {
+        const el = document.getElementById('notifDropdown');
         if (!el) return;
         if (notifList_.length === 0) {
-          el.innerHTML = '<div style="padding:36px 18px; text-align:center; color:#999; font-size:13px;">' +
-            '<i class="fa-regular fa-bell-slash" style="font-size:28px; display:block; margin-bottom:10px; opacity:0.5;"></i>' +
-            'Không có thông báo mới.</div>';
+          el.innerHTML = '<div style="padding:18px; text-align:center; color:#999; font-size:13px;">Chưa có thông báo nào.</div>';
           return;
         }
         el.innerHTML = notifList_.slice().reverse().map(function(n) {
-          const isRead = readNotifIds_.has(n.id);
           const d = new Date(n.created_at);
           const timeStr = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') +
             ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
-          const bg = isRead ? 'transparent' : '#eef4ff';
-          const dot = isRead ? '' : '<span style="width:7px; height:7px; border-radius:50%; background:#1a73e8; display:inline-block; margin-right:6px; flex-shrink:0; margin-top:5px;"></span>';
-          return '<div onclick="markNotifRead_(' + n.id + ')" style="cursor:pointer; display:flex; align-items:flex-start; padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45; background:' + bg + ';">' +
-            dot +
-            '<div style="flex:1;"><div style="font-weight:' + (isRead ? '400' : '700') + ';">' + escapeHtml_(n.message) + '</div>' +
-            '<div style="font-size:11px; color:#999; margin-top:3px;">' + timeStr + '</div></div>' +
+          return '<div style="padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45;">' +
+            '<div>' + escapeHtml_(n.message) + '</div>' +
+            '<div style="font-size:11px; color:#999; margin-top:3px;">' + timeStr + '</div>' +
           '</div>';
         }).join('');
       }
@@ -1338,10 +1275,11 @@
               if (!notifFirstLoad_) showToast(n.message, 'info');
               lastNotifId_ = n.id;
             });
+            if (!notifFirstLoad_) notifUnreadCount_ += rows.length;
             notifFirstLoad_ = false;
             try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
             updateNotifBadge_();
-            if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
+            renderNotifDropdown_();
           })
           .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
           .getNotifications(lastNotifId_);
@@ -1697,21 +1635,18 @@
         const received = rows.filter(function(r) { return r.nhan_vat_tu; }).length;
         const delivered = rows.filter(function(r) { return r.giao_hang; }).length;
         const notDelivered = total - delivered;
-        const pct = function(v) { return total ? Math.round((v / total) * 100) : 0; };
 
         const cards = [
-          { icon: 'fa-solid fa-list-ol',              label: 'Tổng số món',    value: total,        cls: 'summary-total',     pctVal: null },
-          { icon: 'fa-solid fa-boxes-packing',        label: 'Đã nhận vật tư', value: received,     cls: 'summary-received',  pctVal: pct(received) },
-          { icon: 'fa-solid fa-truck-fast',           label: 'Đã giao hàng',   value: delivered,    cls: 'summary-delivered', pctVal: pct(delivered) },
-          { icon: 'fa-solid fa-triangle-exclamation', label: 'Chưa giao',      value: notDelivered, cls: 'summary-pending',   pctVal: pct(notDelivered) }
+          { icon: 'fa-solid fa-list-ol',              label: 'Tổng số món',    value: total,        cls: 'summary-total' },
+          { icon: 'fa-solid fa-boxes-packing',        label: 'Đã nhận vật tư', value: received,     cls: 'summary-received' },
+          { icon: 'fa-solid fa-truck-fast',           label: 'Đã giao hàng',   value: delivered,    cls: 'summary-delivered' },
+          { icon: 'fa-solid fa-triangle-exclamation', label: 'Chưa giao',      value: notDelivered, cls: 'summary-pending' }
         ];
 
         summary.innerHTML = cards.map(function(c) {
-          const badgeHtml = c.pctVal === null ? '' :
-            '<span style="margin-left:6px; padding:1px 7px; border-radius:9px; background:rgba(255,255,255,0.25); font-size:10px; font-weight:800;">' + c.pctVal + '%</span>';
           return '<div class="summary-card ' + c.cls + '">' +
             '<div class="summary-icon"><i class="' + c.icon + '"></i></div>' +
-            '<div class="summary-text"><span class="summary-value">' + c.value + badgeHtml + '</span>' +
+            '<div class="summary-text"><span class="summary-value">' + c.value + '</span>' +
             '<span class="summary-label">' + c.label + '</span></div>' +
           '</div>';
         }).join('');
@@ -2762,6 +2697,8 @@
       }
 
       /* ================= TRẠNG THÁI ĐỒNG BỘ SHEET -> SUPABASE ================= */
+      const SYNC_STATUS_REFRESH_MS = 30000; // 30 giây tự làm mới 1 lần
+
       function renderSyncStatus_(iso) {
         const el = document.getElementById('syncStatus');
         if (!el) return;
@@ -2786,7 +2723,6 @@
       renderEmptyTable();
       applySavedDisplayPrefs_();
       initDashSearchBox_();
-      renderPriorityQuickFilters_();
 
         /* ================= SIDEBAR + TAB ================= */
       // Dữ liệu Nhận phôi / Giao hàng được tải 1 LẦN DUY NHẤT lúc mở app (xem loadInitialAppData_),
@@ -2796,6 +2732,8 @@
       const trackingFilters = { nhanphoi: {}, giaohang: {} }; // giống `filters` của bảng Check đơn hàng
       let activeFilterTarget = 'bom'; // 'bom' | 'nhanphoi' | 'giaohang' - popup lọc nào đang mở
 
+      let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
+      let trackingPollTimer_ = null;
       const TRACKING_POLL_INTERVAL_MS = 10000; // 10 giây tự làm mới 1 lần cho mọi người cùng xem
 
       function switchTab(tabId) {
@@ -3239,24 +3177,11 @@
       function dashIsCellSelected_(r, c) {
         return dashSelRegions.some(function(reg) { return r >= reg.r1 && r <= reg.r2 && c >= reg.c1 && c <= reg.c2; });
       }
-      const DASH_COLUMN_LABELS_ = ['LSX','Sản phẩm','Ưu tiên','KHGH','Đúc nhôm','Cửa vòng','Tiện','Phay','Nguội','Nhiệt','Tiến độ','% Kho giao hàng'];
-
-      function updateDashCellInfoBar_() {
-        const bar = document.getElementById('dashCellInfoBar');
-        if (!bar) return;
-        const td = document.querySelector('#dashboardResult td[data-r="' + dashActiveR + '"][data-c="' + dashActiveC + '"]');
-        if (dashActiveR < 0 || dashActiveC < 0 || !td) { bar.textContent = 'Chưa chọn ô nào'; return; }
-        const label = DASH_COLUMN_LABELS_[dashActiveC] || '';
-        const text = td.innerText.trim() || '(trống)';
-        bar.textContent = label + ': ' + text;
-      }
-
       function dashClearSelection_() {
         dashSelRegions = [];
         dashSelAnchorR = dashSelAnchorC = dashActiveR = dashActiveC = -1;
         document.querySelectorAll('#dashboardResult td.cell-selected, #dashboardResult td.cell-active')
           .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
-        updateDashCellInfoBar_();
       }
       function dashSelectSingle_(r, c) {
         dashSelRegions = [{ r1: r, r2: r, c1: c, c2: c }];
@@ -3285,7 +3210,6 @@
         });
         const activeTd = document.querySelector('#dashboardResult td[data-r="' + dashActiveR + '"][data-c="' + dashActiveC + '"]');
         if (activeTd) activeTd.classList.add('cell-active');
-        updateDashCellInfoBar_();
       }
       function dashCopySelection_() {
         if (dashSelRegions.length === 0) return;
@@ -3366,6 +3290,8 @@
         refreshDashboard_();
       }
 
+      const DASHBOARD_AUTO_REFRESH_MS = 15 * 60 * 1000; // 15 phút - khớp chu kỳ đồng bộ Sheet -> Supabase
+
       function refreshDashboard_() {
         const btn = document.getElementById('refreshDashboardBtn');
         if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
@@ -3431,27 +3357,21 @@
         const overdue = rows.filter(function(r) { return r.tienDoPercent < 100 && r.khgh && r.khgh < todayStr; }).length;
         const dueToday = rows.filter(function(r) { return r.khgh === todayStr; }).length;
         const almostDone = rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; }).length;
-        const pct = function(v) { return total ? Math.round((v / total) * 100) : 0; };
 
         const cards = [
-          { key: 'all', label: 'Tổng số đơn hàng', value: total, cls: '', icon: 'fa-solid fa-list-check', iconBg: '#1a73e8', pctVal: null },
-          { key: 'completed', label: 'Đã hoàn thành', value: completed, cls: 'dash-stat-success', icon: 'fa-solid fa-circle-check', iconBg: '#2e7d32', pctVal: pct(completed) },
-          { key: 'remaining', label: 'Còn lại', value: remaining, cls: 'dash-stat-info', icon: 'fa-solid fa-hourglass-half', iconBg: '#1a73e8', pctVal: pct(remaining) },
-          { key: 'overdue', label: 'Trễ KHGH', value: overdue, cls: 'dash-stat-danger', icon: 'fa-solid fa-triangle-exclamation', iconBg: '#c62828', pctVal: pct(overdue) },
-          { key: 'today', label: 'KHGH hôm nay', value: dueToday, cls: 'dash-stat-warning', icon: 'fa-regular fa-calendar-days', iconBg: '#b45309', pctVal: null },
-          { key: 'almost', label: 'Sắp xong (>80%)', value: almostDone, cls: 'dash-stat-warning', icon: 'fa-solid fa-bolt', iconBg: '#b45309', pctVal: pct(almostDone) }
+          { key: 'all', label: 'Tổng số đơn hàng', value: total, cls: '' },
+          { key: 'completed', label: 'Đã hoàn thành', value: completed, cls: 'dash-stat-success' },
+          { key: 'remaining', label: 'Còn lại', value: remaining, cls: 'dash-stat-info' },
+          { key: 'overdue', label: 'Trễ KHGH', value: overdue, cls: 'dash-stat-danger' },
+          { key: 'today', label: 'KHGH hôm nay', value: dueToday, cls: 'dash-stat-warning' },
+          { key: 'almost', label: 'Sắp xong (>80%)', value: almostDone, cls: 'dash-stat-warning' }
         ];
 
         el.innerHTML = cards.map(function(c) {
           const activeCls = (!dashDateFilter && dashCardFilter === c.key) ? ' active' : '';
-          const badgeHtml = c.pctVal === null ? '' :
-            '<span style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:10px; background:' + c.iconBg + '1a; color:' + c.iconBg + '; font-size:11px; font-weight:800;">' + c.pctVal + '%</span>';
-          return '<div class="dash-stat-card ' + c.cls + activeCls + '" onclick="applyDashCardFilter_(\'' + c.key + '\')" style="display:flex; align-items:center; gap:12px;">' +
-            '<div style="width:40px; height:40px; border-radius:10px; background:' + c.iconBg + '; color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;"><i class="' + c.icon + '"></i></div>' +
-            '<div>' +
-              '<div class="dash-stat-label">' + c.label + '</div>' +
-              '<div class="dash-stat-value">' + c.value + badgeHtml + '</div>' +
-            '</div>' +
+          return '<div class="dash-stat-card ' + c.cls + activeCls + '" onclick="applyDashCardFilter_(\'' + c.key + '\')">' +
+            '<div class="dash-stat-label">' + c.label + '</div>' +
+            '<div class="dash-stat-value">' + c.value + '</div>' +
           '</div>';
         }).join('');
       }
@@ -3522,13 +3442,16 @@
         '</div></td>';
       }
 
+         const PRIORITY_TAGS_CACHE_KEY = 'gcck_priority_tags_cache_v1'; // chỉ để hiện tạm lúc chưa tải xong từ server
+let priorityTags_ = {};
+try { priorityTags_ = JSON.parse(localStorage.getItem(PRIORITY_TAGS_CACHE_KEY) || '{}'); } catch (e) { priorityTags_ = {}; }
+
 // Tải nhãn ưu tiên THẬT từ Supabase - dùng chung cho mọi máy/mọi tài khoản, gọi lúc đăng nhập.
 function loadPriorityTagsFromServer_() {
   google.script.run
     .withSuccessHandler(function(tags) {
       priorityTags_ = tags || {};
       try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
-      renderPriorityQuickFilters_();
       renderDashboard_();
     })
     .withFailureHandler(function() { /* mất mạng -> tạm giữ cache cũ, không chặn app */ })
@@ -3548,6 +3471,7 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
+const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime", không quá tải server
 function pollPriorityTagsSilently_() {
   google.script.run
     .withSuccessHandler(function(tags) {
@@ -3555,7 +3479,6 @@ function pollPriorityTagsSilently_() {
       if (priorityTagsAreEqual_(tags, priorityTags_)) return; // không có gì đổi -> bỏ qua, không vẽ lại
       priorityTags_ = tags;
       try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
-      renderPriorityQuickFilters_();
       if (document.getElementById('tab-dashboard').classList.contains('active')) {
         renderDashboard_();
       }
@@ -3643,7 +3566,6 @@ function pollPriorityTagsSilently_() {
   if (value) priorityTags_[lsx] = value; else delete priorityTags_[lsx];
   try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
   closePriorityPopup_();
-  renderPriorityQuickFilters_();
   renderDashboard_();
 
   google.script.run
@@ -3659,7 +3581,6 @@ function pollPriorityTagsSilently_() {
   const tag = custom.trim();
   priorityTags_[lsx] = tag;
   try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
-  renderPriorityQuickFilters_();
   renderDashboard_();
 
   google.script.run
@@ -3740,58 +3661,14 @@ function pollPriorityTagsSilently_() {
     hideDashSuggestions_();
     renderDashboard_();
   }
-  // Danh sách nhãn theo thứ tự ưu tiên hiển thị nếu có tồn tại (Gấp trước, rồi ƯT1..ƯT9),
-  // nhãn tự đặt (không nằm trong danh sách này) sẽ xếp sau cùng theo alphabet.
-  const PRIORITY_TAG_KNOWN_ORDER_ = ['gap','ut1','ut2','ut3','ut4','ut5','ut6','ut7','ut8','ut9'];
-
-  let priorityShowAllActive_ = false;
-
-  function togglePriorityShowAll_() {
-    priorityShowAllActive_ = !priorityShowAllActive_;
-    if (priorityShowAllActive_) priorityFilterActive_.clear(); // bật "tất cả ưu tiên" thì bỏ lọc theo từng nhãn riêng
-    const btn = document.getElementById('prioFilterBtnAll');
-    if (btn) {
-      btn.style.background = priorityShowAllActive_ ? '#1a73e8' : 'transparent';
-      btn.style.color = priorityShowAllActive_ ? '#fff' : '#1a73e8';
-    }
-    renderPriorityQuickFilters_();
-    renderDashboard_();
-  }
-
   function togglePriorityFilter_(tag) {
-    priorityShowAllActive_ = false; // chọn 1 nhãn cụ thể -> tắt "Đơn hàng ưu tiên" (tất cả)
-    const allBtn = document.getElementById('prioFilterBtnAll');
-    if (allBtn) { allBtn.style.background = 'transparent'; allBtn.style.color = '#1a73e8'; }
-
     if (priorityFilterActive_.has(tag)) priorityFilterActive_.delete(tag);
     else priorityFilterActive_.add(tag);
-    renderPriorityQuickFilters_();
+    ['gap','ut1','ut2'].forEach(function(t) {
+      const btn = document.getElementById('prioFilterBtn-' + t);
+      if (btn) btn.classList.toggle('active', priorityFilterActive_.has(t));
+    });
     renderDashboard_();
-  }
-
-  // Quét toàn bộ nhãn ưu tiên ĐANG THỰC SỰ được gắn cho ít nhất 1 LSX, rồi tự vẽ nút lọc
-  // nhanh tương ứng - có nhãn nào (Gấp/ƯT1/ƯT2/ƯT3.../nhãn tự đặt) thì tự hiện nút đó,
-  // không cần khai báo cứng danh sách trước như cũ.
-  function renderPriorityQuickFilters_() {
-    const wrap = document.getElementById('dashPriorityQuickFilters');
-    if (!wrap) return;
-
-    const tagsInUse = new Set(Object.values(priorityTags_).filter(function(t) { return t; }));
-    const knownPresent = PRIORITY_TAG_KNOWN_ORDER_.filter(function(t) { return tagsInUse.has(t); });
-    const customPresent = Array.from(tagsInUse).filter(function(t) { return PRIORITY_TAG_KNOWN_ORDER_.indexOf(t) === -1; }).sort();
-    const orderedTags = knownPresent.concat(customPresent);
-
-    wrap.innerHTML = orderedTags.map(function(tag) {
-      const meta = priorityMeta_(tag);
-      const active = priorityFilterActive_.has(tag);
-      const style = active
-        ? ('background:' + meta.bg + '; color:#fff; border-color:' + meta.bg + '; font-weight:800;')
-        : ('background:transparent; color:' + meta.bg + '; border-color:' + meta.bg + ';');
-      const safeTag = tag.replace(/'/g, "\\'");
-      return '<button type="button" class="quick-btn" id="prioFilterBtn-' + safeTag +
-        '" onclick="togglePriorityFilter_(\'' + safeTag + '\')" style="' + style + '">' +
-        escapeHtml_(meta.label) + '</button>';
-    }).join('');
   }
 
       function dashFilterIconHtml_(key) {
@@ -3842,9 +3719,7 @@ function pollPriorityTagsSilently_() {
             return dashLsxSearch_.some(function(tok) { return lsxLower.indexOf(tok) !== -1; });
           });
         }
-        if (priorityShowAllActive_) {
-          filtered = filtered.filter(function(r) { return !!priorityTags_[r.lsx]; });
-        } else if (priorityFilterActive_ && priorityFilterActive_.size > 0) {
+        if (priorityFilterActive_ && priorityFilterActive_.size > 0) {
           filtered = filtered.filter(function(r) { return priorityFilterActive_.has(priorityTags_[r.lsx]); });
         }
         filtered = applyDashboardColumnFilters_(filtered);
@@ -4911,20 +4786,6 @@ function pollPriorityTagsSilently_() {
         </div>
         <div class="upbom-footer">
           <button type="button" class="upbom-cancel" onclick="closeLsxDetailModal_()">Đóng</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="notifOverlay" class="colvis-overlay" style="display:none;">
-      <div class="colvis-modal" style="width:min(94vw, 420px); max-height:80vh;">
-        <div class="colvis-header">
-          <h3><i class="fa-regular fa-bell" style="margin-right:8px;"></i>Thông báo</h3>
-          <span class="upbom-close" onclick="closeNotifModal_()">&times;</span>
-        </div>
-        <div id="notifModalBody" style="overflow-y:auto; flex:1;"></div>
-        <div class="upbom-footer">
-          <button type="button" class="upbom-cancel" onclick="markAllNotifsRead_()">Đánh dấu tất cả đã đọc</button>
-          <button type="button" class="upbom-save" onclick="closeNotifModal_()" style="background:#1a73e8;">Đóng</button>
         </div>
       </div>
     </div>
