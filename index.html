@@ -1233,6 +1233,16 @@
       let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
       let trackingPollTimer_ = null;
 
+      // NGUYÊN NHÂN GỐC của toàn bộ chuỗi lỗi TDZ vừa qua: renderPriorityQuickFilters_()
+      // được gọi NGAY LÚC TẢI TRANG (renderCategoryButtons(); renderEmptyTable(); ...
+      // renderPriorityQuickFilters_();) nhưng bên trong nó dùng priorityTags_, vốn được
+      // khai báo bằng let/const tít phía dưới -> script bị dừng đột ngột ngay tại đây,
+      // khiến MỌI khai báo let/const phía sau (dashboardRows, priorityTags_, v.v.) không
+      // bao giờ chạy tới. Khai báo sớm priorityTags_ ở đây để chặn đứng nguyên nhân gốc.
+      const PRIORITY_TAGS_CACHE_KEY = 'gcck_priority_tags_cache_v1'; // chỉ để hiện tạm lúc chưa tải xong từ server
+      let priorityTags_ = {};
+      try { priorityTags_ = JSON.parse(localStorage.getItem(PRIORITY_TAGS_CACHE_KEY) || '{}'); } catch (e) { priorityTags_ = {}; }
+
       function sendHeartbeat_() {
         if (!currentUser_) return;
         google.script.run
@@ -3511,10 +3521,6 @@
           '<div class="chuyen-box"><span class="chuyen-label">Còn</span><span class="chuyen-value">' + conLai + '</span></div>' +
         '</div></td>';
       }
-
-         const PRIORITY_TAGS_CACHE_KEY = 'gcck_priority_tags_cache_v1'; // chỉ để hiện tạm lúc chưa tải xong từ server
-let priorityTags_ = {};
-try { priorityTags_ = JSON.parse(localStorage.getItem(PRIORITY_TAGS_CACHE_KEY) || '{}'); } catch (e) { priorityTags_ = {}; }
 
 // Tải nhãn ưu tiên THẬT từ Supabase - dùng chung cho mọi máy/mọi tài khoản, gọi lúc đăng nhập.
 function loadPriorityTagsFromServer_() {
