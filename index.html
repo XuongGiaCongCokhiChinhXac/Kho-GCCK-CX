@@ -889,7 +889,7 @@
       // Dùng AbortController để tự hủy request sau 20 giây, buộc nó rơi vào .catch() để retry
       // hoặc báo lỗi, thay vì treo mãi.
       const controller = new AbortController();
-      const timeoutId = setTimeout(function() { controller.abort(); }, 20000);
+      const timeoutId = setTimeout(function() { controller.abort(); }, 12000); // giảm từ 20s xuống 12s, phát hiện treo nhanh hơn
 
       return fetch(API_URL, {
         method: 'POST',
@@ -907,10 +907,13 @@
         .catch(function(err) {
           clearTimeout(timeoutId);
           // "Failed to fetch" (TypeError) là lỗi MẠNG, "AbortError" là do request bị hủy vì
-          // quá 20s - cả 2 đều nên retry. Khác với lỗi logic server trả về (data.ok=false,
+          // quá thời gian chờ - cả 2 đều nên retry. Khác với lỗi logic server trả về (data.ok=false,
           // VD "Sai mật khẩu") thì KHÔNG retry vì retry không giải quyết được gì.
           const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
           if (isNetworkError && retriesLeft > 0) {
+            if (typeof showToast === 'function') {
+              showToast('Kết nối chậm, đang thử lại...', 'info');
+            }
             const delayMs = (3 - retriesLeft) * 800 + 500; // 500ms, rồi 1300ms
             return new Promise(function(resolve) {
               setTimeout(resolve, delayMs);
@@ -1045,6 +1048,9 @@
             </button>
             <button type="button" onclick="openChangePasswordModal_()">
               <i class="fa-solid fa-key"></i> Đổi mật khẩu
+            </button>
+            <button type="button" onclick="forceFullResyncNow_()">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ toàn bộ dữ liệu ngay
             </button>
             <div class="topbar-menu-divider"></div>
             <button type="button" class="topbar-menu-exit" onclick="exitApp_()">
@@ -1322,11 +1328,13 @@
           const timeStr = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') +
             ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
           const bg = isRead ? 'transparent' : '#eef4ff';
-          const dot = isRead ? '' : '<span style="width:7px; height:7px; border-radius:50%; background:#1a73e8; display:inline-block; margin-right:6px; flex-shrink:0; margin-top:5px;"></span>';
+          const dot = isRead ? '' : '<span style="width:7px; height:7px; border-radius:50%; background:#1a73e8; display:inline-block; margin-right:6px; flex-shrink:0; margin-top:6px;"></span>';
           return '<div onclick="markNotifRead_(' + n.id + ')" style="cursor:pointer; display:flex; align-items:flex-start; padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45; background:' + bg + ';">' +
             dot +
-            '<div style="flex:1;"><div style="font-weight:' + (isRead ? '400' : '700') + ';">' + escapeHtml_(n.message) + '</div>' +
-            '<div style="font-size:11px; color:#999; margin-top:3px;">' + timeStr + '</div></div>' +
+            '<div style="flex:1; display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">' +
+              '<div style="font-weight:' + (isRead ? '400' : '700') + ';">' + escapeHtml_(n.message) + '</div>' +
+              '<div style="font-size:11px; color:#999; white-space:nowrap; flex-shrink:0; margin-top:1px;">' + timeStr + '</div>' +
+            '</div>' +
           '</div>';
         }).join('');
       }
@@ -1407,6 +1415,21 @@
 
       function closeChangePasswordModal_() {
         document.getElementById('changePassOverlay').style.display = 'none';
+      }
+
+      // Ép quét lại TOÀN BỘ Sheet -> Supabase ngay (chạy mỗi 1 phút, tự tắt khi xong).
+      // Bấm nút này khoảng 15-20 phút trước giờ họp để chắc chắn số liệu là mới nhất.
+      function forceFullResyncNow_() {
+        closeUserMenu_();
+        showToast('Đang bắt đầu đồng bộ toàn bộ dữ liệu, quá trình này có thể mất vài phút...', 'info');
+        google.script.run
+          .withSuccessHandler(function() {
+            showToast('Đã bắt đầu đồng bộ toàn bộ. Đợi khoảng 2-5 phút rồi bấm Làm mới để thấy số liệu mới nhất.', 'success');
+          })
+          .withFailureHandler(function(err) {
+            showToast('Lỗi khi bắt đầu đồng bộ: ' + err.message, 'error');
+          })
+          .forceFullResyncNow();
       }
 
       function submitChangePassword_() {
