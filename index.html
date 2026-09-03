@@ -880,7 +880,9 @@
     <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbwtE5EwOIp2Z8A0Rn1-lGpHno0JEo6ZXGNVpLJiOZOBJuAVqDrpDGHvjt5Z-TjIYSDt/exec';
 
-    function callServer_(fnName, args) {
+    function callServer_(fnName, args, retriesLeft) {
+      if (retriesLeft === undefined) retriesLeft = 2; // tổng cộng thử tối đa 3 lần
+
       return fetch(API_URL, {
         method: 'POST',
         // Dùng text/plain để tránh trình duyệt gửi preflight OPTIONS - Apps Script
@@ -892,6 +894,21 @@
         .then(function(data) {
           if (!data.ok) throw new Error(data.error);
           return data.result;
+        })
+        .catch(function(err) {
+          // "Failed to fetch" là lỗi MẠNG (chưa tới được server), khác với lỗi logic server
+          // trả về (data.ok=false). Chỉ retry cho lỗi mạng thoáng qua, không retry lỗi logic
+          // (VD "Sai mật khẩu") vì retry sẽ không giải quyết được gì, chỉ làm chậm phản hồi.
+          const isNetworkError = err instanceof TypeError; // fetch ném TypeError khi lỗi mạng/CORS
+          if (isNetworkError && retriesLeft > 0) {
+            const delayMs = (3 - retriesLeft) * 800 + 500; // 500ms, rồi 1300ms
+            return new Promise(function(resolve) {
+              setTimeout(resolve, delayMs);
+            }).then(function() {
+              return callServer_(fnName, args, retriesLeft - 1);
+            });
+          }
+          throw err;
         });
     }
 
