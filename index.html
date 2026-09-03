@@ -879,15 +879,153 @@
   <body>
 
     <script>
+    // ===== SUPABASE DIRECT CLIENT - đọc không qua Apps Script =====
+    // Lấy anon key: Supabase Dashboard → Project Settings → API → "anon public"
+    const SB_URL = 'https://xbkdqhlcimmriwcyxdpf.supabase.co';
+    const SB_KEY = 'PASTE_ANON_KEY_HERE'; // <-- THAY BẰNG ANON KEY THẬT
+
+    function sbGetAll_(urlPath) {
+      const PAGE = 3000;
+      let all = [], from = 0;
+      function next() {
+        return fetch(SB_URL + urlPath, {
+          headers: {
+            'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+            'Range': from + '-' + (from + PAGE - 1)
+          }
+        })
+        .then(function(r) {
+          if (!r.ok) throw new Error('Supabase HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(rows) {
+          all = all.concat(rows);
+          if (!rows.length) return all;
+          from += rows.length;
+          return next();
+        });
+      }
+      return next();
+    }
+
+    function sbPost_(path, data) {
+      return fetch(SB_URL + path, {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify(Array.isArray(data) ? data : [data])
+      });
+    }
+
+    function formatTrackingDate_(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return String(d.getDate()).padStart(2,'0') + '/' +
+        String(d.getMonth()+1).padStart(2,'0') + '/' +
+        String(d.getFullYear()).slice(-2) + ' ' +
+        String(d.getHours()).padStart(2,'0') + ':' +
+        String(d.getMinutes()).padStart(2,'0');
+    }
+
+    function processTrackingRows_(rows) {
+      return (rows || []).map(function(r) {
+        return {
+          lsx_stt:r.lsx_stt, lsx:r.lsx, stt:r.stt,
+          ten_chi_tiet:r.ten_chi_tiet, vat_lieu:r.vat_lieu,
+          dai:r.dai, rong:r.rong, day:r.day, hinh_hop:r.hinh_hop,
+          dn:r.dn, dt:r.dt, sl_dh:r.sl_dh, msct:r.msct,
+          so_luong:r.so_luong, nguoi:r.nguoi, ngay:formatTrackingDate_(r.ngay)
+        };
+      });
+    }
+
+    function searchByLSXDirect_(lsx) {
+      const tokens = lsx.split(/[,;\s]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>=3;});
+      if (!tokens.length) return Promise.reject(new Error('Từ khóa quá ngắn, vui lòng nhập đầy đủ LSX (kiểm tra lại dấu "/").'));
+      const filter = tokens.length === 1
+        ? 'lsx=ilike.*' + encodeURIComponent(tokens[0]) + '*'
+        : 'or=(' + tokens.map(function(t){return 'lsx.ilike.*'+encodeURIComponent(t)+'*';}).join(',') + ')';
+      return sbGetAll_('/rest/v1/bom_giao_viec?' + filter + '&select=*&order=thu_tu.asc');
+    }
+
+    function searchByPrefixDirect_(prefix) {
+      return sbGetAll_('/rest/v1/bom_giao_viec?lsx=like.' + encodeURIComponent(prefix.trim().toUpperCase()+'.') + '*&select=*&order=thu_tu.asc');
+    }
+
+    function suggestLSXDirect_(query) {
+      return fetch(SB_URL + '/rest/v1/bom_giao_viec?lsx=ilike.*' + encodeURIComponent(query.trim()) + '*&select=lsx&order=lsx.asc&limit=300', {
+        headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      })
+      .then(function(r){return r.json();})
+      .then(function(rows){
+        const seen={}, res=[];
+        rows.forEach(function(r){if(r.lsx&&!seen[r.lsx]){seen[r.lsx]=true;res.push(r.lsx);}});
+        return res.slice(0,10);
+      });
+    }
+
+    function getDashboardDataDirect_() {
+      const SEL = 'thu_tu,lsx,loai,hang_muc,ngay_giao,kho_giao_hang_percent,tien_do_don_hang,tinh_trang,duc_nhom_tien_do,duc_nhom_tong,duc_nhom_gc,duc_nhom_con_lai,cua_vong_tien_do,cua_vong_tong,cua_vong_gc,cua_vong_con_lai,tien_tien_do,tien_tong,tien_gc,tien_con_lai,phay_tien_do,phay_tong,phay_gc,phay_con_lai,nguoi_tien_do,nguoi_tong,nguoi_gc,nguoi_con_lai,nhiet_tien_do,nhiet_tong,nhiet_gc,nhiet_con_lai,ngay_hoan_thanh';
+      return sbGetAll_('/rest/v1/tien_do_don_hang?select=' + SEL + '&order=thu_tu.asc')
+        .then(function(rows) {
+          function pct(v){var n=Number(v);return(v===null||v===undefined||v===''||isNaN(n))?0:Math.round(n*100);}
+          function typ(lsx){var m=String(lsx||'').match(/^([A-Za-zÀ-ỹ]+)\./);return m?m[1].toUpperCase():'KPH';}
+          return rows.map(function(r){
+            return {
+              lsx:r.lsx, loai:r.loai||typ(r.lsx), sanPham:r.hang_muc||'', khgh:r.ngay_giao,
+              percent:pct(r.kho_giao_hang_percent), tienDoPercent:pct(r.tien_do_don_hang),
+              total:null, delivered:null, tienDoDonHang:r.tien_do_don_hang, tinhTrang:r.tinh_trang,
+              ngayHoanThanh:r.ngay_hoan_thanh||'',
+              chuyen:{
+                ducNhom:{td:r.duc_nhom_tien_do,tong:r.duc_nhom_tong,gc:r.duc_nhom_gc,con:r.duc_nhom_con_lai},
+                cuaVong:{td:r.cua_vong_tien_do,tong:r.cua_vong_tong,gc:r.cua_vong_gc,con:r.cua_vong_con_lai},
+                tien:   {td:r.tien_tien_do,    tong:r.tien_tong,    gc:r.tien_gc,    con:r.tien_con_lai},
+                phay:   {td:r.phay_tien_do,    tong:r.phay_tong,    gc:r.phay_gc,    con:r.phay_con_lai},
+                nguoi:  {td:r.nguoi_tien_do,   tong:r.nguoi_tong,   gc:r.nguoi_gc,   con:r.nguoi_con_lai},
+                nhiet:  {td:r.nhiet_tien_do,   tong:r.nhiet_tong,   gc:r.nhiet_gc,   con:r.nhiet_con_lai}
+              }
+            };
+          }).filter(function(g){
+            return /^[A-Za-zÀ-ỹ]+\.[^.]+$/.test(g.lsx||'') && /^\d{4}-\d{2}-\d{2}$/.test(g.khgh||'');
+          });
+        });
+    }
+
+    function searchTrackingByLsxDirect_(lsx, mode) {
+      const tbl = mode === 'nhanphoi' ? 'nhan_phoi' : 'giao_hang';
+      return searchByLSXDirect_(lsx).then(function(bomRows) {
+        const keys = bomRows.map(function(r){return r.lsx_stt;}).filter(Boolean);
+        if (!keys.length) return bomRows.map(function(r){
+          return {lsx_stt:r.lsx_stt,lsx:r.lsx,stt_ct:r.stt_ct,msct:r.msct,
+            ten_chi_tiet:r.ten_chi_tiet,vat_lieu:r.vat_lieu,
+            dai:r.dai,rong:r.rong,day:r.day,hinh_hop:r.hinh_hop,
+            dn:r.dn,dt:r.dt,sl_dh:r.sl_dh,sl_da_giao:0};
+        });
+        const inList = keys.map(encodeURIComponent).join(',');
+        return fetch(SB_URL+'/rest/v1/'+tbl+'?lsx_stt=in.('+inList+')&select=lsx_stt,so_luong',{
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+        }).then(function(r){return r.json();}).then(function(rows){
+          const map={};
+          rows.forEach(function(r){map[r.lsx_stt]=Number(r.so_luong)||0;});
+          return bomRows.map(function(r){
+            return {lsx_stt:r.lsx_stt,lsx:r.lsx,stt_ct:r.stt_ct,msct:r.msct,
+              ten_chi_tiet:r.ten_chi_tiet,vat_lieu:r.vat_lieu,
+              dai:r.dai,rong:r.rong,day:r.day,hinh_hop:r.hinh_hop,
+              dn:r.dn,dt:r.dt,sl_dh:r.sl_dh,sl_da_giao:map[r.lsx_stt]||0};
+          });
+        });
+      });
+    }
+
     const API_URL = 'https://script.google.com/macros/s/AKfycbwtE5EwOIp2Z8A0Rn1-lGpHno0JEo6ZXGNVpLJiOZOBJuAVqDrpDGHvjt5Z-TjIYSDt/exec';
 
     function callServer_(fnName, args, retriesLeft) {
-      if (retriesLeft === undefined) retriesLeft = 5; // tổng cộng thử tối đa 6 lần - Apps Script có thể phải xếp hàng khi đông người dùng
-
-      // Nới timeout lên 25 giây - 18s vẫn còn hay bị abort giả khi Apps Script đang bận
-      // (không phải treo thật), nhất là lúc nhiều công nhân/quản lý cùng thao tác + polling.
+            if (retriesLeft === undefined) retriesLeft = 5;
       const controller = new AbortController();
-      const timeoutId = setTimeout(function() { controller.abort(); }, 25000);
+      const timeoutId = setTimeout(function() { controller.abort(); }, 30000);
 
       return fetch(API_URL, {
         method: 'POST',
@@ -907,14 +1045,10 @@
           // "Failed to fetch" (TypeError) là lỗi MẠNG, "AbortError" là do request bị hủy vì
           // quá thời gian chờ - cả 2 đều nên retry. Khác với lỗi logic server trả về (data.ok=false,
           // VD "Sai mật khẩu") thì KHÔNG retry vì retry không giải quyết được gì.
-          const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
+                    const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
           if (isNetworkError && retriesLeft > 0) {
-            // KHÔNG hiện toast nữa - retry hoàn toàn ÂM THẦM ở nền, người dùng không cần
-            // biết/không bị làm phiền bởi thông báo "Kết nối chậm, đang thử lại..." liên tục.
-            // Backoff tăng dần (1s, 2.5s, 4s, 5.5s, 7s) - nếu nguyên nhân là Apps Script đang
-            // xếp hàng (vượt quota chạy đồng thời), thử lại NGAY LẬP TỨC chỉ làm tình hình
-            // tệ hơn (dồn thêm request). Chờ lâu hơn cho quota rảnh ra rồi mới thử lại.
-            const delayMs = (6 - retriesLeft) * 1500 + 1000; // 1000, 2500, 4000, 5500, 7000ms
+            // Retry ÂM THẦM, không hiện toast làm phiền người dùng
+            const delayMs = (6 - retriesLeft) * 1500 + 1000;
             return new Promise(function(resolve) {
               setTimeout(resolve, delayMs);
             }).then(function() {
@@ -1269,18 +1403,21 @@
           let currentUser_ = null; // { msnv, hoTen }
       const ONLINE_HEARTBEAT_MS = 45000; // 45 giây - báo online không cần quá dày, giảm tải Apps Script
 
-      function sendHeartbeat_() {
+            function sendHeartbeat_() {
         if (!currentUser_) return;
-        google.script.run
-          .withSuccessHandler(function(count) {
+        const cutoff = new Date(Date.now() - 60000).toISOString();
+        sbPost_('/rest/v1/online_users', { msnv: currentUser_.msnv, last_seen: new Date().toISOString() })
+          .then(function() {
+            return sbGetAll_('/rest/v1/online_users?select=msnv&last_seen=gte.' + encodeURIComponent(cutoff));
+          })
+          .then(function(rows) {
             const badge = document.getElementById('onlineBadge');
             const text = document.getElementById('onlineCountText');
             if (!badge || !text) return;
-            text.textContent = count + ' đang online';
+            text.textContent = rows.length + ' đang online';
             badge.style.display = 'inline-flex';
           })
-          .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
-          .heartbeatOnline(currentUser_.msnv);
+          .catch(function() { /* im lặng */ });
       }
 
       /* ================= THÔNG BÁO ĐƠN GẤP/ƯU TIÊN ================= */
@@ -1358,8 +1495,8 @@
 
       const NOTIF_POLL_MS = 20000; // 20 giây - giảm tải Apps Script
       function pollNotifications_() {
-        google.script.run
-          .withSuccessHandler(function(rows) {
+        sbGetAll_('/rest/v1/notifications?id=gt.' + lastNotifId_ + '&select=*&order=id.asc&limit=50')
+          .then(function(rows) {
             if (!rows || rows.length === 0) { notifFirstLoad_ = false; return; }
             rows.forEach(function(n) {
               notifList_.push(n);
@@ -1371,8 +1508,7 @@
             updateNotifBadge_();
             if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
           })
-          .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
-          .getNotifications(lastNotifId_);
+          .catch(function() { /* im lặng */ });
       }
 
       // Gọi khi đăng nhập THÀNH CÔNG - lưu lại thông tin cho lần sau, rồi bật màn hình chờ.
@@ -1537,16 +1673,10 @@
         const myRequestId = ++suggestRequestId;
 
         suggestTimer = setTimeout(function() {
-          google.script.run
-            .withSuccessHandler(function(list) {
-              if (myRequestId !== suggestRequestId) return; // đã gõ thêm ký tự mới, bỏ kết quả trễ này
-              showSuggestions(list);
-            })
-            .withFailureHandler(function() {
-              if (myRequestId !== suggestRequestId) return;
-              hideSuggestions();
-            })
-            .suggestLSX(value);
+          const myId = ++suggestRequestId;
+          suggestLSXDirect_(value)
+            .then(function(list) { if (myId === suggestRequestId) showSuggestions(list); })
+            .catch(function() { if (myId === suggestRequestId) hideSuggestions(); });
         }, 100);
       });
 
@@ -1675,21 +1805,20 @@
 
         const myRequestId = ++searchRequestId;
 
-        google.script.run
-          .withSuccessHandler(function(rows) {
-            if (myRequestId !== searchRequestId) return; // đã bị hủy / có lượt tìm mới hơn
+        searchByLSXDirect_(lsx)
+          .then(function(rows) {
+            if (myRequestId !== searchRequestId) return;
             lastRows = rows;
             currentQuery = lsx;
             currentQueryMode = 'lsx';
-            render(applyFilters(rows)); // render() tự đếm theo dữ liệu sau lọc
+            render(applyFilters(rows));
             startPolling();
           })
-          .withFailureHandler(function(err) {
+          .catch(function(err) {
             if (myRequestId !== searchRequestId) return;
             setLoading(false);
             status.textContent = 'Lỗi: ' + err.message;
-          })
-          .searchByLSX(lsx);
+          });
       }
 
           const CATEGORIES = [
@@ -1755,8 +1884,8 @@
           setLoading(true);
         }
 
-        google.script.run
-          .withSuccessHandler(function(rows) {
+        searchByPrefixDirect_(prefix)
+          .then(function(rows) {
             if (myRequestId !== searchRequestId) return;
             categoryCache[prefix] = rows;
             lastRows = rows;
@@ -1765,12 +1894,11 @@
             render(applyFilters(rows));
             startPolling();
           })
-          .withFailureHandler(function(err) {
+          .catch(function(err) {
             if (myRequestId !== searchRequestId) return;
             setLoading(false);
             status.textContent = 'Lỗi: ' + err.message;
-          })
-          .searchByPrefix(prefix);
+          });
       }
 
       function updateSummary(rows) {
@@ -2409,15 +2537,10 @@
 
       function pollForUpdates() {
         if (!currentQuery) return;
-        const runner = google.script.run
-          .withSuccessHandler(mergeRemoteChanges)
-          .withFailureHandler(function() { /* im lặng bỏ qua, lần sau tự thử lại */ });
-
-        if (currentQueryMode === 'prefix') {
-          runner.searchByPrefix(currentQuery);
-        } else {
-          runner.searchByLSX(currentQuery);
-        }
+        const p = currentQueryMode === 'prefix'
+          ? searchByPrefixDirect_(currentQuery)
+          : searchByLSXDirect_(currentQuery);
+        p.then(mergeRemoteChanges).catch(function() { /* im lặng */ });
       }
 
       // So sánh dữ liệu mới nhất từ server với dữ liệu đang hiển thị,
@@ -2954,21 +3077,17 @@
       function pollActiveTrackingTab_() {
         if (!activeTrackingTab_) return;
         if (activeTrackingTab_ === 'nhanphoi') {
-          google.script.run
-            .withSuccessHandler(function(rows) {
-              nhanPhoiRows = rows;
-              renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(rows, trackingFilters.nhanphoi), 'nhanphoi');
-            })
-            .withFailureHandler(function() { /* im lặng bỏ qua, lần sau tự thử lại */ })
-            .getNhanPhoiData();
+          sbGetAll_('/rest/v1/nhan_phoi?select=*&order=ngay.desc')
+            .then(function(rows) {
+              nhanPhoiRows = processTrackingRows_(rows);
+              renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
+            }).catch(function() {});
         } else if (activeTrackingTab_ === 'giaohang') {
-          google.script.run
-            .withSuccessHandler(function(rows) {
-              giaoHangRows = rows;
-              renderTrackingTable_('giaoHangResult', applyTrackingFilters_(rows, trackingFilters.giaohang), 'giaohang');
-            })
-            .withFailureHandler(function() {})
-            .getGiaoHangData();
+          sbGetAll_('/rest/v1/giao_hang?select=*&order=ngay.desc')
+            .then(function(rows) {
+              giaoHangRows = processTrackingRows_(rows);
+              renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
+            }).catch(function() {});
         }
       }
 
@@ -3166,25 +3285,18 @@
     btn.classList.add('spinning'); btn.disabled = true;
     const safetyTimer = setTimeout(function() {
       btn.classList.remove('spinning'); btn.disabled = false;
-      showToast('Tải quá lâu, có thể do mạng hoặc server. Vui lòng thử lại.', 'error');
+      showToast('Tải quá lâu. Vui lòng thử lại.', 'error');
     }, 15000);
     function stop() { clearTimeout(safetyTimer); btn.classList.remove('spinning'); btn.disabled = false; }
 
-    google.script.run
-      .withSuccessHandler(function(rows) {
-        try {
-          nhanPhoiRows = rows; trackingLoaded.nhanphoi = true;
-          renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(rows, trackingFilters.nhanphoi), 'nhanphoi');
-        } catch (e) {
-          showToast('Lỗi hiển thị dữ liệu: ' + e.message, 'error');
-        }
+    sbGetAll_('/rest/v1/nhan_phoi?select=*&order=ngay.desc')
+      .then(function(rows) {
+        nhanPhoiRows = processTrackingRows_(rows);
+        trackingLoaded.nhanphoi = true;
+        renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
         stop();
       })
-      .withFailureHandler(function(err) {
-        showToast('Lỗi: ' + err.message, 'error');
-        stop();
-      })
-      .getNhanPhoiData();
+      .catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); stop(); });
   }
 
   function refreshGiaoHangTab() {
@@ -3192,44 +3304,35 @@
     btn.classList.add('spinning'); btn.disabled = true;
     const safetyTimer = setTimeout(function() {
       btn.classList.remove('spinning'); btn.disabled = false;
-      showToast('Tải quá lâu, có thể do mạng hoặc server. Vui lòng thử lại.', 'error');
+      showToast('Tải quá lâu. Vui lòng thử lại.', 'error');
     }, 15000);
     function stop() { clearTimeout(safetyTimer); btn.classList.remove('spinning'); btn.disabled = false; }
 
-    google.script.run
-      .withSuccessHandler(function(rows) {
-        try {
-          giaoHangRows = rows; trackingLoaded.giaohang = true;
-          renderTrackingTable_('giaoHangResult', applyTrackingFilters_(rows, trackingFilters.giaohang), 'giaohang');
-        } catch (e) {
-          showToast('Lỗi hiển thị dữ liệu: ' + e.message, 'error');
-        }
+    sbGetAll_('/rest/v1/giao_hang?select=*&order=ngay.desc')
+      .then(function(rows) {
+        giaoHangRows = processTrackingRows_(rows);
+        trackingLoaded.giaohang = true;
+        renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
         stop();
       })
-      .withFailureHandler(function(err) {
-        showToast('Lỗi: ' + err.message, 'error');
-        stop();
-      })
-      .getGiaoHangData();
+      .catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); stop(); });
   }
 
   /* ================= TÌM LSX ĐỂ TICK GIAO HÀNG / NHẬN PHÔI THEO SỐ LƯỢNG THỰC TẾ ================= */
   function searchGiaoHangByLsx_() {
     const lsx = document.getElementById('ghSearchInput').value.trim();
     if (!lsx) { showToast('Vui lòng nhập LSX.', 'error'); return; }
-    google.script.run
-      .withSuccessHandler(function(rows) { renderTrackingSearchTable_('ghSearchResult', rows, 'giaohang'); })
-      .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
-      .searchTrackingByLsx(lsx, 'giaohang');
+    searchTrackingByLsxDirect_(lsx, 'giaohang')
+      .then(function(rows) { renderTrackingSearchTable_('ghSearchResult', rows, 'giaohang'); })
+      .catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); });
   }
 
   function searchNhanPhoiByLsx_() {
     const lsx = document.getElementById('npSearchInput').value.trim();
     if (!lsx) { showToast('Vui lòng nhập LSX.', 'error'); return; }
-    google.script.run
-      .withSuccessHandler(function(rows) { renderTrackingSearchTable_('npSearchResult', rows, 'nhanphoi'); })
-      .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
-      .searchTrackingByLsx(lsx, 'nhanphoi');
+    searchTrackingByLsxDirect_(lsx, 'nhanphoi')
+      .then(function(rows) { renderTrackingSearchTable_('npSearchResult', rows, 'nhanphoi'); })
+      .catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); });
   }
 
   function trackingStatusBadge_(daGiao, slDh) {
@@ -3660,20 +3763,19 @@
         if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
         function stop() { if (btn) { btn.classList.remove('spinning'); btn.disabled = false; } }
 
-        google.script.run
-          .withSuccessHandler(function(rows) {
+        getDashboardDataDirect_()
+          .then(function(rows) {
             dashboardRows = rows || [];
             saveDashboardCache_(dashboardRows);
             renderDashboard_();
             markDashboardReadyForSplash_();
             stop();
           })
-          .withFailureHandler(function(err) {
+          .catch(function(err) {
             showToast('Lỗi tải dashboard: ' + err.message, 'error');
             markDashboardReadyForSplash_();
             stop();
-          })
-          .getDashboardData();
+          });
 
         google.script.run
           .withSuccessHandler(renderProgressSyncStatus_)
@@ -3684,14 +3786,13 @@
       // Tự làm mới Dashboard mỗi 15 phút - ÂM THẦM, không spinner/toast để không làm
       // phiền người đang xem, chỉ âm thầm cập nhật lại số liệu trên các ô/thẻ.
       function refreshDashboardSilently_() {
-        google.script.run
-          .withSuccessHandler(function(rows) {
+        getDashboardDataDirect_()
+          .then(function(rows) {
             dashboardRows = rows || [];
             saveDashboardCache_(dashboardRows);
             renderDashboard_();
           })
-          .withFailureHandler(function() { /* im lặng, 15 phút sau tự thử lại */ })
-          .getDashboardData();
+          .catch(function() { /* im lặng */ });
 
         google.script.run
           .withSuccessHandler(renderProgressSyncStatus_)
@@ -3811,14 +3912,15 @@ try { priorityTags_ = JSON.parse(localStorage.getItem(PRIORITY_TAGS_CACHE_KEY) |
 
 // Tải nhãn ưu tiên THẬT từ Supabase - dùng chung cho mọi máy/mọi tài khoản, gọi lúc đăng nhập.
 function loadPriorityTagsFromServer_() {
-  google.script.run
-    .withSuccessHandler(function(tags) {
-      priorityTags_ = tags || {};
+  sbGetAll_('/rest/v1/priority_tags?select=lsx,tag')
+    .then(function(rows) {
+      const tags = {};
+      (rows||[]).forEach(function(r){if(r.lsx&&r.tag)tags[r.lsx]=r.tag;});
+      priorityTags_ = tags;
       try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
       renderDashboard_();
     })
-    .withFailureHandler(function() { /* mất mạng -> tạm giữ cache cũ, không chặn app */ })
-    .getPriorityTags();
+    .catch(function() { /* mất mạng -> tạm giữ cache cũ */ });
 }
 
 // So sánh nhanh 2 object nhãn ưu tiên có khác nhau không (đủ dùng, không cần deep-equal phức tạp)
@@ -3836,18 +3938,16 @@ function priorityTagsAreEqual_(a, b) {
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
       const PRIORITY_TAGS_POLL_MS = 20000; // 20 giây - giảm tải Apps Script, vẫn đủ nhanh cho nhãn ưu tiên
 function pollPriorityTagsSilently_() {
-  google.script.run
-    .withSuccessHandler(function(tags) {
-      tags = tags || {};
-      if (priorityTagsAreEqual_(tags, priorityTags_)) return; // không có gì đổi -> bỏ qua, không vẽ lại
+  sbGetAll_('/rest/v1/priority_tags?select=lsx,tag')
+    .then(function(rows) {
+      const tags = {};
+      (rows||[]).forEach(function(r){if(r.lsx&&r.tag)tags[r.lsx]=r.tag;});
+      if (priorityTagsAreEqual_(tags, priorityTags_)) return;
       priorityTags_ = tags;
       try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
-      if (document.getElementById('tab-dashboard').classList.contains('active')) {
-        renderDashboard_();
-      }
+      if (document.getElementById('tab-dashboard').classList.contains('active')) renderDashboard_();
     })
-    .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
-    .getPriorityTags();
+    .catch(function() { /* im lặng */ });
 }
   let dashLsxSearch_ = []; // mảng các từ khoá LSX, chỉ áp dụng khi bấm Enter / chọn gợi ý
   let priorityFilterActive_ = new Set(); // các nhãn ưu tiên (gap/ut1/ut2) đang bật để lọc bảng
@@ -3968,19 +4068,18 @@ function pollPriorityTagsSilently_() {
     if (!input || input.dataset.bound) return;
     input.dataset.bound = '1';
 
-    input.addEventListener('input', function() {
-      const value = input.value;
-      document.getElementById('dashLsxSearchClear').style.display = value ? 'block' : 'none';
-      clearTimeout(dashSuggestTimer_);
-      if (value.trim().length < 1) { hideDashSuggestions_(); return; }
-      const myId = ++dashSuggestRequestId_;
-      dashSuggestTimer_ = setTimeout(function() {
-        google.script.run
-          .withSuccessHandler(function(list) { if (myId === dashSuggestRequestId_) showDashSuggestions_(list); })
-          .withFailureHandler(function() { if (myId === dashSuggestRequestId_) hideDashSuggestions_(); })
-          .suggestLSX(value);
-      }, 150);
-    });
+          input.addEventListener('input', function() {
+        const value = input.value;
+        document.getElementById('dashLsxSearchClear').style.display = value ? 'block' : 'none';
+        clearTimeout(dashSuggestTimer_);
+        if (value.trim().length < 1) { hideDashSuggestions_(); return; }
+        const myId = ++dashSuggestRequestId_;
+        dashSuggestTimer_ = setTimeout(function() {
+          suggestLSXDirect_(value)
+            .then(function(list) { if (myId === dashSuggestRequestId_) showDashSuggestions_(list); })
+            .catch(function() { if (myId === dashSuggestRequestId_) hideDashSuggestions_(); });
+        }, 150);
+      });
 
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { hideDashSuggestions_(); applyDashLsxSearch_(); }
@@ -5029,22 +5128,29 @@ function pollPriorityTagsSilently_() {
       }
 
       function loadInitialAppData_() {
+        // Tải song song trực tiếp từ Supabase, không qua Apps Script
+        Promise.all([
+          sbGetAll_('/rest/v1/nhan_phoi?select=*&order=ngay.desc'),
+          sbGetAll_('/rest/v1/giao_hang?select=*&order=ngay.desc')
+        ])
+        .then(function(results) {
+          nhanPhoiRows = processTrackingRows_(results[0]);
+          giaoHangRows = processTrackingRows_(results[1]);
+          trackingLoaded.nhanphoi = true;
+          trackingLoaded.giaohang = true;
+          renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
+          renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
+        })
+        .catch(function(err) {
+          renderTrackingTable_('nhanPhoiResult', [], 'nhanphoi');
+          renderTrackingTable_('giaoHangResult', [], 'giaohang');
+          showToast('Không tải được dữ liệu ban đầu: ' + err.message, 'error');
+        });
+        // Lấy giờ đồng bộ từ Apps Script (đọc Script Properties, nhẹ và ít khi gọi)
         google.script.run
-          .withSuccessHandler(function(data) {
-            renderSyncStatus_(data.lastSyncTime);
-            nhanPhoiRows = data.nhanPhoi || [];
-            giaoHangRows = data.giaoHang || [];
-            trackingLoaded.nhanphoi = true;
-            trackingLoaded.giaohang = true;
-            renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
-            renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
-          })
-          .withFailureHandler(function(err) {
-            renderTrackingTable_('nhanPhoiResult', [], 'nhanphoi');
-            renderTrackingTable_('giaoHangResult', [], 'giaohang');
-            showToast('Không tải được dữ liệu ban đầu: ' + err.message, 'error');
-          })
-          .getInitialAppData();
+          .withSuccessHandler(renderSyncStatus_)
+          .withFailureHandler(function() {})
+          .getLastSyncTime();
       }
           function applyLoginScreenState_() {
       let lastUser = null;
