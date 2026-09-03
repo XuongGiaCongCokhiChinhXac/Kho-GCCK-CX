@@ -1369,12 +1369,20 @@
         showGreeting_(user.hoTen);
         splashStepDone_(); // bước 1: giao diện đã dựng sẵn từ trước lúc load trang
 
-        // Tải Dashboard TRƯỚC (số liệu ở các ô), màn hình chờ sẽ đợi đúng bước này.
+        // Tải Dashboard TRƯỚC (số liệu ở các ô) - đây là request DUY NHẤT màn hình chờ
+        // đang đợi, nên để nó bắn đi MỘT MÌNH, không phải cạnh tranh băng thông/luồng thực
+        // thi Apps Script với các lệnh gọi khác -> rút ngắn thời gian đóng màn hình chờ.
         loadDashboardOnLogin_();
-        loadPriorityTagsFromServer_();
 
-        // Dữ liệu còn lại tải NGẦM phía sau, không chặn màn hình chờ.
-        loadInitialAppData_();
+        // Các lệnh gọi còn lại KHÔNG bị màn hình chờ đợi - hoãn 800ms để nhường trọn băng
+        // thông cho request Dashboard ở trên hoàn tất trước.
+        setTimeout(function() {
+          loadPriorityTagsFromServer_();
+          loadInitialAppData_();
+          sendHeartbeat_();
+          pollNotifications_();
+        }, 800);
+
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
         setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
         // Hoãn 4 giây, tránh gọi cùng lúc với các lệnh tải quan trọng lúc mới đăng nhập
@@ -1382,11 +1390,7 @@
         setTimeout(function() {
           setInterval(pollPriorityTagsSilently_, PRIORITY_TAGS_POLL_MS);
         }, 4000);
-        // Nhịp tim báo "đang online" - gửi lần đầu ngay, sau đó lặp lại mỗi 20 giây.
-        sendHeartbeat_();
         setInterval(sendHeartbeat_, ONLINE_HEARTBEAT_MS);
-        // Thông báo đơn Gấp/Ưu tiên - tải lần đầu ngay, sau đó kiểm tra định kỳ 10 giây.
-        pollNotifications_();
         setInterval(pollNotifications_, NOTIF_POLL_MS);
         startTrackingPolling_();
       }
