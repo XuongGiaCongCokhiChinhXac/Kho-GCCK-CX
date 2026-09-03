@@ -882,12 +882,15 @@
     // ===== SUPABASE DIRECT CLIENT - đọc không qua Apps Script =====
     // Lấy anon key: Supabase Dashboard → Project Settings → API → "anon public"
     const SB_URL = 'https://xbkdqhlcimmriwcyxdpf.supabase.co';
-    const SB_KEY = 'PASTE_ANON_KEY_HERE'; // <-- THAY BẰNG ANON KEY THẬT
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhia2RxaGxjaW1tcml3Y3l4ZHBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTQ3OTcsImV4cCI6MjEwMjc3MDc5N30.ihDLc_P38OY8SOBmrjBRVrxSpnOuQIml69gEieoMwo8'; // <-- THAY BẰNG ANON KEY THẬT
 
     function sbGetAll_(urlPath) {
       const PAGE = 3000;
+      const MAX_RETRIES = 4; // 503 (schema cache đang nạp lại) / 522/524 (Cloudflare timeout)
+                              // là lỗi TẠM THỜI phía Supabase - thử lại thay vì báo lỗi ngay
       let all = [], from = 0;
-      function next() {
+
+      function fetchPage_(retriesLeft) {
         return fetch(SB_URL + urlPath, {
           headers: {
             'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
@@ -895,10 +898,21 @@
           }
         })
         .then(function(r) {
-          if (!r.ok) throw new Error('Supabase HTTP ' + r.status);
+          if (!r.ok) {
+            const isTransient = [502, 503, 504, 522, 524].indexOf(r.status) !== -1;
+            if (isTransient && retriesLeft > 0) {
+              const delayMs = (MAX_RETRIES - retriesLeft + 1) * 1200;
+              return new Promise(function(resolve) { setTimeout(resolve, delayMs); })
+                .then(function() { return fetchPage_(retriesLeft - 1); });
+            }
+            throw new Error('Supabase HTTP ' + r.status);
+          }
           return r.json();
-        })
-        .then(function(rows) {
+        });
+      }
+
+      function next() {
+        return fetchPage_(MAX_RETRIES).then(function(rows) {
           all = all.concat(rows);
           if (!rows.length) return all;
           from += rows.length;
