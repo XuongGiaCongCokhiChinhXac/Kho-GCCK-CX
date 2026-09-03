@@ -3918,6 +3918,7 @@ function pollPriorityTagsSilently_() {
       }
 
       /* ================= MODAL XEM CHI TIẾT CHƯA GIAO HÀNG (con mắt cạnh LSX) ================= */
+      let currentLsxDetailLsx_ = null; // LSX đang mở trong modal, dùng khi chụp ảnh
       const LSX_DETAIL_COLUMNS = [
         { key: 'khgh', label: 'KHGH' },
         { key: 'lsx', label: 'LSX' },
@@ -3940,6 +3941,7 @@ function pollPriorityTagsSilently_() {
       ];
 
       function openLsxDetailModal_(lsx) {
+        currentLsxDetailLsx_ = lsx;
         document.getElementById('lsxDetailTitle').textContent = lsx;
         document.getElementById('lsxDetailTable').innerHTML =
           '<tr><td style="padding:20px; text-align:center; color:#999;">Đang tải...</td></tr>';
@@ -4042,7 +4044,7 @@ function pollPriorityTagsSilently_() {
 
         showToast('Đang tạo ảnh, vui lòng đợi...', 'info');
 
-        const titleText = (document.getElementById('lsxDetailTitle').innerText || '').split('\n')[0].trim();
+        const titleEl = document.getElementById('lsxDetailTitle');
         const wrapper = document.createElement('div');
         wrapper.style.position = 'fixed';
         wrapper.style.left = '-99999px';
@@ -4050,8 +4052,10 @@ function pollPriorityTagsSilently_() {
         wrapper.style.background = '#fff';
         wrapper.style.padding = '14px';
 
-        let html = '<div style="font-family:Arial,sans-serif; font-weight:800; font-size:16px; color:#003DA5; margin-bottom:10px;">' +
-          escapeHtml_(titleText) + ' &mdash; Chưa giao hàng</div>';
+        // Lấy nguyên HTML của tiêu đề (đã có sẵn các badge Tổng/Đã giao/Giao hàng/Nhận VT
+        // do renderLsxDetailSummary_ dựng), để chụp ảnh giống hệt trên màn hình.
+        let html = '<div style="font-family:Arial,sans-serif; margin-bottom:6px;">' + titleEl.innerHTML + '</div>';
+        html += '<div style="font-family:Arial,sans-serif; font-size:13px; color:#888; margin-bottom:10px;">Chưa giao hàng</div>';
         html += '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;"><tr>';
         LSX_DETAIL_COLUMNS.forEach(function(c) {
           html += '<th style="background:#003DA5;color:#fff;border:1px solid #ddd;padding:6px 8px;white-space:nowrap;">' + c.label + '</th>';
@@ -4062,7 +4066,11 @@ function pollPriorityTagsSilently_() {
           html += '<tr>';
           LSX_DETAIL_COLUMNS.forEach(function(c) {
             let val;
-            if (c.bool) val = r[c.key] ? '&#10003;' : '';
+            if (c.bool) {
+              val = r[c.key]
+                ? '<span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:#34a853;color:#fff;font-size:12px;font-weight:bold;line-height:16px;text-align:center;">&#10003;</span>'
+                : '<span style="display:inline-block;width:16px;height:16px;border-radius:3px;border:1px solid #ccc;"></span>';
+            }
             else if (c.key === 'khgh') val = formatDate(r[c.key]);
             else val = (r[c.key] === null || r[c.key] === undefined) ? '' : escapeHtml_(String(r[c.key]));
             html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;">' + val + '</td>';
@@ -4077,7 +4085,7 @@ function pollPriorityTagsSilently_() {
           document.body.removeChild(wrapper);
 
           const link = document.createElement('a');
-          link.download = 'ChiTietChuaGiao_' + (titleText || 'export') + '.png';
+          link.download = 'ChiTietChuaGiao_' + (currentLsxDetailLsx_ || 'export') + '.png';
           link.href = canvas.toDataURL('image/png');
           link.click();
 
@@ -4556,7 +4564,11 @@ function pollPriorityTagsSilently_() {
           html += '<tr>';
           cols.forEach(function(col) {
             let val;
-            if (col.bool) val = r[col.key] ? '&#10003;' : '';
+            if (col.bool) {
+              val = r[col.key]
+                ? '<span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:#34a853;color:#fff;font-size:12px;font-weight:bold;line-height:16px;text-align:center;">&#10003;</span>'
+                : '<span style="display:inline-block;width:16px;height:16px;border-radius:3px;border:1px solid #ccc;"></span>';
+            }
             else if (col.key === 'khgh') val = formatDate(r[col.key]);
             else val = (r[col.key] === null || r[col.key] === undefined) ? '' : escapeHtml_(String(r[col.key]));
             html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;">' + val + '</td>';
