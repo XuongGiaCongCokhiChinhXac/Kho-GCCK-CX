@@ -882,15 +882,12 @@
     const API_URL = 'https://script.google.com/macros/s/AKfycbwtE5EwOIp2Z8A0Rn1-lGpHno0JEo6ZXGNVpLJiOZOBJuAVqDrpDGHvjt5Z-TjIYSDt/exec';
 
     function callServer_(fnName, args, retriesLeft) {
-      if (retriesLeft === undefined) retriesLeft = 3; // tổng cộng thử tối đa 4 lần - Apps Script có thể phải xếp hàng khi đông người dùng
+      if (retriesLeft === undefined) retriesLeft = 5; // tổng cộng thử tối đa 6 lần - Apps Script có thể phải xếp hàng khi đông người dùng
 
-      // Nếu KHÔNG có timeout, request bị Apps Script "ngâm" (đang bận chạy trigger khác,
-      // Supabase phản hồi chậm, hoặc đang xếp hàng do vượt quota thực thi đồng thời...) sẽ
-      // treo VÔ THỜI HẠN - withSuccessHandler/withFailureHandler không bao giờ được gọi.
-      // Nới lên 18 giây: 12s từng gây báo lỗi giả khi Apps Script chỉ đang bận (không phải
-      // treo thật), nhất là lúc nhiều công nhân cùng thao tác.
+      // Nới timeout lên 25 giây - 18s vẫn còn hay bị abort giả khi Apps Script đang bận
+      // (không phải treo thật), nhất là lúc nhiều công nhân/quản lý cùng thao tác + polling.
       const controller = new AbortController();
-      const timeoutId = setTimeout(function() { controller.abort(); }, 18000);
+      const timeoutId = setTimeout(function() { controller.abort(); }, 25000);
 
       return fetch(API_URL, {
         method: 'POST',
@@ -912,13 +909,12 @@
           // VD "Sai mật khẩu") thì KHÔNG retry vì retry không giải quyết được gì.
           const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
           if (isNetworkError && retriesLeft > 0) {
-            if (typeof showToast === 'function') {
-              showToast('Kết nối chậm, đang thử lại...', 'info');
-            }
-            // Backoff dài hơn (1s, 2.5s, 4s) - nếu nguyên nhân là Apps Script đang xếp
-            // hàng (vượt quota chạy đồng thời), thử lại NGAY LẬP TỨC chỉ làm tình hình
+            // KHÔNG hiện toast nữa - retry hoàn toàn ÂM THẦM ở nền, người dùng không cần
+            // biết/không bị làm phiền bởi thông báo "Kết nối chậm, đang thử lại..." liên tục.
+            // Backoff tăng dần (1s, 2.5s, 4s, 5.5s, 7s) - nếu nguyên nhân là Apps Script đang
+            // xếp hàng (vượt quota chạy đồng thời), thử lại NGAY LẬP TỨC chỉ làm tình hình
             // tệ hơn (dồn thêm request). Chờ lâu hơn cho quota rảnh ra rồi mới thử lại.
-            const delayMs = (4 - retriesLeft) * 1500 + 1000; // 1000ms, 2500ms, 4000ms
+            const delayMs = (6 - retriesLeft) * 1500 + 1000; // 1000, 2500, 4000, 5500, 7000ms
             return new Promise(function(resolve) {
               setTimeout(resolve, delayMs);
             }).then(function() {
