@@ -461,15 +461,15 @@
   .sidebar.collapsed { width: 56px; }
 
   /* ===== Thanh điều hướng dưới cùng - CHỈ dùng cho mobile, thay thế sidebar ===== */
-  .mobile-bottom-nav { display: none; }
-  .mobile-nav-btn {
-    flex: 1; background: transparent; border: none; color: #cfe0ff;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px; font-size: 11px; cursor: pointer; padding: 8px 0;
-  }
-  .mobile-nav-btn i { font-size: 20px; }
-  .mobile-nav-btn { min-height: 54px; }
-  .mobile-nav-btn.active { color: #fff; font-weight: bold; }
+       .mobile-bottom-nav { display: none; }
+      .mobile-nav-btn {
+        flex: 1; background: transparent; border: none; color: #cfe0ff;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 5px; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 0;
+      }
+      .mobile-nav-btn i { font-size: 26px; }
+      .mobile-nav-btn { min-height: 68px; }
+      .mobile-nav-btn.active { color: #fff; font-weight: bold; background: rgba(255,255,255,0.16); border-radius: 8px 8px 0 0; }
   .sidebar-toggle { background: transparent; border: none; color: #fff; font-size: 18px; padding: 14px; cursor: pointer; text-align: left; }
   .sidebar-nav-btn {
     background: transparent; border: none; color: #cfe0ff; text-align: left;
@@ -514,7 +514,7 @@
     /* Ẩn hẳn sidebar cũ trên mobile - dùng bottom nav thay thế, tránh lặp lại lỗi
       sidebar bị thu về 0px và không có cách nào mở lại (nút mở nằm trong chính nó). */
     .sidebar { display: none !important; }
-    .app-main { padding-bottom: 58px; } /* chừa chỗ cho thanh nav dưới cùng, tránh bị che nội dung */
+    .app-main { padding-bottom: 74px; } /* chừa chỗ cho thanh nav dưới cùng (đã phóng to), tránh bị che nội dung */
 
     .mobile-bottom-nav {
       display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
@@ -882,15 +882,15 @@
     const API_URL = 'https://script.google.com/macros/s/AKfycbwtE5EwOIp2Z8A0Rn1-lGpHno0JEo6ZXGNVpLJiOZOBJuAVqDrpDGHvjt5Z-TjIYSDt/exec';
 
     function callServer_(fnName, args, retriesLeft) {
-      if (retriesLeft === undefined) retriesLeft = 2; // tổng cộng thử tối đa 3 lần
+      if (retriesLeft === undefined) retriesLeft = 3; // tổng cộng thử tối đa 4 lần - Apps Script có thể phải xếp hàng khi đông người dùng
 
       // Nếu KHÔNG có timeout, request bị Apps Script "ngâm" (đang bận chạy trigger khác,
-      // Supabase phản hồi chậm...) sẽ treo VÔ THỜI HẠN - withSuccessHandler/withFailureHandler
-      // không bao giờ được gọi. Đây là nguyên nhân chính khiến màn hình chờ kẹt ở 85%.
-      // Dùng AbortController để tự hủy request sau 20 giây, buộc nó rơi vào .catch() để retry
-      // hoặc báo lỗi, thay vì treo mãi.
+      // Supabase phản hồi chậm, hoặc đang xếp hàng do vượt quota thực thi đồng thời...) sẽ
+      // treo VÔ THỜI HẠN - withSuccessHandler/withFailureHandler không bao giờ được gọi.
+      // Nới lên 18 giây: 12s từng gây báo lỗi giả khi Apps Script chỉ đang bận (không phải
+      // treo thật), nhất là lúc nhiều công nhân cùng thao tác.
       const controller = new AbortController();
-      const timeoutId = setTimeout(function() { controller.abort(); }, 12000); // giảm từ 20s xuống 12s, phát hiện treo nhanh hơn
+      const timeoutId = setTimeout(function() { controller.abort(); }, 18000);
 
       return fetch(API_URL, {
         method: 'POST',
@@ -915,7 +915,10 @@
             if (typeof showToast === 'function') {
               showToast('Kết nối chậm, đang thử lại...', 'info');
             }
-            const delayMs = (3 - retriesLeft) * 800 + 500; // 500ms, rồi 1300ms
+            // Backoff dài hơn (1s, 2.5s, 4s) - nếu nguyên nhân là Apps Script đang xếp
+            // hàng (vượt quota chạy đồng thời), thử lại NGAY LẬP TỨC chỉ làm tình hình
+            // tệ hơn (dồn thêm request). Chờ lâu hơn cho quota rảnh ra rồi mới thử lại.
+            const delayMs = (4 - retriesLeft) * 1500 + 1000; // 1000ms, 2500ms, 4000ms
             return new Promise(function(resolve) {
               setTimeout(resolve, delayMs);
             }).then(function() {
@@ -1268,7 +1271,7 @@
       const lsxInput = document.getElementById('lsxInput');
 
           let currentUser_ = null; // { msnv, hoTen }
-      const ONLINE_HEARTBEAT_MS = 20000; // 20 giây báo nhịp tim 1 lần
+      const ONLINE_HEARTBEAT_MS = 45000; // 45 giây - báo online không cần quá dày, giảm tải Apps Script
 
       function sendHeartbeat_() {
         if (!currentUser_) return;
@@ -1357,7 +1360,7 @@
         }).join('');
       }
 
-      const NOTIF_POLL_MS = 10000; // 10 giây - đủ nhanh để cảm giác gần realtime
+      const NOTIF_POLL_MS = 20000; // 20 giây - giảm tải Apps Script
       function pollNotifications_() {
         google.script.run
           .withSuccessHandler(function(rows) {
@@ -1436,14 +1439,13 @@
         // thi Apps Script với các lệnh gọi khác -> rút ngắn thời gian đóng màn hình chờ.
         loadDashboardOnLogin_();
 
-        // Các lệnh gọi còn lại KHÔNG bị màn hình chờ đợi - hoãn 800ms để nhường trọn băng
-        // thông cho request Dashboard ở trên hoàn tất trước.
-        setTimeout(function() {
-          loadPriorityTagsFromServer_();
-          loadInitialAppData_();
-          sendHeartbeat_();
-          pollNotifications_();
-        }, 800);
+        // Các lệnh gọi còn lại KHÔNG bị màn hình chờ đợi - GIÃN CÁCH từng lệnh thay vì
+        // bắn cùng lúc, để không dồn nhiều request lên Apps Script trong cùng 1 khoảnh khắc
+        // (đây là nguyên nhân chính gây "Kết nối chậm" khi nhiều người đăng nhập gần nhau).
+        setTimeout(function() { loadPriorityTagsFromServer_(); }, 800);
+        setTimeout(function() { loadInitialAppData_(); }, 1800);
+        setTimeout(function() { sendHeartbeat_(); }, 2800);
+        setTimeout(function() { pollNotifications_(); }, 3800);
 
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
         setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
@@ -2900,7 +2902,20 @@
 
       let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
       let trackingPollTimer_ = null;
-      const TRACKING_POLL_INTERVAL_MS = 10000; // 10 giây tự làm mới 1 lần cho mọi người cùng xem
+      const TRACKING_POLL_INTERVAL_MS = 20000; // 20 giây - giảm tải Apps Script
+
+      // Khóa cứng zoom (pinch-to-zoom) trên điện thoại khi đang ở tab Nhận phôi/Giao hàng -
+      // đây là 2 tab công nhân thao tác liên tục trên xưởng, lỡ tay zoom to/nhỏ dễ bấm nhầm số.
+      // Các tab khác (Dashboard, Tra cứu) vẫn cho zoom bình thường để xem bảng dữ liệu rộng.
+      function lockZoomForTab_(tabId) {
+        const meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) return;
+        const isMobile = window.innerWidth <= 768;
+        const shouldLock = isMobile && (tabId === 'tab-nhanphoi' || tabId === 'tab-giaohang');
+        meta.setAttribute('content', shouldLock
+          ? 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'
+          : 'width=device-width, initial-scale=1');
+      }
 
       function switchTab(tabId) {
         document.querySelectorAll('.tab-pane').forEach(function(el) { el.classList.remove('active'); });
@@ -2909,6 +2924,7 @@
         document.querySelectorAll('.sidebar-nav-btn, .mobile-nav-btn').forEach(function(el) { el.classList.remove('active'); });
         document.getElementById(tabId).classList.add('active');
         document.querySelectorAll('[data-tab="' + tabId + '"]').forEach(function(el) { el.classList.add('active'); });
+        lockZoomForTab_(tabId);
 
         if (tabId === 'tab-nhanphoi') {
           activeTrackingTab_ = 'nhanphoi';
@@ -3230,6 +3246,11 @@
     return '<span style="background:#ff8a3d;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap;">Thiếu ' + daGiao + '/' + slDh + '</span>';
   }
 
+  // Danh sách các món công nhân đã "Chọn" nhưng CHƯA bấm Lưu tất cả - tách riêng theo
+  // mode (nhanphoi/giaohang) để không lẫn lộn giữa 2 tab. Giữ nguyên khi tìm LSX khác
+  // (không mất lựa chọn cũ), chỉ mất khi bấm "Lưu tất cả" hoặc "Bỏ chọn" thủ công.
+  const trackingSearchPending_ = { nhanphoi: {}, giaohang: {} };
+
   function renderTrackingSearchTable_(containerId, rows, mode) {
     const wrap = document.getElementById(containerId);
     wrap.style.display = 'block';
@@ -3237,41 +3258,142 @@
       wrap.innerHTML = '<div class="empty-state-cell">Không tìm thấy LSX phù hợp.</div>';
       return;
     }
+    // Chỉ hiện đúng các cột cần thiết trên điện thoại, không cần cuộn ngang qua các
+    // cột kỹ thuật (Vật liệu, Dài, Rộng, Dày, Hình/hộp, Dn, Dt).
     let html = '<table><tr>' +
-      '<th>LSX</th><th>STT</th><th>Tên chi tiết</th><th>Vật liệu</th><th>Dài</th><th>Rộng</th>' +
-      '<th>Dày</th><th>Hình/hộp</th><th>Dn</th><th>Dt</th><th>SL/ĐH</th><th>SL giao</th><th>Trạng thái</th><th></th></tr>';
+      '<th>LSX</th><th>STT</th><th>Tên chi tiết</th><th>SL/ĐH</th><th>SL giao</th><th>Trạng thái</th><th></th></tr>';
     rows.forEach(function(r, i) {
-      const defaultQty = (r.sl_da_giao > 0) ? r.sl_da_giao : (r.sl_dh || 0);
+      const pending = trackingSearchPending_[mode][r.lsx_stt];
+      const defaultQty = pending ? pending.qty : ((r.sl_da_giao > 0) ? r.sl_da_giao : (r.sl_dh || 0));
+      const btnLabel = pending ? 'Bỏ chọn' : 'Chọn';
+      const btnClass = pending ? 'upbom-cancel' : 'btn-primary-blue';
+      const lsxSafe = escapeHtml_(r.lsx || '').replace(/'/g, "\\'");
+      const sttSafe = escapeHtml_(r.stt_ct || '').replace(/'/g, "\\'");
+      const tenSafe = escapeHtml_(r.ten_chi_tiet || '').replace(/'/g, "\\'");
       html += '<tr>' +
         '<td>' + escapeHtml_(r.lsx || '') + '</td><td>' + escapeHtml_(r.stt_ct || '') + '</td>' +
-        '<td>' + escapeHtml_(r.ten_chi_tiet || '') + '</td><td>' + escapeHtml_(r.vat_lieu || '') + '</td>' +
-        '<td>' + escapeHtml_(r.dai || '') + '</td><td>' + escapeHtml_(r.rong || '') + '</td><td>' + escapeHtml_(r.day || '') + '</td>' +
-        '<td>' + escapeHtml_(r.hinh_hop || '') + '</td><td>' + escapeHtml_(r.dn || '') + '</td><td>' + escapeHtml_(r.dt || '') + '</td>' +
+        '<td>' + escapeHtml_(r.ten_chi_tiet || '') + '</td>' +
         '<td>' + escapeHtml_(r.sl_dh || '') + '</td>' +
-        '<td><input type="number" min="0" value="' + defaultQty + '" style="width:64px; padding:6px; text-align:center; font-size:15px;" id="qty_' + i + '_' + containerId + '" /></td>' +
+        '<td><input type="number" min="0" value="' + defaultQty + '" style="width:64px; padding:6px; text-align:center; font-size:16px;" id="qty_' + i + '_' + containerId + '" /></td>' +
         '<td id="status_' + i + '_' + containerId + '">' + trackingStatusBadge_(r.sl_da_giao, r.sl_dh) + '</td>' +
-        '<td><button type="button" class="btn-primary-blue" style="padding:8px 14px; font-size:13px;" ' +
-          'onclick="saveTrackingSearchRow_(\'' + containerId + '\', ' + i + ', \'' + r.lsx_stt + '\', \'' + mode + '\', ' + (Number(r.sl_dh) || 0) + ')">Lưu</button></td>' +
+        '<td><button type="button" class="' + btnClass + '" style="padding:8px 14px; font-size:13px;" ' +
+          'onclick="addTrackingSearchRow_(\'' + containerId + '\', ' + i + ', \'' + r.lsx_stt + '\', \'' + mode + '\', \'' + lsxSafe + '\', \'' + sttSafe + '\', \'' + tenSafe + '\', ' + (Number(r.sl_dh) || 0) + ')">' + btnLabel + '</button></td>' +
       '</tr>';
     });
-    html += '</table>';
+    html += '</table><div id="pendingWrap_' + containerId + '"></div>';
+    wrap.innerHTML = html;
+    renderTrackingSearchPending_(containerId, mode);
+  }
+
+  // Bấm "Chọn": thêm món vào danh sách chờ (KHÔNG lưu lên server ngay) - phòng công
+  // nhân bấm nhầm món. Bấm lại (đang "Bỏ chọn") sẽ gỡ món ra khỏi danh sách chờ.
+  function addTrackingSearchRow_(containerId, i, lsxStt, mode, lsx, stt, tenChiTiet, slDh) {
+    const input = document.getElementById('qty_' + i + '_' + containerId);
+    const btn = input.closest('tr').querySelector('button');
+
+    if (trackingSearchPending_[mode][lsxStt]) {
+      delete trackingSearchPending_[mode][lsxStt];
+      if (btn) { btn.textContent = 'Chọn'; btn.className = 'btn-primary-blue'; }
+      renderTrackingSearchPending_(containerId, mode);
+      return;
+    }
+
+    const qty = Number(input.value);
+    if (isNaN(qty) || qty < 0) { showToast('Số lượng không hợp lệ.', 'error'); return; }
+
+    trackingSearchPending_[mode][lsxStt] = {
+      lsx: lsx, stt: stt, tenChiTiet: tenChiTiet, qty: qty, slDh: slDh, containerId: containerId
+    };
+    if (btn) { btn.textContent = 'Bỏ chọn'; btn.className = 'upbom-cancel'; }
+    renderTrackingSearchPending_(containerId, mode);
+  }
+
+  function removeTrackingSearchPending_(containerId, mode, lsxStt) {
+    delete trackingSearchPending_[mode][lsxStt];
+    renderTrackingSearchPending_(containerId, mode);
+    const wrap = document.getElementById(containerId);
+    const table = wrap ? wrap.querySelector('table') : null;
+    if (table) {
+      Array.prototype.forEach.call(table.querySelectorAll('button'), function(btn) {
+        const onclickAttr = btn.getAttribute('onclick') || '';
+        if (onclickAttr.indexOf("'" + lsxStt + "'") !== -1) {
+          btn.textContent = 'Chọn';
+          btn.className = 'btn-primary-blue';
+        }
+      });
+    }
+  }
+
+  function renderTrackingSearchPending_(containerId, mode) {
+    const wrap = document.getElementById('pendingWrap_' + containerId);
+    if (!wrap) return;
+    const entries = Object.keys(trackingSearchPending_[mode])
+      .map(function(k) { return Object.assign({ lsxStt: k }, trackingSearchPending_[mode][k]); })
+      .filter(function(e) { return e.containerId === containerId; });
+
+    if (entries.length === 0) { wrap.innerHTML = ''; return; }
+
+    let html = '<div style="margin-top:12px; padding:10px; background:#f0f7ff; border:1px solid #cfe0ff; border-radius:6px;">' +
+      '<div style="font-weight:bold; font-size:13px; margin-bottom:8px;">Danh sách đã chọn (' + entries.length + '):</div>' +
+      '<table style="width:100%; border-collapse:collapse; font-size:12px;"><tr style="background:#e8f0fe;">' +
+      '<th style="border:1px solid #ddd; padding:4px;">LSX</th><th style="border:1px solid #ddd; padding:4px;">STT</th>' +
+      '<th style="border:1px solid #ddd; padding:4px;">Tên chi tiết</th><th style="border:1px solid #ddd; padding:4px;">SL</th>' +
+      '<th style="border:1px solid #ddd; padding:4px;"></th></tr>';
+    entries.forEach(function(e) {
+      html += '<tr>' +
+        '<td style="border:1px solid #ddd; padding:4px;">' + escapeHtml_(e.lsx) + '</td>' +
+        '<td style="border:1px solid #ddd; padding:4px;">' + escapeHtml_(e.stt) + '</td>' +
+        '<td style="border:1px solid #ddd; padding:4px;">' + escapeHtml_(e.tenChiTiet) + '</td>' +
+        '<td style="border:1px solid #ddd; padding:4px;">' + e.qty + '</td>' +
+        '<td style="border:1px solid #ddd; padding:4px; cursor:pointer; color:#c62828;" ' +
+          'onclick="removeTrackingSearchPending_(\'' + containerId + '\', \'' + mode + '\', \'' + e.lsxStt + '\')">&times;</td>' +
+      '</tr>';
+    });
+    html += '</table>' +
+      '<button type="button" class="btn-primary-blue" style="margin-top:10px; width:100%; padding:12px; font-size:15px;" ' +
+        'onclick="saveTrackingSearchPendingAll_(\'' + containerId + '\', \'' + mode + '\')">Lưu tất cả (' + entries.length + ')</button>' +
+      '</div>';
     wrap.innerHTML = html;
   }
 
-  function saveTrackingSearchRow_(containerId, i, lsxStt, mode, slDh) {
-    const input = document.getElementById('qty_' + i + '_' + containerId);
-    const qty = Number(input.value);
-    if (isNaN(qty) || qty < 0) { showToast('Số lượng không hợp lệ.', 'error'); return; }
+  // Bấm "Lưu tất cả": lần lượt gửi từng món lên server (tuần tự, không chạy song song
+  // để tránh ghi đè lẫn nhau nếu trùng LSX-STT), rồi mới làm mới lại bảng.
+  function saveTrackingSearchPendingAll_(containerId, mode) {
+    const entries = Object.keys(trackingSearchPending_[mode])
+      .map(function(k) { return Object.assign({ lsxStt: k }, trackingSearchPending_[mode][k]); })
+      .filter(function(e) { return e.containerId === containerId; });
+
+    if (entries.length === 0) { showToast('Chưa có món nào được chọn.', 'error'); return; }
+
     const nguoi = (currentUser_ && currentUser_.hoTen) || '';
-    google.script.run
-      .withSuccessHandler(function() {
-        showToast('Đã lưu.', 'success');
-        const statusEl = document.getElementById('status_' + i + '_' + containerId);
-        if (statusEl) statusEl.innerHTML = trackingStatusBadge_(qty, slDh);
-        if (mode === 'nhanphoi') refreshNhanPhoiTab(); else refreshGiaoHangTab();
-      })
-      .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
-      .saveTrackingRowAbsolute(currentUser_ ? currentUser_.msnv : '', mode, lsxStt, qty, nguoi);
+    const msnv = currentUser_ ? currentUser_.msnv : '';
+    showToast('Đang lưu ' + entries.length + ' món...', 'info');
+
+    let idx = 0;
+    function saveNext() {
+      if (idx >= entries.length) {
+        showToast('Đã lưu ' + entries.length + ' món.', 'success');
+        entries.forEach(function(e) { delete trackingSearchPending_[mode][e.lsxStt]; });
+        renderTrackingSearchPending_(containerId, mode);
+        if (mode === 'nhanphoi') {
+          refreshNhanPhoiTab();
+          if (document.getElementById('npSearchInput').value.trim()) searchNhanPhoiByLsx_();
+        } else {
+          refreshGiaoHangTab();
+          if (document.getElementById('ghSearchInput').value.trim()) searchGiaoHangByLsx_();
+        }
+        return;
+      }
+      const e = entries[idx];
+      google.script.run
+        .withSuccessHandler(function() { idx++; saveNext(); })
+        .withFailureHandler(function(err) {
+          showToast('Lỗi khi lưu ' + e.lsx + '-' + e.stt + ': ' + err.message, 'error');
+          idx++; saveNext();
+        })
+        .saveTrackingRowAbsolute(msnv, mode, e.lsxStt, e.qty, nguoi);
+    }
+    saveNext();
   }
 
       /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
@@ -3716,7 +3838,7 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
-const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime", không quá tải server
+      const PRIORITY_TAGS_POLL_MS = 20000; // 20 giây - giảm tải Apps Script, vẫn đủ nhanh cho nhãn ưu tiên
 function pollPriorityTagsSilently_() {
   google.script.run
     .withSuccessHandler(function(tags) {
@@ -5245,15 +5367,15 @@ function pollPriorityTagsSilently_() {
           <input type="text" id="trackTenCtInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
         </label>
         <label>SL đơn hàng
-          <input type="number" id="trackOrderQtyInput" min="1" readonly style="width:100%; padding:8px; box-sizing:border-box; font-size:15px; background:#f5f5f5;" />
+          <input type="number" id="trackOrderQtyInput" min="1" readonly style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
         </label>
         <label id="trackQtyLabel">SL nhận
           <input type="number" id="trackQtyInput" min="1" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
         </label>
         <label>Người thực hiện
-          <select id="trackNguoiSelect" onchange="onTrackNguoiChange_()" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;"></select>
+          <select id="trackNguoiSelect" onchange="onTrackNguoiChange_()" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px;"></select>
         </label>
-        <input type="text" id="trackNguoiOther" placeholder="Nhập tên..." style="display:none; width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
+        <input type="text" id="trackNguoiOther" placeholder="Nhập tên..." style="display:none; width:100%; padding:8px; box-sizing:border-box; font-size:16px;" />
 
         <button type="button" onclick="addToTrackingList_()" style="background:#00b894; color:#fff; font-weight:bold; border:none; border-radius:4px; padding:10px; cursor:pointer;">
           <i class="fa-solid fa-plus"></i> Thêm vào danh sách
