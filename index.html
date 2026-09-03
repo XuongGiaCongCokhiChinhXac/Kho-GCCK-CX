@@ -467,7 +467,8 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 3px; font-size: 11px; cursor: pointer; padding: 8px 0;
   }
-  .mobile-nav-btn i { font-size: 17px; }
+  .mobile-nav-btn i { font-size: 20px; }
+  .mobile-nav-btn { min-height: 54px; }
   .mobile-nav-btn.active { color: #fff; font-weight: bold; }
   .sidebar-toggle { background: transparent; border: none; color: #fff; font-size: 18px; padding: 14px; cursor: pointer; text-align: left; }
   .sidebar-nav-btn {
@@ -512,7 +513,7 @@
   @media (max-width: 768px) {
     /* Ẩn hẳn sidebar cũ trên mobile - dùng bottom nav thay thế, tránh lặp lại lỗi
       sidebar bị thu về 0px và không có cách nào mở lại (nút mở nằm trong chính nó). */
-    .sidebar { display: none; }
+    .sidebar { display: none !important; }
     .app-main { padding-bottom: 58px; } /* chừa chỗ cho thanh nav dưới cùng, tránh bị che nội dung */
 
     .mobile-bottom-nav {
@@ -1052,6 +1053,9 @@
             <button type="button" onclick="forceFullResyncNow_()">
               <i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ toàn bộ dữ liệu ngay
             </button>
+            <button type="button" id="adminUserMenuBtn" style="display:none;" onclick="openUserAdminModal_()">
+              <i class="fa-solid fa-users-gear"></i> Quản lý người dùng
+            </button>
             <div class="topbar-menu-divider"></div>
             <button type="button" class="topbar-menu-exit" onclick="exitApp_()">
               <i class="fa-solid fa-right-from-bracket"></i> Thoát
@@ -1164,6 +1168,13 @@
               </button>
             </div>
           </div>
+          <div style="display:flex; gap:8px; padding:0 16px 10px 16px;">
+            <input type="text" id="npSearchInput" placeholder="Nhập LSX (VD 663/08) để tick nhận phôi..."
+              style="flex:1; padding:10px; font-size:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px;"
+              onkeydown="if(event.key==='Enter') searchNhanPhoiByLsx_()" />
+            <button type="button" class="btn-primary-blue" onclick="searchNhanPhoiByLsx_()">Tìm</button>
+          </div>
+          <div id="npSearchResult" class="tracking-table-wrap" style="display:none; max-height:40vh; flex:none;"></div>
           <div id="nhanPhoiResult" class="tracking-table-wrap"></div>
         </div>
 
@@ -1179,6 +1190,13 @@
               </button>
             </div>
           </div>
+          <div style="display:flex; gap:8px; padding:0 16px 10px 16px;">
+            <input type="text" id="ghSearchInput" placeholder="Nhập LSX (VD 663/08) để tick giao hàng..."
+              style="flex:1; padding:10px; font-size:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px;"
+              onkeydown="if(event.key==='Enter') searchGiaoHangByLsx_()" />
+            <button type="button" class="btn-primary-blue" onclick="searchGiaoHangByLsx_()">Tìm</button>
+          </div>
+          <div id="ghSearchResult" class="tracking-table-wrap" style="display:none; max-height:40vh; flex:none;"></div>
           <div id="giaoHangResult" class="tracking-table-wrap"></div>
         </div>
 
@@ -1359,8 +1377,44 @@
       }
 
       // Gọi khi đăng nhập THÀNH CÔNG - lưu lại thông tin cho lần sau, rồi bật màn hình chờ.
+      let currentPerms_ = null;
+
+      function getRolePermissions_(chucVu, isAdmin) {
+        if (isAdmin) return { dashboard: true, tag: true, tracuu: true, nhanphoi: true, giaohang: true, userAdmin: true };
+        switch (chucVu) {
+          case 'Quản lý':
+            return { dashboard: true, tag: false, tracuu: true, nhanphoi: false, giaohang: false, userAdmin: false };
+          case 'Kế hoạch':
+          case 'Quản Đốc':
+            return { dashboard: true, tag: true, tracuu: true, nhanphoi: true, giaohang: true, userAdmin: false };
+          case 'Công nhân':
+            return { dashboard: true, tag: false, tracuu: true, nhanphoi: true, giaohang: true, userAdmin: false };
+          default:
+            return { dashboard: true, tag: false, tracuu: true, nhanphoi: false, giaohang: false, userAdmin: false };
+        }
+      }
+
+      function applyRolePermissionsUI_() {
+        currentPerms_ = getRolePermissions_(currentUser_.chucVu, currentUser_.isAdmin);
+        document.querySelectorAll('[data-tab="tab-nhanphoi"]').forEach(function(el) {
+          el.style.display = currentPerms_.nhanphoi ? '' : 'none';
+        });
+        document.querySelectorAll('[data-tab="tab-giaohang"]').forEach(function(el) {
+          el.style.display = currentPerms_.giaohang ? '' : 'none';
+        });
+        const adminBtn = document.getElementById('adminUserMenuBtn');
+        if (adminBtn) adminBtn.style.display = currentPerms_.userAdmin ? '' : 'none';
+        // Nếu tab đang mở bị chặn quyền -> tự chuyển về Dashboard
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (activeTab && ((activeTab.id === 'tab-nhanphoi' && !currentPerms_.nhanphoi) ||
+            (activeTab.id === 'tab-giaohang' && !currentPerms_.giaohang))) {
+          switchTab('tab-dashboard');
+        }
+      }
+
       function finishLogin_(user, remember, passUsed) {
         currentUser_ = user;
+        applyRolePermissionsUI_();
         try {
           localStorage.setItem('gcck_last_user', JSON.stringify({ msnv: user.msnv, hoTen: user.hoTen }));
           if (remember) {
@@ -3147,6 +3201,79 @@
       .getGiaoHangData();
   }
 
+  /* ================= TÌM LSX ĐỂ TICK GIAO HÀNG / NHẬN PHÔI THEO SỐ LƯỢNG THỰC TẾ ================= */
+  function searchGiaoHangByLsx_() {
+    const lsx = document.getElementById('ghSearchInput').value.trim();
+    if (!lsx) { showToast('Vui lòng nhập LSX.', 'error'); return; }
+    google.script.run
+      .withSuccessHandler(function(rows) { renderTrackingSearchTable_('ghSearchResult', rows, 'giaohang'); })
+      .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+      .searchTrackingByLsx(lsx, 'giaohang');
+  }
+
+  function searchNhanPhoiByLsx_() {
+    const lsx = document.getElementById('npSearchInput').value.trim();
+    if (!lsx) { showToast('Vui lòng nhập LSX.', 'error'); return; }
+    google.script.run
+      .withSuccessHandler(function(rows) { renderTrackingSearchTable_('npSearchResult', rows, 'nhanphoi'); })
+      .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+      .searchTrackingByLsx(lsx, 'nhanphoi');
+  }
+
+  function trackingStatusBadge_(daGiao, slDh) {
+    slDh = Number(slDh) || 0;
+    daGiao = Number(daGiao) || 0;
+    if (daGiao <= 0) return '';
+    if (daGiao >= slDh && slDh > 0) {
+      return '<span style="background:#34a853;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap;">Đã giao</span>';
+    }
+    return '<span style="background:#ff8a3d;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap;">Thiếu ' + daGiao + '/' + slDh + '</span>';
+  }
+
+  function renderTrackingSearchTable_(containerId, rows, mode) {
+    const wrap = document.getElementById(containerId);
+    wrap.style.display = 'block';
+    if (!rows || rows.length === 0) {
+      wrap.innerHTML = '<div class="empty-state-cell">Không tìm thấy LSX phù hợp.</div>';
+      return;
+    }
+    let html = '<table><tr>' +
+      '<th>LSX</th><th>STT</th><th>Tên chi tiết</th><th>Vật liệu</th><th>Dài</th><th>Rộng</th>' +
+      '<th>Dày</th><th>Hình/hộp</th><th>Dn</th><th>Dt</th><th>SL/ĐH</th><th>SL giao</th><th>Trạng thái</th><th></th></tr>';
+    rows.forEach(function(r, i) {
+      const defaultQty = (r.sl_da_giao > 0) ? r.sl_da_giao : (r.sl_dh || 0);
+      html += '<tr>' +
+        '<td>' + escapeHtml_(r.lsx || '') + '</td><td>' + escapeHtml_(r.stt_ct || '') + '</td>' +
+        '<td>' + escapeHtml_(r.ten_chi_tiet || '') + '</td><td>' + escapeHtml_(r.vat_lieu || '') + '</td>' +
+        '<td>' + escapeHtml_(r.dai || '') + '</td><td>' + escapeHtml_(r.rong || '') + '</td><td>' + escapeHtml_(r.day || '') + '</td>' +
+        '<td>' + escapeHtml_(r.hinh_hop || '') + '</td><td>' + escapeHtml_(r.dn || '') + '</td><td>' + escapeHtml_(r.dt || '') + '</td>' +
+        '<td>' + escapeHtml_(r.sl_dh || '') + '</td>' +
+        '<td><input type="number" min="0" value="' + defaultQty + '" style="width:64px; padding:6px; text-align:center; font-size:15px;" id="qty_' + i + '_' + containerId + '" /></td>' +
+        '<td id="status_' + i + '_' + containerId + '">' + trackingStatusBadge_(r.sl_da_giao, r.sl_dh) + '</td>' +
+        '<td><button type="button" class="btn-primary-blue" style="padding:8px 14px; font-size:13px;" ' +
+          'onclick="saveTrackingSearchRow_(\'' + containerId + '\', ' + i + ', \'' + r.lsx_stt + '\', \'' + mode + '\', ' + (Number(r.sl_dh) || 0) + ')">Lưu</button></td>' +
+      '</tr>';
+    });
+    html += '</table>';
+    wrap.innerHTML = html;
+  }
+
+  function saveTrackingSearchRow_(containerId, i, lsxStt, mode, slDh) {
+    const input = document.getElementById('qty_' + i + '_' + containerId);
+    const qty = Number(input.value);
+    if (isNaN(qty) || qty < 0) { showToast('Số lượng không hợp lệ.', 'error'); return; }
+    const nguoi = (currentUser_ && currentUser_.hoTen) || '';
+    google.script.run
+      .withSuccessHandler(function() {
+        showToast('Đã lưu.', 'success');
+        const statusEl = document.getElementById('status_' + i + '_' + containerId);
+        if (statusEl) statusEl.innerHTML = trackingStatusBadge_(qty, slDh);
+        if (mode === 'nhanphoi') refreshNhanPhoiTab(); else refreshGiaoHangTab();
+      })
+      .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+      .saveTrackingRowAbsolute(currentUser_ ? currentUser_.msnv : '', mode, lsxStt, qty, nguoi);
+  }
+
       /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
       let dashboardRows = [];
       let dashboardTypeFilter = null; // loại đơn đang được lọc trên bảng, null = không lọc
@@ -3273,8 +3400,13 @@
           case 'almost': return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
           case 'priority_default': {
             // Mặc định: chỉ hiện các đơn đã gắn nhãn Gấp/ƯT1/ƯT2/ƯT3/nhãn tự đặt.
-            // Nếu chưa có đơn nào được gắn nhãn -> fallback sang "sắp xong" (>=80%, <100%).
-            const withPriority = rows.filter(function(r) { return !!priorityTags_[r.lsx]; });
+            // Đơn đã hoàn thành 100% CHỈ hiện nếu hoàn thành ĐÚNG NGÀY HÔM NAY - qua ngày
+            // hôm sau thì tự động rớt khỏi danh sách này (không cần bấm Bỏ lọc thủ công).
+            const withPriority = rows.filter(function(r) {
+              if (!priorityTags_[r.lsx]) return false;
+              if (r.tienDoPercent >= 100) return r.ngayHoanThanh === todayStr;
+              return true;
+            });
             if (withPriority.length > 0) return withPriority;
             return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
           }
@@ -3642,6 +3774,10 @@ function pollPriorityTagsSilently_() {
 
   function openPriorityPopup_(e, lsx) {
     e.stopPropagation();
+    if (currentPerms_ && !currentPerms_.tag) {
+      showToast('Bạn không có quyền đánh dấu ưu tiên.', 'error');
+      return;
+    }
     priorityPopupLsx_ = lsx;
     const popup = document.getElementById('priorityPopup');
     popup.innerHTML = PRIORITY_POPUP_OPTIONS.map(function(o) {
@@ -3684,7 +3820,7 @@ function pollPriorityTagsSilently_() {
 
   google.script.run
     .withFailureHandler(function(err) { showToast('Lưu nhãn ưu tiên thất bại: ' + err.message, 'error'); })
-    .savePriorityTag(lsx, value);
+    .savePriorityTag(currentUser_ ? currentUser_.msnv : '', lsx, value);
 }
   function pickPriorityCustom_() {
   const lsx = priorityPopupLsx_;
@@ -3699,7 +3835,7 @@ function pollPriorityTagsSilently_() {
 
   google.script.run
     .withFailureHandler(function(err) { showToast('Lưu nhãn ưu tiên thất bại: ' + err.message, 'error'); })
-    .savePriorityTag(lsx, tag);
+    .savePriorityTag(currentUser_ ? currentUser_.msnv : '', lsx, tag);
 }
   document.addEventListener('click', function(e) {
     if (!e.target.closest('#priorityPopup') && !e.target.closest('.priority-pill')) closePriorityPopup_();
@@ -4480,18 +4616,19 @@ function pollPriorityTagsSilently_() {
 
         // 2. LƯU NGẦM PHÍA SAU - 1 LẦN GỌI DUY NHẤT cho cả lô + tải lại dữ liệu thật để bù chi tiết.
         const fnName = mode === 'nhanphoi' ? 'recordNhanPhoiBatch' : 'recordGiaoHangBatch';
+        const requesterMsnv = currentUser_ ? currentUser_.msnv : '';
         google.script.run
           .withSuccessHandler(function() {
             showToast('Đã lưu ' + items.length + ' món.', 'success');
             if (mode === 'nhanphoi') refreshNhanPhoiTab(); else refreshGiaoHangTab();
           })
           .withFailureHandler(function(err) {
-            // Không lưu được (thường do mất mạng) -> giữ trong hàng đợi offline,
-            // tự động gửi lại khi có mạng, tránh mất dữ liệu công nhân vừa nhập.
-            queueOfflineBatch_(mode, items);
+            // Không lưu được (thường do mất mạng HOẶC không đủ quyền) -> giữ trong hàng đợi
+            // offline, tự động gửi lại khi có mạng, tránh mất dữ liệu công nhân vừa nhập.
+            queueOfflineBatch_(mode, items, requesterMsnv);
             showToast('Mất mạng, đã lưu tạm trên máy. Sẽ tự động gửi lại khi có mạng.', 'info');
           })
-          [fnName](items);
+          [fnName](requesterMsnv, items);
       }
 
       /* ================= LÀM VIỆC OFFLINE TẠM THỜI ================= */
@@ -4508,9 +4645,9 @@ function pollPriorityTagsSilently_() {
         try { localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue)); } catch (e) {}
       }
 
-      function queueOfflineBatch_(mode, items) {
+      function queueOfflineBatch_(mode, items, msnv) {
         const queue = getOfflineQueue_();
-        queue.push({ mode: mode, items: items, ts: Date.now() });
+        queue.push({ mode: mode, items: items, msnv: msnv || (currentUser_ ? currentUser_.msnv : ''), ts: Date.now() });
         setOfflineQueue_(queue);
         updateOfflineBadge_();
       }
@@ -4540,7 +4677,7 @@ function pollPriorityTagsSilently_() {
           .withFailureHandler(function() {
             isSyncingOfflineQueue_ = false; // vẫn chưa có mạng -> thử lại lần sau
           })
-          [fnName](batch.items);
+          [fnName](batch.msnv || (currentUser_ ? currentUser_.msnv : ''), batch.items);
       }
 
       function updateOfflineBadge_() {
@@ -4834,6 +4971,59 @@ function pollPriorityTagsSilently_() {
         if (focusEl) focusEl.focus();
       }, 100);
     }
+
+        const ROLE_OPTIONS_ = ['', 'Quản lý', 'Kế hoạch', 'Quản Đốc', 'Công nhân'];
+
+    function openUserAdminModal_() {
+      if (!currentPerms_ || !currentPerms_.userAdmin) { showToast('Bạn không có quyền truy cập.', 'error'); return; }
+      closeUserMenu_();
+      document.getElementById('userAdminOverlay').style.display = 'flex';
+      document.getElementById('userAdminBody').innerHTML = '<div style="padding:20px; text-align:center; color:#999;">Đang tải...</div>';
+      google.script.run
+        .withSuccessHandler(renderUserAdminTable_)
+        .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+        .getAllUsersForAdmin(currentUser_.msnv);
+    }
+
+    function closeUserAdminModal_() {
+      document.getElementById('userAdminOverlay').style.display = 'none';
+    }
+
+    function renderUserAdminTable_(users) {
+      const el = document.getElementById('userAdminBody');
+      let html = '<table style="width:100%; border-collapse:collapse; font-size:13px;">' +
+        '<tr style="background:#f0f0f0;"><th style="padding:6px; border:1px solid #ddd;">MSNV</th>' +
+        '<th style="padding:6px; border:1px solid #ddd;">Họ tên</th>' +
+        '<th style="padding:6px; border:1px solid #ddd;">Chức vụ</th>' +
+        '<th style="padding:6px; border:1px solid #ddd;">Trạng thái</th><th></th></tr>';
+      users.forEach(function(u, i) {
+        html += '<tr>' +
+          '<td style="padding:6px; border:1px solid #ddd;">' + escapeHtml_(u.msnv) + '</td>' +
+          '<td style="padding:6px; border:1px solid #ddd;">' + escapeHtml_(u.hoTen) + '</td>' +
+          '<td style="padding:6px; border:1px solid #ddd;"><select id="roleSel_' + i + '" style="width:100%; padding:4px;">' +
+            ROLE_OPTIONS_.map(function(r) { return '<option value="' + r + '"' + (r === u.chucVu ? ' selected' : '') + '>' + (r || '(Chưa gán)') + '</option>'; }).join('') +
+          '</select></td>' +
+          '<td style="padding:6px; border:1px solid #ddd;"><select id="statusSel_' + i + '" style="width:100%; padding:4px;">' +
+            '<option value="Đã duyệt"' + (u.trangThai === 'Đã duyệt' ? ' selected' : '') + '>Đã duyệt</option>' +
+            '<option value="Chờ duyệt"' + (u.trangThai !== 'Đã duyệt' ? ' selected' : '') + '>Chờ duyệt</option>' +
+          '</select></td>' +
+          '<td style="padding:6px; border:1px solid #ddd;"><button type="button" onclick="saveUserAdminRow_(\'' + u.msnv + '\', ' + i + ')" ' +
+            'style="background:#34a853;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;">Lưu</button></td>' +
+        '</tr>';
+      });
+      html += '</table>';
+      el.innerHTML = html;
+    }
+
+    function saveUserAdminRow_(msnv, i) {
+      const chucVu = document.getElementById('roleSel_' + i).value;
+      const trangThai = document.getElementById('statusSel_' + i).value;
+      google.script.run
+        .withSuccessHandler(function() { showToast('Đã cập nhật ' + msnv + '.', 'success'); })
+        .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+        .adminUpdateUser(currentUser_.msnv, msnv, chucVu, trangThai);
+    }
+
     applyLoginScreenState_();
 
     // "Đăng nhập tài khoản khác": xoá thông tin đã nhớ, quay về form nhập MSNV trống.
@@ -5116,6 +5306,19 @@ function pollPriorityTagsSilently_() {
           style="border-radius:8px;">Hủy</button>
         <button type="button" onclick="submitChangePassword_()"
           style="background:#1a73e8; color:#fff; font-weight:bold; border:none; border-radius:8px; padding:8px 22px; cursor:pointer;">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+    <div id="userAdminOverlay" class="colvis-overlay" style="display:none;">
+    <div class="colvis-modal" style="width:min(94vw, 640px); max-height:85vh;">
+      <div class="colvis-header">
+        <h3>Quản lý người dùng</h3>
+        <span class="upbom-close" onclick="closeUserAdminModal_()">&times;</span>
+      </div>
+      <div id="userAdminBody" style="overflow-y:auto; flex:1; padding:10px 16px;"></div>
+      <div class="upbom-footer">
+        <button type="button" class="upbom-save" onclick="closeUserAdminModal_()" style="background:#1a73e8;">Đóng</button>
       </div>
     </div>
   </div>
