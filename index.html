@@ -883,23 +883,33 @@
     function callServer_(fnName, args, retriesLeft) {
       if (retriesLeft === undefined) retriesLeft = 2; // tổng cộng thử tối đa 3 lần
 
+      // Nếu KHÔNG có timeout, request bị Apps Script "ngâm" (đang bận chạy trigger khác,
+      // Supabase phản hồi chậm...) sẽ treo VÔ THỜI HẠN - withSuccessHandler/withFailureHandler
+      // không bao giờ được gọi. Đây là nguyên nhân chính khiến màn hình chờ kẹt ở 85%.
+      // Dùng AbortController để tự hủy request sau 20 giây, buộc nó rơi vào .catch() để retry
+      // hoặc báo lỗi, thay vì treo mãi.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(function() { controller.abort(); }, 20000);
+
       return fetch(API_URL, {
         method: 'POST',
         // Dùng text/plain để tránh trình duyệt gửi preflight OPTIONS - Apps Script
         // không xử lý OPTIONS nên preflight sẽ luôn thất bại nếu dùng application/json.
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ fn: fnName, args: args || [] })
+        body: JSON.stringify({ fn: fnName, args: args || [] }),
+        signal: controller.signal
       })
-        .then(function(res) { return res.json(); })
+        .then(function(res) { clearTimeout(timeoutId); return res.json(); })
         .then(function(data) {
           if (!data.ok) throw new Error(data.error);
           return data.result;
         })
         .catch(function(err) {
-          // "Failed to fetch" là lỗi MẠNG (chưa tới được server), khác với lỗi logic server
-          // trả về (data.ok=false). Chỉ retry cho lỗi mạng thoáng qua, không retry lỗi logic
-          // (VD "Sai mật khẩu") vì retry sẽ không giải quyết được gì, chỉ làm chậm phản hồi.
-          const isNetworkError = err instanceof TypeError; // fetch ném TypeError khi lỗi mạng/CORS
+          clearTimeout(timeoutId);
+          // "Failed to fetch" (TypeError) là lỗi MẠNG, "AbortError" là do request bị hủy vì
+          // quá 20s - cả 2 đều nên retry. Khác với lỗi logic server trả về (data.ok=false,
+          // VD "Sai mật khẩu") thì KHÔNG retry vì retry không giải quyết được gì.
+          const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
           if (isNetworkError && retriesLeft > 0) {
             const delayMs = (3 - retriesLeft) * 800 + 500; // 500ms, rồi 1300ms
             return new Promise(function(resolve) {
@@ -2679,6 +2689,7 @@
       let splashFinished = false;
       const SPLASH_TOTAL_STEPS = 2; // 1: giao diện đã dựng xong, 2: Dashboard đã có số liệu để hiển thị
       let dashboardSplashDone_ = false;
+      let splashSafetyTimerId_ = null; // id của bộ đếm an toàn 12s, đăng ký MỚI cho mỗi lần đăng nhập
 
       function markDashboardReadyForSplash_() {
         if (dashboardSplashDone_) return;
@@ -2694,13 +2705,17 @@
         dashboardSplashDone_ = false;
         splashProgress = 0;
         if (splashTimer) { clearInterval(splashTimer); splashTimer = null; }
+        if (splashSafetyTimerId_) { clearTimeout(splashSafetyTimerId_); splashSafetyTimerId_ = null; }
         updateSplashUI_(0, 'Đang tải dữ liệu...');
-      }
 
-      // Phòng trường hợp tải Dashboard không phản hồi (mất mạng, server treo...) - vẫn
-      // đóng màn hình chờ sau tối đa 12 giây, không để người dùng bị kẹt mãi
-      // (nằm trong khoảng 10-15s theo yêu cầu tối ưu tốc độ tải).
-      setTimeout(markDashboardReadyForSplash_, 12000);
+        // Phòng trường hợp tải Dashboard không phản hồi (mất mạng, Apps Script đang bận chạy
+        // các trigger khác, Supabase chậm...) - vẫn đóng màn hình chờ sau tối đa 12 giây, không
+        // để người dùng bị kẹt mãi. QUAN TRỌNG: phải đăng ký lại MỖI LẦN đăng nhập (ở đây, trong
+        // resetSplashUI_) - trước đây chỉ setTimeout 1 LẦN DUY NHẤT lúc trang vừa load, nên nếu
+        // người dùng gõ MSNV/mật khẩu lâu hơn 12 giây rồi mới bấm Đăng nhập thì bộ đếm đã "cháy"
+        // từ trước, mất tác dụng bảo vệ -> đúng là nguyên nhân treo 85% "lúc có lúc không".
+        splashSafetyTimerId_ = setTimeout(markDashboardReadyForSplash_, 12000);
+      }
 
       function showGreeting_(hoTen) {
         const hour = new Date().getHours();
