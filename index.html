@@ -461,15 +461,14 @@
   .sidebar.collapsed { width: 56px; }
 
   /* ===== Thanh điều hướng dưới cùng - CHỈ dùng cho mobile, thay thế sidebar ===== */
-       .mobile-bottom-nav { display: none; }
-      .mobile-nav-btn {
-        flex: 1; background: transparent; border: none; color: #cfe0ff;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: 5px; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 0;
-      }
-      .mobile-nav-btn i { font-size: 26px; }
-      .mobile-nav-btn { min-height: 68px; }
-      .mobile-nav-btn.active { color: #fff; font-weight: bold; background: rgba(255,255,255,0.16); border-radius: 8px 8px 0 0; }
+  .mobile-bottom-nav { display: none; }
+  .mobile-nav-btn {
+    flex: 1; background: transparent; border: none; color: #cfe0ff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; font-size: 11px; cursor: pointer; padding: 8px 0;
+  }
+  .mobile-nav-btn i { font-size: 17px; }
+  .mobile-nav-btn.active { color: #fff; font-weight: bold; }
   .sidebar-toggle { background: transparent; border: none; color: #fff; font-size: 18px; padding: 14px; cursor: pointer; text-align: left; }
   .sidebar-nav-btn {
     background: transparent; border: none; color: #cfe0ff; text-align: left;
@@ -513,8 +512,8 @@
   @media (max-width: 768px) {
     /* Ẩn hẳn sidebar cũ trên mobile - dùng bottom nav thay thế, tránh lặp lại lỗi
       sidebar bị thu về 0px và không có cách nào mở lại (nút mở nằm trong chính nó). */
-    .sidebar { display: none !important; }
-    .app-main { padding-bottom: 74px; } /* chừa chỗ cho thanh nav dưới cùng (đã phóng to), tránh bị che nội dung */
+    .sidebar { display: none; }
+    .app-main { padding-bottom: 58px; } /* chừa chỗ cho thanh nav dưới cùng, tránh bị che nội dung */
 
     .mobile-bottom-nav {
       display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
@@ -879,167 +878,18 @@
   <body>
 
     <script>
-    // ===== SUPABASE DIRECT CLIENT - đọc không qua Apps Script =====
-    // Lấy anon key: Supabase Dashboard → Project Settings → API → "anon public"
-    const SB_URL = 'https://xbkdqhlcimmriwcyxdpf.supabase.co';
-    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhia2RxaGxjaW1tcml3Y3l4ZHBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTQ3OTcsImV4cCI6MjEwMjc3MDc5N30.ihDLc_P38OY8SOBmrjBRVrxSpnOuQIml69gEieoMwo8'; // <-- THAY BẰNG ANON KEY THẬT
-
-    function sbGetAll_(urlPath) {
-      const PAGE = 3000;
-      const MAX_RETRIES = 4; // 503 (schema cache đang nạp lại) / 522/524 (Cloudflare timeout)
-                              // là lỗi TẠM THỜI phía Supabase - thử lại thay vì báo lỗi ngay
-      let all = [], from = 0;
-
-      function fetchPage_(retriesLeft) {
-        return fetch(SB_URL + urlPath, {
-          headers: {
-            'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
-            'Range': from + '-' + (from + PAGE - 1)
-          }
-        })
-        .then(function(r) {
-          if (!r.ok) {
-            const isTransient = [502, 503, 504, 522, 524].indexOf(r.status) !== -1;
-            if (isTransient && retriesLeft > 0) {
-              const delayMs = (MAX_RETRIES - retriesLeft + 1) * 1200;
-              return new Promise(function(resolve) { setTimeout(resolve, delayMs); })
-                .then(function() { return fetchPage_(retriesLeft - 1); });
-            }
-            throw new Error('Supabase HTTP ' + r.status);
-          }
-          return r.json();
-        });
-      }
-
-      function next() {
-        return fetchPage_(MAX_RETRIES).then(function(rows) {
-          all = all.concat(rows);
-          if (!rows.length) return all;
-          from += rows.length;
-          return next();
-        });
-      }
-      return next();
-    }
-
-    function sbPost_(path, data) {
-      return fetch(SB_URL + path, {
-        method: 'POST',
-        headers: {
-          'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates,return=minimal'
-        },
-        body: JSON.stringify(Array.isArray(data) ? data : [data])
-      });
-    }
-
-    function formatTrackingDate_(iso) {
-      if (!iso) return '';
-      const d = new Date(iso);
-      return String(d.getDate()).padStart(2,'0') + '/' +
-        String(d.getMonth()+1).padStart(2,'0') + '/' +
-        String(d.getFullYear()).slice(-2) + ' ' +
-        String(d.getHours()).padStart(2,'0') + ':' +
-        String(d.getMinutes()).padStart(2,'0');
-    }
-
-    function processTrackingRows_(rows) {
-      return (rows || []).map(function(r) {
-        return {
-          lsx_stt:r.lsx_stt, lsx:r.lsx, stt:r.stt,
-          ten_chi_tiet:r.ten_chi_tiet, vat_lieu:r.vat_lieu,
-          dai:r.dai, rong:r.rong, day:r.day, hinh_hop:r.hinh_hop,
-          dn:r.dn, dt:r.dt, sl_dh:r.sl_dh, msct:r.msct,
-          so_luong:r.so_luong, nguoi:r.nguoi, ngay:formatTrackingDate_(r.ngay)
-        };
-      });
-    }
-
-    function searchByLSXDirect_(lsx) {
-      const tokens = lsx.split(/[,;\s]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>=3;});
-      if (!tokens.length) return Promise.reject(new Error('Từ khóa quá ngắn, vui lòng nhập đầy đủ LSX (kiểm tra lại dấu "/").'));
-      const filter = tokens.length === 1
-        ? 'lsx=ilike.*' + encodeURIComponent(tokens[0]) + '*'
-        : 'or=(' + tokens.map(function(t){return 'lsx.ilike.*'+encodeURIComponent(t)+'*';}).join(',') + ')';
-      return sbGetAll_('/rest/v1/bom_giao_viec?' + filter + '&select=*&order=thu_tu.asc');
-    }
-
-    function searchByPrefixDirect_(prefix) {
-      return sbGetAll_('/rest/v1/bom_giao_viec?lsx=like.' + encodeURIComponent(prefix.trim().toUpperCase()+'.') + '*&select=*&order=thu_tu.asc');
-    }
-
-    function suggestLSXDirect_(query) {
-      return fetch(SB_URL + '/rest/v1/bom_giao_viec?lsx=ilike.*' + encodeURIComponent(query.trim()) + '*&select=lsx&order=lsx.asc&limit=300', {
-        headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-      })
-      .then(function(r){return r.json();})
-      .then(function(rows){
-        const seen={}, res=[];
-        rows.forEach(function(r){if(r.lsx&&!seen[r.lsx]){seen[r.lsx]=true;res.push(r.lsx);}});
-        return res.slice(0,10);
-      });
-    }
-
-    function getDashboardDataDirect_() {
-      const SEL = 'thu_tu,lsx,loai,hang_muc,ngay_giao,kho_giao_hang_percent,tien_do_don_hang,tinh_trang,duc_nhom_tien_do,duc_nhom_tong,duc_nhom_gc,duc_nhom_con_lai,cua_vong_tien_do,cua_vong_tong,cua_vong_gc,cua_vong_con_lai,tien_tien_do,tien_tong,tien_gc,tien_con_lai,phay_tien_do,phay_tong,phay_gc,phay_con_lai,nguoi_tien_do,nguoi_tong,nguoi_gc,nguoi_con_lai,nhiet_tien_do,nhiet_tong,nhiet_gc,nhiet_con_lai,ngay_hoan_thanh';
-      return sbGetAll_('/rest/v1/tien_do_don_hang?select=' + SEL + '&order=thu_tu.asc')
-        .then(function(rows) {
-          function pct(v){var n=Number(v);return(v===null||v===undefined||v===''||isNaN(n))?0:Math.round(n*100);}
-          function typ(lsx){var m=String(lsx||'').match(/^([A-Za-zÀ-ỹ]+)\./);return m?m[1].toUpperCase():'KPH';}
-          return rows.map(function(r){
-            return {
-              lsx:r.lsx, loai:r.loai||typ(r.lsx), sanPham:r.hang_muc||'', khgh:r.ngay_giao,
-              percent:pct(r.kho_giao_hang_percent), tienDoPercent:pct(r.tien_do_don_hang),
-              total:null, delivered:null, tienDoDonHang:r.tien_do_don_hang, tinhTrang:r.tinh_trang,
-              ngayHoanThanh:r.ngay_hoan_thanh||'',
-              chuyen:{
-                ducNhom:{td:r.duc_nhom_tien_do,tong:r.duc_nhom_tong,gc:r.duc_nhom_gc,con:r.duc_nhom_con_lai},
-                cuaVong:{td:r.cua_vong_tien_do,tong:r.cua_vong_tong,gc:r.cua_vong_gc,con:r.cua_vong_con_lai},
-                tien:   {td:r.tien_tien_do,    tong:r.tien_tong,    gc:r.tien_gc,    con:r.tien_con_lai},
-                phay:   {td:r.phay_tien_do,    tong:r.phay_tong,    gc:r.phay_gc,    con:r.phay_con_lai},
-                nguoi:  {td:r.nguoi_tien_do,   tong:r.nguoi_tong,   gc:r.nguoi_gc,   con:r.nguoi_con_lai},
-                nhiet:  {td:r.nhiet_tien_do,   tong:r.nhiet_tong,   gc:r.nhiet_gc,   con:r.nhiet_con_lai}
-              }
-            };
-          }).filter(function(g){
-            return /^[A-Za-zÀ-ỹ]+\.[^.]+$/.test(g.lsx||'') && /^\d{4}-\d{2}-\d{2}$/.test(g.khgh||'');
-          });
-        });
-    }
-
-    function searchTrackingByLsxDirect_(lsx, mode) {
-      const tbl = mode === 'nhanphoi' ? 'nhan_phoi' : 'giao_hang';
-      return searchByLSXDirect_(lsx).then(function(bomRows) {
-        const keys = bomRows.map(function(r){return r.lsx_stt;}).filter(Boolean);
-        if (!keys.length) return bomRows.map(function(r){
-          return {lsx_stt:r.lsx_stt,lsx:r.lsx,stt_ct:r.stt_ct,msct:r.msct,
-            ten_chi_tiet:r.ten_chi_tiet,vat_lieu:r.vat_lieu,
-            dai:r.dai,rong:r.rong,day:r.day,hinh_hop:r.hinh_hop,
-            dn:r.dn,dt:r.dt,sl_dh:r.sl_dh,sl_da_giao:0};
-        });
-        const inList = keys.map(encodeURIComponent).join(',');
-        return fetch(SB_URL+'/rest/v1/'+tbl+'?lsx_stt=in.('+inList+')&select=lsx_stt,so_luong',{
-          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-        }).then(function(r){return r.json();}).then(function(rows){
-          const map={};
-          rows.forEach(function(r){map[r.lsx_stt]=Number(r.so_luong)||0;});
-          return bomRows.map(function(r){
-            return {lsx_stt:r.lsx_stt,lsx:r.lsx,stt_ct:r.stt_ct,msct:r.msct,
-              ten_chi_tiet:r.ten_chi_tiet,vat_lieu:r.vat_lieu,
-              dai:r.dai,rong:r.rong,day:r.day,hinh_hop:r.hinh_hop,
-              dn:r.dn,dt:r.dt,sl_dh:r.sl_dh,sl_da_giao:map[r.lsx_stt]||0};
-          });
-        });
-      });
-    }
-
     const API_URL = 'https://script.google.com/macros/s/AKfycbwtE5EwOIp2Z8A0Rn1-lGpHno0JEo6ZXGNVpLJiOZOBJuAVqDrpDGHvjt5Z-TjIYSDt/exec';
 
     function callServer_(fnName, args, retriesLeft) {
-            if (retriesLeft === undefined) retriesLeft = 5;
+      if (retriesLeft === undefined) retriesLeft = 2; // tổng cộng thử tối đa 3 lần
+
+      // Nếu KHÔNG có timeout, request bị Apps Script "ngâm" (đang bận chạy trigger khác,
+      // Supabase phản hồi chậm...) sẽ treo VÔ THỜI HẠN - withSuccessHandler/withFailureHandler
+      // không bao giờ được gọi. Đây là nguyên nhân chính khiến màn hình chờ kẹt ở 85%.
+      // Dùng AbortController để tự hủy request sau 20 giây, buộc nó rơi vào .catch() để retry
+      // hoặc báo lỗi, thay vì treo mãi.
       const controller = new AbortController();
-      const timeoutId = setTimeout(function() { controller.abort(); }, 30000);
+      const timeoutId = setTimeout(function() { controller.abort(); }, 20000);
 
       return fetch(API_URL, {
         method: 'POST',
@@ -1057,12 +907,11 @@
         .catch(function(err) {
           clearTimeout(timeoutId);
           // "Failed to fetch" (TypeError) là lỗi MẠNG, "AbortError" là do request bị hủy vì
-          // quá thời gian chờ - cả 2 đều nên retry. Khác với lỗi logic server trả về (data.ok=false,
+          // quá 20s - cả 2 đều nên retry. Khác với lỗi logic server trả về (data.ok=false,
           // VD "Sai mật khẩu") thì KHÔNG retry vì retry không giải quyết được gì.
-                    const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
+          const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
           if (isNetworkError && retriesLeft > 0) {
-            // Retry ÂM THẦM, không hiện toast làm phiền người dùng
-            const delayMs = (6 - retriesLeft) * 1500 + 1000;
+            const delayMs = (3 - retriesLeft) * 800 + 500; // 500ms, rồi 1300ms
             return new Promise(function(resolve) {
               setTimeout(resolve, delayMs);
             }).then(function() {
@@ -1197,12 +1046,6 @@
             <button type="button" onclick="openChangePasswordModal_()">
               <i class="fa-solid fa-key"></i> Đổi mật khẩu
             </button>
-            <button type="button" onclick="forceFullResyncNow_()">
-              <i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ toàn bộ dữ liệu ngay
-            </button>
-            <button type="button" id="adminUserMenuBtn" style="display:none;" onclick="openUserAdminModal_()">
-              <i class="fa-solid fa-users-gear"></i> Quản lý người dùng
-            </button>
             <div class="topbar-menu-divider"></div>
             <button type="button" class="topbar-menu-exit" onclick="exitApp_()">
               <i class="fa-solid fa-right-from-bracket"></i> Thoát
@@ -1315,13 +1158,6 @@
               </button>
             </div>
           </div>
-          <div style="display:flex; gap:8px; padding:0 16px 10px 16px;">
-            <input type="text" id="npSearchInput" placeholder="Nhập LSX (VD 663/08) để tick nhận phôi..."
-              style="flex:1; padding:10px; font-size:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px;"
-              onkeydown="if(event.key==='Enter') searchNhanPhoiByLsx_()" />
-            <button type="button" class="btn-primary-blue" onclick="searchNhanPhoiByLsx_()">Tìm</button>
-          </div>
-          <div id="npSearchResult" class="tracking-table-wrap" style="display:none; max-height:40vh; flex:none;"></div>
           <div id="nhanPhoiResult" class="tracking-table-wrap"></div>
         </div>
 
@@ -1337,13 +1173,6 @@
               </button>
             </div>
           </div>
-          <div style="display:flex; gap:8px; padding:0 16px 10px 16px;">
-            <input type="text" id="ghSearchInput" placeholder="Nhập LSX (VD 663/08) để tick giao hàng..."
-              style="flex:1; padding:10px; font-size:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px;"
-              onkeydown="if(event.key==='Enter') searchGiaoHangByLsx_()" />
-            <button type="button" class="btn-primary-blue" onclick="searchGiaoHangByLsx_()">Tìm</button>
-          </div>
-          <div id="ghSearchResult" class="tracking-table-wrap" style="display:none; max-height:40vh; flex:none;"></div>
           <div id="giaoHangResult" class="tracking-table-wrap"></div>
         </div>
 
@@ -1415,30 +1244,25 @@
       const lsxInput = document.getElementById('lsxInput');
 
           let currentUser_ = null; // { msnv, hoTen }
-      const ONLINE_HEARTBEAT_MS = 45000; // 45 giây - báo online không cần quá dày, giảm tải Apps Script
+      const ONLINE_HEARTBEAT_MS = 20000; // 20 giây báo nhịp tim 1 lần
 
-            function sendHeartbeat_() {
+      function sendHeartbeat_() {
         if (!currentUser_) return;
-        const cutoff = new Date(Date.now() - 60000).toISOString();
-        sbPost_('/rest/v1/online_users', { msnv: currentUser_.msnv, last_seen: new Date().toISOString() })
-          .then(function() {
-            return sbGetAll_('/rest/v1/online_users?select=msnv&last_seen=gte.' + encodeURIComponent(cutoff));
-          })
-          .then(function(rows) {
+        google.script.run
+          .withSuccessHandler(function(count) {
             const badge = document.getElementById('onlineBadge');
             const text = document.getElementById('onlineCountText');
             if (!badge || !text) return;
-            text.textContent = rows.length + ' đang online';
+            text.textContent = count + ' đang online';
             badge.style.display = 'inline-flex';
           })
-          .catch(function() { /* im lặng */ });
+          .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
+          .heartbeatOnline(currentUser_.msnv);
       }
 
       /* ================= THÔNG BÁO ĐƠN GẤP/ƯU TIÊN ================= */
-      const NOTIF_LIST_CACHE_KEY_ = 'gcck_notif_list_cache'; // lưu lại danh sách thông báo đã tải, để khởi động lại app không bị mất
       let lastNotifId_ = Number(localStorage.getItem('gcck_last_notif_id') || 0);
       let notifList_ = [];
-      try { notifList_ = JSON.parse(localStorage.getItem(NOTIF_LIST_CACHE_KEY_) || '[]'); } catch (e) { notifList_ = []; }
       let notifFirstLoad_ = true; // lần tải đầu tiên -> chỉ nạp âm thầm, không toast dồn dập thông báo cũ
 
       function loadReadNotifIds_() {
@@ -1448,7 +1272,6 @@
         try { localStorage.setItem('gcck_read_notif_ids', JSON.stringify(Array.from(set))); } catch (e) {}
       }
       let readNotifIds_ = loadReadNotifIds_();
-      updateNotifBadge_(); // hiện lại số thông báo chưa đọc NGAY khi mở app, không cần đợi đợt poll đầu tiên (3.8s)
 
       function openNotifModal_() {
         document.getElementById('notifOverlay').style.display = 'flex';
@@ -1499,25 +1322,19 @@
           const timeStr = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') +
             ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
           const bg = isRead ? 'transparent' : '#eef4ff';
-          const dot = isRead ? '' : '<span style="width:7px; height:7px; border-radius:50%; background:#1a73e8; display:inline-block; margin-right:6px; flex-shrink:0; margin-top:6px;"></span>';
+          const dot = isRead ? '' : '<span style="width:7px; height:7px; border-radius:50%; background:#1a73e8; display:inline-block; margin-right:6px; flex-shrink:0; margin-top:5px;"></span>';
           return '<div onclick="markNotifRead_(' + n.id + ')" style="cursor:pointer; display:flex; align-items:flex-start; padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45; background:' + bg + ';">' +
             dot +
-            '<div style="flex:1; display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">' +
-              '<div style="font-weight:' + (isRead ? '400' : '700') + ';">' + escapeHtml_(n.message) + '</div>' +
-              '<div style="font-size:11px; color:#999; white-space:nowrap; flex-shrink:0; margin-top:1px;">' + timeStr + '</div>' +
-            '</div>' +
+            '<div style="flex:1;"><div style="font-weight:' + (isRead ? '400' : '700') + ';">' + escapeHtml_(n.message) + '</div>' +
+            '<div style="font-size:11px; color:#999; margin-top:3px;">' + timeStr + '</div></div>' +
           '</div>';
         }).join('');
       }
 
-      const NOTIF_POLL_MS = 20000; // 20 giây - giảm tải Apps Script
-      const NOTIF_LIST_MAX_KEEP_ = 200; // chỉ giữ tối đa 200 thông báo gần nhất trong cache, tránh localStorage phình to
-      function saveNotifListCache_() {
-        try { localStorage.setItem(NOTIF_LIST_CACHE_KEY_, JSON.stringify(notifList_.slice(-NOTIF_LIST_MAX_KEEP_))); } catch (e) {}
-      }
+      const NOTIF_POLL_MS = 10000; // 10 giây - đủ nhanh để cảm giác gần realtime
       function pollNotifications_() {
-        sbGetAll_('/rest/v1/notifications?id=gt.' + lastNotifId_ + '&select=*&order=id.asc&limit=50')
-          .then(function(rows) {
+        google.script.run
+          .withSuccessHandler(function(rows) {
             if (!rows || rows.length === 0) { notifFirstLoad_ = false; return; }
             rows.forEach(function(n) {
               notifList_.push(n);
@@ -1526,52 +1343,16 @@
             });
             notifFirstLoad_ = false;
             try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
-            saveNotifListCache_(); // lưu lại để lần khởi động app sau vẫn còn thấy các thông báo này
             updateNotifBadge_();
             if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
           })
-          .catch(function() { /* im lặng */ });
+          .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
+          .getNotifications(lastNotifId_);
       }
 
       // Gọi khi đăng nhập THÀNH CÔNG - lưu lại thông tin cho lần sau, rồi bật màn hình chờ.
-      let currentPerms_ = null;
-
-      function getRolePermissions_(chucVu, isAdmin) {
-        if (isAdmin) return { dashboard: true, tag: true, tracuu: true, nhanphoi: true, giaohang: true, userAdmin: true };
-        switch (chucVu) {
-          case 'Quản lý':
-            return { dashboard: true, tag: false, tracuu: true, nhanphoi: false, giaohang: false, userAdmin: false };
-          case 'Kế hoạch':
-          case 'Quản Đốc':
-            return { dashboard: true, tag: true, tracuu: true, nhanphoi: true, giaohang: true, userAdmin: false };
-          case 'Công nhân':
-            return { dashboard: true, tag: false, tracuu: true, nhanphoi: true, giaohang: true, userAdmin: false };
-          default:
-            return { dashboard: true, tag: false, tracuu: true, nhanphoi: false, giaohang: false, userAdmin: false };
-        }
-      }
-
-      function applyRolePermissionsUI_() {
-        currentPerms_ = getRolePermissions_(currentUser_.chucVu, currentUser_.isAdmin);
-        document.querySelectorAll('[data-tab="tab-nhanphoi"]').forEach(function(el) {
-          el.style.display = currentPerms_.nhanphoi ? '' : 'none';
-        });
-        document.querySelectorAll('[data-tab="tab-giaohang"]').forEach(function(el) {
-          el.style.display = currentPerms_.giaohang ? '' : 'none';
-        });
-        const adminBtn = document.getElementById('adminUserMenuBtn');
-        if (adminBtn) adminBtn.style.display = currentPerms_.userAdmin ? '' : 'none';
-        // Nếu tab đang mở bị chặn quyền -> tự chuyển về Dashboard
-        const activeTab = document.querySelector('.tab-pane.active');
-        if (activeTab && ((activeTab.id === 'tab-nhanphoi' && !currentPerms_.nhanphoi) ||
-            (activeTab.id === 'tab-giaohang' && !currentPerms_.giaohang))) {
-          switchTab('tab-dashboard');
-        }
-      }
-
       function finishLogin_(user, remember, passUsed) {
         currentUser_ = user;
-        applyRolePermissionsUI_();
         try {
           localStorage.setItem('gcck_last_user', JSON.stringify({ msnv: user.msnv, hoTen: user.hoTen }));
           if (remember) {
@@ -1593,13 +1374,14 @@
         // thi Apps Script với các lệnh gọi khác -> rút ngắn thời gian đóng màn hình chờ.
         loadDashboardOnLogin_();
 
-        // Các lệnh gọi còn lại KHÔNG bị màn hình chờ đợi - GIÃN CÁCH từng lệnh thay vì
-        // bắn cùng lúc, để không dồn nhiều request lên Apps Script trong cùng 1 khoảnh khắc
-        // (đây là nguyên nhân chính gây "Kết nối chậm" khi nhiều người đăng nhập gần nhau).
-        setTimeout(function() { loadPriorityTagsFromServer_(); }, 800);
-        setTimeout(function() { loadInitialAppData_(); }, 1800);
-        setTimeout(function() { sendHeartbeat_(); }, 2800);
-        setTimeout(function() { pollNotifications_(); }, 3800);
+        // Các lệnh gọi còn lại KHÔNG bị màn hình chờ đợi - hoãn 800ms để nhường trọn băng
+        // thông cho request Dashboard ở trên hoàn tất trước.
+        setTimeout(function() {
+          loadPriorityTagsFromServer_();
+          loadInitialAppData_();
+          sendHeartbeat_();
+          pollNotifications_();
+        }, 800);
 
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
         setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
@@ -1625,21 +1407,6 @@
 
       function closeChangePasswordModal_() {
         document.getElementById('changePassOverlay').style.display = 'none';
-      }
-
-      // Ép quét lại TOÀN BỘ Sheet -> Supabase ngay (chạy mỗi 1 phút, tự tắt khi xong).
-      // Bấm nút này khoảng 15-20 phút trước giờ họp để chắc chắn số liệu là mới nhất.
-      function forceFullResyncNow_() {
-        closeUserMenu_();
-        showToast('Đang bắt đầu đồng bộ toàn bộ dữ liệu, quá trình này có thể mất vài phút...', 'info');
-        google.script.run
-          .withSuccessHandler(function() {
-            showToast('Đã bắt đầu đồng bộ toàn bộ. Đợi khoảng 2-5 phút rồi bấm Làm mới để thấy số liệu mới nhất.', 'success');
-          })
-          .withFailureHandler(function(err) {
-            showToast('Lỗi khi bắt đầu đồng bộ: ' + err.message, 'error');
-          })
-          .forceFullResyncNow();
       }
 
       function submitChangePassword_() {
@@ -1695,10 +1462,16 @@
         const myRequestId = ++suggestRequestId;
 
         suggestTimer = setTimeout(function() {
-          const myId = ++suggestRequestId;
-          suggestLSXDirect_(value)
-            .then(function(list) { if (myId === suggestRequestId) showSuggestions(list); })
-            .catch(function() { if (myId === suggestRequestId) hideSuggestions(); });
+          google.script.run
+            .withSuccessHandler(function(list) {
+              if (myRequestId !== suggestRequestId) return; // đã gõ thêm ký tự mới, bỏ kết quả trễ này
+              showSuggestions(list);
+            })
+            .withFailureHandler(function() {
+              if (myRequestId !== suggestRequestId) return;
+              hideSuggestions();
+            })
+            .suggestLSX(value);
         }, 100);
       });
 
@@ -1827,20 +1600,21 @@
 
         const myRequestId = ++searchRequestId;
 
-        searchByLSXDirect_(lsx)
-          .then(function(rows) {
-            if (myRequestId !== searchRequestId) return;
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            if (myRequestId !== searchRequestId) return; // đã bị hủy / có lượt tìm mới hơn
             lastRows = rows;
             currentQuery = lsx;
             currentQueryMode = 'lsx';
-            render(applyFilters(rows));
+            render(applyFilters(rows)); // render() tự đếm theo dữ liệu sau lọc
             startPolling();
           })
-          .catch(function(err) {
+          .withFailureHandler(function(err) {
             if (myRequestId !== searchRequestId) return;
             setLoading(false);
             status.textContent = 'Lỗi: ' + err.message;
-          });
+          })
+          .searchByLSX(lsx);
       }
 
           const CATEGORIES = [
@@ -1906,8 +1680,8 @@
           setLoading(true);
         }
 
-        searchByPrefixDirect_(prefix)
-          .then(function(rows) {
+        google.script.run
+          .withSuccessHandler(function(rows) {
             if (myRequestId !== searchRequestId) return;
             categoryCache[prefix] = rows;
             lastRows = rows;
@@ -1916,11 +1690,12 @@
             render(applyFilters(rows));
             startPolling();
           })
-          .catch(function(err) {
+          .withFailureHandler(function(err) {
             if (myRequestId !== searchRequestId) return;
             setLoading(false);
             status.textContent = 'Lỗi: ' + err.message;
-          });
+          })
+          .searchByPrefix(prefix);
       }
 
       function updateSummary(rows) {
@@ -2559,10 +2334,15 @@
 
       function pollForUpdates() {
         if (!currentQuery) return;
-        const p = currentQueryMode === 'prefix'
-          ? searchByPrefixDirect_(currentQuery)
-          : searchByLSXDirect_(currentQuery);
-        p.then(mergeRemoteChanges).catch(function() { /* im lặng */ });
+        const runner = google.script.run
+          .withSuccessHandler(mergeRemoteChanges)
+          .withFailureHandler(function() { /* im lặng bỏ qua, lần sau tự thử lại */ });
+
+        if (currentQueryMode === 'prefix') {
+          runner.searchByPrefix(currentQuery);
+        } else {
+          runner.searchByLSX(currentQuery);
+        }
       }
 
       // So sánh dữ liệu mới nhất từ server với dữ liệu đang hiển thị,
@@ -3043,20 +2823,7 @@
 
       let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
       let trackingPollTimer_ = null;
-      const TRACKING_POLL_INTERVAL_MS = 20000; // 20 giây - giảm tải Apps Script
-
-      // Khóa cứng zoom (pinch-to-zoom) trên điện thoại khi đang ở tab Nhận phôi/Giao hàng -
-      // đây là 2 tab công nhân thao tác liên tục trên xưởng, lỡ tay zoom to/nhỏ dễ bấm nhầm số.
-      // Các tab khác (Dashboard, Tra cứu) vẫn cho zoom bình thường để xem bảng dữ liệu rộng.
-      function lockZoomForTab_(tabId) {
-        const meta = document.querySelector('meta[name="viewport"]');
-        if (!meta) return;
-        const isMobile = window.innerWidth <= 768;
-        const shouldLock = isMobile && (tabId === 'tab-nhanphoi' || tabId === 'tab-giaohang');
-        meta.setAttribute('content', shouldLock
-          ? 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'
-          : 'width=device-width, initial-scale=1');
-      }
+      const TRACKING_POLL_INTERVAL_MS = 10000; // 10 giây tự làm mới 1 lần cho mọi người cùng xem
 
       function switchTab(tabId) {
         document.querySelectorAll('.tab-pane').forEach(function(el) { el.classList.remove('active'); });
@@ -3065,7 +2832,6 @@
         document.querySelectorAll('.sidebar-nav-btn, .mobile-nav-btn').forEach(function(el) { el.classList.remove('active'); });
         document.getElementById(tabId).classList.add('active');
         document.querySelectorAll('[data-tab="' + tabId + '"]').forEach(function(el) { el.classList.add('active'); });
-        lockZoomForTab_(tabId);
 
         if (tabId === 'tab-nhanphoi') {
           activeTrackingTab_ = 'nhanphoi';
@@ -3099,17 +2865,21 @@
       function pollActiveTrackingTab_() {
         if (!activeTrackingTab_) return;
         if (activeTrackingTab_ === 'nhanphoi') {
-          sbGetAll_('/rest/v1/nhan_phoi?select=*&order=ngay.desc')
-            .then(function(rows) {
-              nhanPhoiRows = processTrackingRows_(rows);
-              renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
-            }).catch(function() {});
+          google.script.run
+            .withSuccessHandler(function(rows) {
+              nhanPhoiRows = rows;
+              renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(rows, trackingFilters.nhanphoi), 'nhanphoi');
+            })
+            .withFailureHandler(function() { /* im lặng bỏ qua, lần sau tự thử lại */ })
+            .getNhanPhoiData();
         } else if (activeTrackingTab_ === 'giaohang') {
-          sbGetAll_('/rest/v1/giao_hang?select=*&order=ngay.desc')
-            .then(function(rows) {
-              giaoHangRows = processTrackingRows_(rows);
-              renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
-            }).catch(function() {});
+          google.script.run
+            .withSuccessHandler(function(rows) {
+              giaoHangRows = rows;
+              renderTrackingTable_('giaoHangResult', applyTrackingFilters_(rows, trackingFilters.giaohang), 'giaohang');
+            })
+            .withFailureHandler(function() {})
+            .getGiaoHangData();
         }
       }
 
@@ -3307,18 +3077,25 @@
     btn.classList.add('spinning'); btn.disabled = true;
     const safetyTimer = setTimeout(function() {
       btn.classList.remove('spinning'); btn.disabled = false;
-      showToast('Tải quá lâu. Vui lòng thử lại.', 'error');
+      showToast('Tải quá lâu, có thể do mạng hoặc server. Vui lòng thử lại.', 'error');
     }, 15000);
     function stop() { clearTimeout(safetyTimer); btn.classList.remove('spinning'); btn.disabled = false; }
 
-    sbGetAll_('/rest/v1/nhan_phoi?select=*&order=ngay.desc')
-      .then(function(rows) {
-        nhanPhoiRows = processTrackingRows_(rows);
-        trackingLoaded.nhanphoi = true;
-        renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
+    google.script.run
+      .withSuccessHandler(function(rows) {
+        try {
+          nhanPhoiRows = rows; trackingLoaded.nhanphoi = true;
+          renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(rows, trackingFilters.nhanphoi), 'nhanphoi');
+        } catch (e) {
+          showToast('Lỗi hiển thị dữ liệu: ' + e.message, 'error');
+        }
         stop();
       })
-      .catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); stop(); });
+      .withFailureHandler(function(err) {
+        showToast('Lỗi: ' + err.message, 'error');
+        stop();
+      })
+      .getNhanPhoiData();
   }
 
   function refreshGiaoHangTab() {
@@ -3326,195 +3103,25 @@
     btn.classList.add('spinning'); btn.disabled = true;
     const safetyTimer = setTimeout(function() {
       btn.classList.remove('spinning'); btn.disabled = false;
-      showToast('Tải quá lâu. Vui lòng thử lại.', 'error');
+      showToast('Tải quá lâu, có thể do mạng hoặc server. Vui lòng thử lại.', 'error');
     }, 15000);
     function stop() { clearTimeout(safetyTimer); btn.classList.remove('spinning'); btn.disabled = false; }
 
-    sbGetAll_('/rest/v1/giao_hang?select=*&order=ngay.desc')
-      .then(function(rows) {
-        giaoHangRows = processTrackingRows_(rows);
-        trackingLoaded.giaohang = true;
-        renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
+    google.script.run
+      .withSuccessHandler(function(rows) {
+        try {
+          giaoHangRows = rows; trackingLoaded.giaohang = true;
+          renderTrackingTable_('giaoHangResult', applyTrackingFilters_(rows, trackingFilters.giaohang), 'giaohang');
+        } catch (e) {
+          showToast('Lỗi hiển thị dữ liệu: ' + e.message, 'error');
+        }
         stop();
       })
-      .catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); stop(); });
-  }
-
-  /* ================= TÌM LSX ĐỂ TICK GIAO HÀNG / NHẬN PHÔI THEO SỐ LƯỢNG THỰC TẾ ================= */
-  function searchGiaoHangByLsx_() {
-    const lsx = document.getElementById('ghSearchInput').value.trim();
-    if (!lsx) { showToast('Vui lòng nhập LSX.', 'error'); return; }
-    searchTrackingByLsxDirect_(lsx, 'giaohang')
-      .then(function(rows) { renderTrackingSearchTable_('ghSearchResult', rows, 'giaohang'); })
-      .catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); });
-  }
-
-  function searchNhanPhoiByLsx_() {
-    const lsx = document.getElementById('npSearchInput').value.trim();
-    if (!lsx) { showToast('Vui lòng nhập LSX.', 'error'); return; }
-    searchTrackingByLsxDirect_(lsx, 'nhanphoi')
-      .then(function(rows) { renderTrackingSearchTable_('npSearchResult', rows, 'nhanphoi'); })
-      .catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); });
-  }
-
-  function trackingStatusBadge_(daGiao, slDh) {
-    slDh = Number(slDh) || 0;
-    daGiao = Number(daGiao) || 0;
-    if (daGiao <= 0) return '';
-    if (daGiao >= slDh && slDh > 0) {
-      return '<span style="background:#34a853;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap;">Đã giao</span>';
-    }
-    return '<span style="background:#ff8a3d;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap;">Thiếu ' + daGiao + '/' + slDh + '</span>';
-  }
-
-  // Danh sách các món công nhân đã "Chọn" nhưng CHƯA bấm Lưu tất cả - tách riêng theo
-  // mode (nhanphoi/giaohang) để không lẫn lộn giữa 2 tab. Giữ nguyên khi tìm LSX khác
-  // (không mất lựa chọn cũ), chỉ mất khi bấm "Lưu tất cả" hoặc "Bỏ chọn" thủ công.
-  const trackingSearchPending_ = { nhanphoi: {}, giaohang: {} };
-
-  function renderTrackingSearchTable_(containerId, rows, mode) {
-    const wrap = document.getElementById(containerId);
-    wrap.style.display = 'block';
-    if (!rows || rows.length === 0) {
-      wrap.innerHTML = '<div class="empty-state-cell">Không tìm thấy LSX phù hợp.</div>';
-      return;
-    }
-    // Chỉ hiện đúng các cột cần thiết trên điện thoại, không cần cuộn ngang qua các
-    // cột kỹ thuật (Vật liệu, Dài, Rộng, Dày, Hình/hộp, Dn, Dt).
-    let html = '<table><tr>' +
-      '<th>LSX</th><th>STT</th><th>Tên chi tiết</th><th>SL/ĐH</th><th>SL giao</th><th>Trạng thái</th><th></th></tr>';
-    rows.forEach(function(r, i) {
-      const pending = trackingSearchPending_[mode][r.lsx_stt];
-      const defaultQty = pending ? pending.qty : ((r.sl_da_giao > 0) ? r.sl_da_giao : (r.sl_dh || 0));
-      const btnLabel = pending ? 'Bỏ chọn' : 'Chọn';
-      const btnClass = pending ? 'upbom-cancel' : 'btn-primary-blue';
-      const lsxSafe = escapeHtml_(r.lsx || '').replace(/'/g, "\\'");
-      const sttSafe = escapeHtml_(r.stt_ct || '').replace(/'/g, "\\'");
-      const tenSafe = escapeHtml_(r.ten_chi_tiet || '').replace(/'/g, "\\'");
-      html += '<tr>' +
-        '<td>' + escapeHtml_(r.lsx || '') + '</td><td>' + escapeHtml_(r.stt_ct || '') + '</td>' +
-        '<td>' + escapeHtml_(r.ten_chi_tiet || '') + '</td>' +
-        '<td>' + escapeHtml_(r.sl_dh || '') + '</td>' +
-        '<td><input type="number" min="0" value="' + defaultQty + '" style="width:64px; padding:6px; text-align:center; font-size:16px;" id="qty_' + i + '_' + containerId + '" /></td>' +
-        '<td id="status_' + i + '_' + containerId + '">' + trackingStatusBadge_(r.sl_da_giao, r.sl_dh) + '</td>' +
-        '<td><button type="button" class="' + btnClass + '" style="padding:8px 14px; font-size:13px;" ' +
-          'onclick="addTrackingSearchRow_(\'' + containerId + '\', ' + i + ', \'' + r.lsx_stt + '\', \'' + mode + '\', \'' + lsxSafe + '\', \'' + sttSafe + '\', \'' + tenSafe + '\', ' + (Number(r.sl_dh) || 0) + ')">' + btnLabel + '</button></td>' +
-      '</tr>';
-    });
-    html += '</table><div id="pendingWrap_' + containerId + '"></div>';
-    wrap.innerHTML = html;
-    renderTrackingSearchPending_(containerId, mode);
-  }
-
-  // Bấm "Chọn": thêm món vào danh sách chờ (KHÔNG lưu lên server ngay) - phòng công
-  // nhân bấm nhầm món. Bấm lại (đang "Bỏ chọn") sẽ gỡ món ra khỏi danh sách chờ.
-  function addTrackingSearchRow_(containerId, i, lsxStt, mode, lsx, stt, tenChiTiet, slDh) {
-    const input = document.getElementById('qty_' + i + '_' + containerId);
-    const btn = input.closest('tr').querySelector('button');
-
-    if (trackingSearchPending_[mode][lsxStt]) {
-      delete trackingSearchPending_[mode][lsxStt];
-      if (btn) { btn.textContent = 'Chọn'; btn.className = 'btn-primary-blue'; }
-      renderTrackingSearchPending_(containerId, mode);
-      return;
-    }
-
-    const qty = Number(input.value);
-    if (isNaN(qty) || qty < 0) { showToast('Số lượng không hợp lệ.', 'error'); return; }
-
-    trackingSearchPending_[mode][lsxStt] = {
-      lsx: lsx, stt: stt, tenChiTiet: tenChiTiet, qty: qty, slDh: slDh, containerId: containerId
-    };
-    if (btn) { btn.textContent = 'Bỏ chọn'; btn.className = 'upbom-cancel'; }
-    renderTrackingSearchPending_(containerId, mode);
-  }
-
-  function removeTrackingSearchPending_(containerId, mode, lsxStt) {
-    delete trackingSearchPending_[mode][lsxStt];
-    renderTrackingSearchPending_(containerId, mode);
-    const wrap = document.getElementById(containerId);
-    const table = wrap ? wrap.querySelector('table') : null;
-    if (table) {
-      Array.prototype.forEach.call(table.querySelectorAll('button'), function(btn) {
-        const onclickAttr = btn.getAttribute('onclick') || '';
-        if (onclickAttr.indexOf("'" + lsxStt + "'") !== -1) {
-          btn.textContent = 'Chọn';
-          btn.className = 'btn-primary-blue';
-        }
-      });
-    }
-  }
-
-  function renderTrackingSearchPending_(containerId, mode) {
-    const wrap = document.getElementById('pendingWrap_' + containerId);
-    if (!wrap) return;
-    const entries = Object.keys(trackingSearchPending_[mode])
-      .map(function(k) { return Object.assign({ lsxStt: k }, trackingSearchPending_[mode][k]); })
-      .filter(function(e) { return e.containerId === containerId; });
-
-    if (entries.length === 0) { wrap.innerHTML = ''; return; }
-
-    let html = '<div style="margin-top:12px; padding:10px; background:#f0f7ff; border:1px solid #cfe0ff; border-radius:6px;">' +
-      '<div style="font-weight:bold; font-size:13px; margin-bottom:8px;">Danh sách đã chọn (' + entries.length + '):</div>' +
-      '<table style="width:100%; border-collapse:collapse; font-size:12px;"><tr style="background:#e8f0fe;">' +
-      '<th style="border:1px solid #ddd; padding:4px;">LSX</th><th style="border:1px solid #ddd; padding:4px;">STT</th>' +
-      '<th style="border:1px solid #ddd; padding:4px;">Tên chi tiết</th><th style="border:1px solid #ddd; padding:4px;">SL</th>' +
-      '<th style="border:1px solid #ddd; padding:4px;"></th></tr>';
-    entries.forEach(function(e) {
-      html += '<tr>' +
-        '<td style="border:1px solid #ddd; padding:4px;">' + escapeHtml_(e.lsx) + '</td>' +
-        '<td style="border:1px solid #ddd; padding:4px;">' + escapeHtml_(e.stt) + '</td>' +
-        '<td style="border:1px solid #ddd; padding:4px;">' + escapeHtml_(e.tenChiTiet) + '</td>' +
-        '<td style="border:1px solid #ddd; padding:4px;">' + e.qty + '</td>' +
-        '<td style="border:1px solid #ddd; padding:4px; cursor:pointer; color:#c62828;" ' +
-          'onclick="removeTrackingSearchPending_(\'' + containerId + '\', \'' + mode + '\', \'' + e.lsxStt + '\')">&times;</td>' +
-      '</tr>';
-    });
-    html += '</table>' +
-      '<button type="button" class="btn-primary-blue" style="margin-top:10px; width:100%; padding:12px; font-size:15px;" ' +
-        'onclick="saveTrackingSearchPendingAll_(\'' + containerId + '\', \'' + mode + '\')">Lưu tất cả (' + entries.length + ')</button>' +
-      '</div>';
-    wrap.innerHTML = html;
-  }
-
-  // Bấm "Lưu tất cả": lần lượt gửi từng món lên server (tuần tự, không chạy song song
-  // để tránh ghi đè lẫn nhau nếu trùng LSX-STT), rồi mới làm mới lại bảng.
-  function saveTrackingSearchPendingAll_(containerId, mode) {
-    const entries = Object.keys(trackingSearchPending_[mode])
-      .map(function(k) { return Object.assign({ lsxStt: k }, trackingSearchPending_[mode][k]); })
-      .filter(function(e) { return e.containerId === containerId; });
-
-    if (entries.length === 0) { showToast('Chưa có món nào được chọn.', 'error'); return; }
-
-    const nguoi = (currentUser_ && currentUser_.hoTen) || '';
-    const msnv = currentUser_ ? currentUser_.msnv : '';
-    showToast('Đang lưu ' + entries.length + ' món...', 'info');
-
-    let idx = 0;
-    function saveNext() {
-      if (idx >= entries.length) {
-        showToast('Đã lưu ' + entries.length + ' món.', 'success');
-        entries.forEach(function(e) { delete trackingSearchPending_[mode][e.lsxStt]; });
-        renderTrackingSearchPending_(containerId, mode);
-        if (mode === 'nhanphoi') {
-          refreshNhanPhoiTab();
-          if (document.getElementById('npSearchInput').value.trim()) searchNhanPhoiByLsx_();
-        } else {
-          refreshGiaoHangTab();
-          if (document.getElementById('ghSearchInput').value.trim()) searchGiaoHangByLsx_();
-        }
-        return;
-      }
-      const e = entries[idx];
-      google.script.run
-        .withSuccessHandler(function() { idx++; saveNext(); })
-        .withFailureHandler(function(err) {
-          showToast('Lỗi khi lưu ' + e.lsx + '-' + e.stt + ': ' + err.message, 'error');
-          idx++; saveNext();
-        })
-        .saveTrackingRowAbsolute(msnv, mode, e.lsxStt, e.qty, nguoi);
-    }
-    saveNext();
+      .withFailureHandler(function(err) {
+        showToast('Lỗi: ' + err.message, 'error');
+        stop();
+      })
+      .getGiaoHangData();
   }
 
       /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
@@ -3643,26 +3250,10 @@
           case 'almost': return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
           case 'priority_default': {
             // Mặc định: chỉ hiện các đơn đã gắn nhãn Gấp/ƯT1/ƯT2/ƯT3/nhãn tự đặt.
-            // Đơn đã hoàn thành 100% CHỈ hiện nếu hoàn thành ĐÚNG NGÀY HÔM NAY - qua ngày
-            // hôm sau thì tự động rớt khỏi danh sách này (không cần bấm Bỏ lọc thủ công).
-            const withPriority = rows.filter(function(r) {
-              if (!priorityTags_[r.lsx]) return false;
-              if (r.tienDoPercent >= 100) return r.ngayHoanThanh === todayStr;
-              return true;
-            });
+            // Nếu chưa có đơn nào được gắn nhãn -> fallback sang "sắp xong" (>=80%, <100%).
+            const withPriority = rows.filter(function(r) { return !!priorityTags_[r.lsx]; });
             if (withPriority.length > 0) return withPriority;
-
-            const almostDone = rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
-            if (almostDone.length > 0) return almostDone;
-
-            // KHÔNG có đơn ưu tiên VÀ KHÔNG có đơn sắp xong (80-99%) -> trước đây rơi vào
-            // đây sẽ trả về RỖNG, khiến Dashboard hiện "Không có dữ liệu" dù dữ liệu gốc
-            // vẫn còn nguyên trên Supabase (đây chính là nguyên nhân bảng trống). Giờ fallback
-            // thêm 2 lớp nữa để KHÔNG BAO GIỜ hiện trống oan khi vẫn còn đơn hàng thật:
-            const remaining = rows.filter(function(r) { return r.tienDoPercent < 100; });
-            if (remaining.length > 0) return remaining;
-
-            return rows; // toàn bộ đã hoàn thành hoặc không tính được % -> vẫn hiện hết, không để trống
+            return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
           }
           default: return rows;
         }
@@ -3757,7 +3348,7 @@
         const labelMap = {
           all: 'Tất cả đơn hàng', completed: 'Đã hoàn thành', remaining: 'Còn lại',
           overdue: 'Trễ KHGH', today: 'KHGH hôm nay', almost: 'Sắp xong (>80%)',
-          priority_default: 'Đơn Gấp/Ưu tiên (mặc định) — không có thì hiện đơn sắp xong, rồi đến đơn còn lại'
+          priority_default: 'Đơn Gấp/Ưu tiên (mặc định) — không có thì hiện đơn sắp xong'
         };
         const text = dashDateFilter
           ? 'Đang lọc theo ngày KHGH: <b>' + formatDate(dashDateFilter) + '</b>'
@@ -3796,29 +3387,20 @@
         if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
         function stop() { if (btn) { btn.classList.remove('spinning'); btn.disabled = false; } }
 
-        getDashboardDataDirect_()
-          .then(function(rows) {
-            rows = rows || [];
-            // Nếu lần tải này về RỖNG trong khi đang có dữ liệu -> nhiều khả năng là lỗi tạm
-            // thời (mất mạng chập chờn, đúng lúc Supabase đang được ghi lại...), KHÔNG ghi đè
-            // lên dữ liệu + cache đang có, tránh làm Dashboard "mất trắng" oan.
-            if (rows.length === 0 && dashboardRows.length > 0) {
-              showToast('Không tải được dữ liệu Dashboard mới, đang giữ nguyên dữ liệu cũ.', 'info');
-              markDashboardReadyForSplash_();
-              stop();
-              return;
-            }
-            dashboardRows = rows;
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            dashboardRows = rows || [];
             saveDashboardCache_(dashboardRows);
             renderDashboard_();
             markDashboardReadyForSplash_();
             stop();
           })
-          .catch(function(err) {
+          .withFailureHandler(function(err) {
             showToast('Lỗi tải dashboard: ' + err.message, 'error');
             markDashboardReadyForSplash_();
             stop();
-          });
+          })
+          .getDashboardData();
 
         google.script.run
           .withSuccessHandler(renderProgressSyncStatus_)
@@ -3829,16 +3411,14 @@
       // Tự làm mới Dashboard mỗi 15 phút - ÂM THẦM, không spinner/toast để không làm
       // phiền người đang xem, chỉ âm thầm cập nhật lại số liệu trên các ô/thẻ.
       function refreshDashboardSilently_() {
-        getDashboardDataDirect_()
-          .then(function(rows) {
-            rows = rows || [];
-            // Cùng lý do như refreshDashboard_: rỗng bất thường khi đang có dữ liệu -> bỏ qua.
-            if (rows.length === 0 && dashboardRows.length > 0) return;
-            dashboardRows = rows;
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            dashboardRows = rows || [];
             saveDashboardCache_(dashboardRows);
             renderDashboard_();
           })
-          .catch(function() { /* im lặng */ });
+          .withFailureHandler(function() { /* im lặng, 15 phút sau tự thử lại */ })
+          .getDashboardData();
 
         google.script.run
           .withSuccessHandler(renderProgressSyncStatus_)
@@ -3958,15 +3538,14 @@ try { priorityTags_ = JSON.parse(localStorage.getItem(PRIORITY_TAGS_CACHE_KEY) |
 
 // Tải nhãn ưu tiên THẬT từ Supabase - dùng chung cho mọi máy/mọi tài khoản, gọi lúc đăng nhập.
 function loadPriorityTagsFromServer_() {
-  sbGetAll_('/rest/v1/priority_tags?select=lsx,tag')
-    .then(function(rows) {
-      const tags = {};
-      (rows||[]).forEach(function(r){if(r.lsx&&r.tag)tags[r.lsx]=r.tag;});
-      priorityTags_ = tags;
+  google.script.run
+    .withSuccessHandler(function(tags) {
+      priorityTags_ = tags || {};
       try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
       renderDashboard_();
     })
-    .catch(function() { /* mất mạng -> tạm giữ cache cũ */ });
+    .withFailureHandler(function() { /* mất mạng -> tạm giữ cache cũ, không chặn app */ })
+    .getPriorityTags();
 }
 
 // So sánh nhanh 2 object nhãn ưu tiên có khác nhau không (đủ dùng, không cần deep-equal phức tạp)
@@ -3982,18 +3561,20 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
-      const PRIORITY_TAGS_POLL_MS = 20000; // 20 giây - giảm tải Apps Script, vẫn đủ nhanh cho nhãn ưu tiên
+const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime", không quá tải server
 function pollPriorityTagsSilently_() {
-  sbGetAll_('/rest/v1/priority_tags?select=lsx,tag')
-    .then(function(rows) {
-      const tags = {};
-      (rows||[]).forEach(function(r){if(r.lsx&&r.tag)tags[r.lsx]=r.tag;});
-      if (priorityTagsAreEqual_(tags, priorityTags_)) return;
+  google.script.run
+    .withSuccessHandler(function(tags) {
+      tags = tags || {};
+      if (priorityTagsAreEqual_(tags, priorityTags_)) return; // không có gì đổi -> bỏ qua, không vẽ lại
       priorityTags_ = tags;
       try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
-      if (document.getElementById('tab-dashboard').classList.contains('active')) renderDashboard_();
+      if (document.getElementById('tab-dashboard').classList.contains('active')) {
+        renderDashboard_();
+      }
     })
-    .catch(function() { /* im lặng */ });
+    .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
+    .getPriorityTags();
 }
   let dashLsxSearch_ = []; // mảng các từ khoá LSX, chỉ áp dụng khi bấm Enter / chọn gợi ý
   let priorityFilterActive_ = new Set(); // các nhãn ưu tiên (gap/ut1/ut2) đang bật để lọc bảng
@@ -4038,10 +3619,6 @@ function pollPriorityTagsSilently_() {
 
   function openPriorityPopup_(e, lsx) {
     e.stopPropagation();
-    if (currentPerms_ && !currentPerms_.tag) {
-      showToast('Bạn không có quyền đánh dấu ưu tiên.', 'error');
-      return;
-    }
     priorityPopupLsx_ = lsx;
     const popup = document.getElementById('priorityPopup');
     popup.innerHTML = PRIORITY_POPUP_OPTIONS.map(function(o) {
@@ -4084,7 +3661,7 @@ function pollPriorityTagsSilently_() {
 
   google.script.run
     .withFailureHandler(function(err) { showToast('Lưu nhãn ưu tiên thất bại: ' + err.message, 'error'); })
-    .savePriorityTag(currentUser_ ? currentUser_.msnv : '', lsx, value);
+    .savePriorityTag(lsx, value);
 }
   function pickPriorityCustom_() {
   const lsx = priorityPopupLsx_;
@@ -4099,7 +3676,7 @@ function pollPriorityTagsSilently_() {
 
   google.script.run
     .withFailureHandler(function(err) { showToast('Lưu nhãn ưu tiên thất bại: ' + err.message, 'error'); })
-    .savePriorityTag(currentUser_ ? currentUser_.msnv : '', lsx, tag);
+    .savePriorityTag(lsx, tag);
 }
   document.addEventListener('click', function(e) {
     if (!e.target.closest('#priorityPopup') && !e.target.closest('.priority-pill')) closePriorityPopup_();
@@ -4114,18 +3691,19 @@ function pollPriorityTagsSilently_() {
     if (!input || input.dataset.bound) return;
     input.dataset.bound = '1';
 
-          input.addEventListener('input', function() {
-        const value = input.value;
-        document.getElementById('dashLsxSearchClear').style.display = value ? 'block' : 'none';
-        clearTimeout(dashSuggestTimer_);
-        if (value.trim().length < 1) { hideDashSuggestions_(); return; }
-        const myId = ++dashSuggestRequestId_;
-        dashSuggestTimer_ = setTimeout(function() {
-          suggestLSXDirect_(value)
-            .then(function(list) { if (myId === dashSuggestRequestId_) showDashSuggestions_(list); })
-            .catch(function() { if (myId === dashSuggestRequestId_) hideDashSuggestions_(); });
-        }, 150);
-      });
+    input.addEventListener('input', function() {
+      const value = input.value;
+      document.getElementById('dashLsxSearchClear').style.display = value ? 'block' : 'none';
+      clearTimeout(dashSuggestTimer_);
+      if (value.trim().length < 1) { hideDashSuggestions_(); return; }
+      const myId = ++dashSuggestRequestId_;
+      dashSuggestTimer_ = setTimeout(function() {
+        google.script.run
+          .withSuccessHandler(function(list) { if (myId === dashSuggestRequestId_) showDashSuggestions_(list); })
+          .withFailureHandler(function() { if (myId === dashSuggestRequestId_) hideDashSuggestions_(); })
+          .suggestLSX(value);
+      }, 150);
+    });
 
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { hideDashSuggestions_(); applyDashLsxSearch_(); }
@@ -4879,19 +4457,18 @@ function pollPriorityTagsSilently_() {
 
         // 2. LƯU NGẦM PHÍA SAU - 1 LẦN GỌI DUY NHẤT cho cả lô + tải lại dữ liệu thật để bù chi tiết.
         const fnName = mode === 'nhanphoi' ? 'recordNhanPhoiBatch' : 'recordGiaoHangBatch';
-        const requesterMsnv = currentUser_ ? currentUser_.msnv : '';
         google.script.run
           .withSuccessHandler(function() {
             showToast('Đã lưu ' + items.length + ' món.', 'success');
             if (mode === 'nhanphoi') refreshNhanPhoiTab(); else refreshGiaoHangTab();
           })
           .withFailureHandler(function(err) {
-            // Không lưu được (thường do mất mạng HOẶC không đủ quyền) -> giữ trong hàng đợi
-            // offline, tự động gửi lại khi có mạng, tránh mất dữ liệu công nhân vừa nhập.
-            queueOfflineBatch_(mode, items, requesterMsnv);
+            // Không lưu được (thường do mất mạng) -> giữ trong hàng đợi offline,
+            // tự động gửi lại khi có mạng, tránh mất dữ liệu công nhân vừa nhập.
+            queueOfflineBatch_(mode, items);
             showToast('Mất mạng, đã lưu tạm trên máy. Sẽ tự động gửi lại khi có mạng.', 'info');
           })
-          [fnName](requesterMsnv, items);
+          [fnName](items);
       }
 
       /* ================= LÀM VIỆC OFFLINE TẠM THỜI ================= */
@@ -4908,9 +4485,9 @@ function pollPriorityTagsSilently_() {
         try { localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue)); } catch (e) {}
       }
 
-      function queueOfflineBatch_(mode, items, msnv) {
+      function queueOfflineBatch_(mode, items) {
         const queue = getOfflineQueue_();
-        queue.push({ mode: mode, items: items, msnv: msnv || (currentUser_ ? currentUser_.msnv : ''), ts: Date.now() });
+        queue.push({ mode: mode, items: items, ts: Date.now() });
         setOfflineQueue_(queue);
         updateOfflineBadge_();
       }
@@ -4940,7 +4517,7 @@ function pollPriorityTagsSilently_() {
           .withFailureHandler(function() {
             isSyncingOfflineQueue_ = false; // vẫn chưa có mạng -> thử lại lần sau
           })
-          [fnName](batch.msnv || (currentUser_ ? currentUser_.msnv : ''), batch.items);
+          [fnName](batch.items);
       }
 
       function updateOfflineBadge_() {
@@ -5174,29 +4751,22 @@ function pollPriorityTagsSilently_() {
       }
 
       function loadInitialAppData_() {
-        // Tải song song trực tiếp từ Supabase, không qua Apps Script
-        Promise.all([
-          sbGetAll_('/rest/v1/nhan_phoi?select=*&order=ngay.desc'),
-          sbGetAll_('/rest/v1/giao_hang?select=*&order=ngay.desc')
-        ])
-        .then(function(results) {
-          nhanPhoiRows = processTrackingRows_(results[0]);
-          giaoHangRows = processTrackingRows_(results[1]);
-          trackingLoaded.nhanphoi = true;
-          trackingLoaded.giaohang = true;
-          renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
-          renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
-        })
-        .catch(function(err) {
-          renderTrackingTable_('nhanPhoiResult', [], 'nhanphoi');
-          renderTrackingTable_('giaoHangResult', [], 'giaohang');
-          showToast('Không tải được dữ liệu ban đầu: ' + err.message, 'error');
-        });
-        // Lấy giờ đồng bộ từ Apps Script (đọc Script Properties, nhẹ và ít khi gọi)
         google.script.run
-          .withSuccessHandler(renderSyncStatus_)
-          .withFailureHandler(function() {})
-          .getLastSyncTime();
+          .withSuccessHandler(function(data) {
+            renderSyncStatus_(data.lastSyncTime);
+            nhanPhoiRows = data.nhanPhoi || [];
+            giaoHangRows = data.giaoHang || [];
+            trackingLoaded.nhanphoi = true;
+            trackingLoaded.giaohang = true;
+            renderTrackingTable_('nhanPhoiResult', applyTrackingFilters_(nhanPhoiRows, trackingFilters.nhanphoi), 'nhanphoi');
+            renderTrackingTable_('giaoHangResult', applyTrackingFilters_(giaoHangRows, trackingFilters.giaohang), 'giaohang');
+          })
+          .withFailureHandler(function(err) {
+            renderTrackingTable_('nhanPhoiResult', [], 'nhanphoi');
+            renderTrackingTable_('giaoHangResult', [], 'giaohang');
+            showToast('Không tải được dữ liệu ban đầu: ' + err.message, 'error');
+          })
+          .getInitialAppData();
       }
           function applyLoginScreenState_() {
       let lastUser = null;
@@ -5241,59 +4811,6 @@ function pollPriorityTagsSilently_() {
         if (focusEl) focusEl.focus();
       }, 100);
     }
-
-        const ROLE_OPTIONS_ = ['', 'Quản lý', 'Kế hoạch', 'Quản Đốc', 'Công nhân'];
-
-    function openUserAdminModal_() {
-      if (!currentPerms_ || !currentPerms_.userAdmin) { showToast('Bạn không có quyền truy cập.', 'error'); return; }
-      closeUserMenu_();
-      document.getElementById('userAdminOverlay').style.display = 'flex';
-      document.getElementById('userAdminBody').innerHTML = '<div style="padding:20px; text-align:center; color:#999;">Đang tải...</div>';
-      google.script.run
-        .withSuccessHandler(renderUserAdminTable_)
-        .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
-        .getAllUsersForAdmin(currentUser_.msnv);
-    }
-
-    function closeUserAdminModal_() {
-      document.getElementById('userAdminOverlay').style.display = 'none';
-    }
-
-    function renderUserAdminTable_(users) {
-      const el = document.getElementById('userAdminBody');
-      let html = '<table style="width:100%; border-collapse:collapse; font-size:13px;">' +
-        '<tr style="background:#f0f0f0;"><th style="padding:6px; border:1px solid #ddd;">MSNV</th>' +
-        '<th style="padding:6px; border:1px solid #ddd;">Họ tên</th>' +
-        '<th style="padding:6px; border:1px solid #ddd;">Chức vụ</th>' +
-        '<th style="padding:6px; border:1px solid #ddd;">Trạng thái</th><th></th></tr>';
-      users.forEach(function(u, i) {
-        html += '<tr>' +
-          '<td style="padding:6px; border:1px solid #ddd;">' + escapeHtml_(u.msnv) + '</td>' +
-          '<td style="padding:6px; border:1px solid #ddd;">' + escapeHtml_(u.hoTen) + '</td>' +
-          '<td style="padding:6px; border:1px solid #ddd;"><select id="roleSel_' + i + '" style="width:100%; padding:4px;">' +
-            ROLE_OPTIONS_.map(function(r) { return '<option value="' + r + '"' + (r === u.chucVu ? ' selected' : '') + '>' + (r || '(Chưa gán)') + '</option>'; }).join('') +
-          '</select></td>' +
-          '<td style="padding:6px; border:1px solid #ddd;"><select id="statusSel_' + i + '" style="width:100%; padding:4px;">' +
-            '<option value="Đã duyệt"' + (u.trangThai === 'Đã duyệt' ? ' selected' : '') + '>Đã duyệt</option>' +
-            '<option value="Chờ duyệt"' + (u.trangThai !== 'Đã duyệt' ? ' selected' : '') + '>Chờ duyệt</option>' +
-          '</select></td>' +
-          '<td style="padding:6px; border:1px solid #ddd;"><button type="button" onclick="saveUserAdminRow_(\'' + u.msnv + '\', ' + i + ')" ' +
-            'style="background:#34a853;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;">Lưu</button></td>' +
-        '</tr>';
-      });
-      html += '</table>';
-      el.innerHTML = html;
-    }
-
-    function saveUserAdminRow_(msnv, i) {
-      const chucVu = document.getElementById('roleSel_' + i).value;
-      const trangThai = document.getElementById('statusSel_' + i).value;
-      google.script.run
-        .withSuccessHandler(function() { showToast('Đã cập nhật ' + msnv + '.', 'success'); })
-        .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
-        .adminUpdateUser(currentUser_.msnv, msnv, chucVu, trangThai);
-    }
-
     applyLoginScreenState_();
 
     // "Đăng nhập tài khoản khác": xoá thông tin đã nhớ, quay về form nhập MSNV trống.
@@ -5515,15 +5032,15 @@ function pollPriorityTagsSilently_() {
           <input type="text" id="trackTenCtInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
         </label>
         <label>SL đơn hàng
-          <input type="number" id="trackOrderQtyInput" min="1" readonly style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
+          <input type="number" id="trackOrderQtyInput" min="1" readonly style="width:100%; padding:8px; box-sizing:border-box; font-size:15px; background:#f5f5f5;" />
         </label>
         <label id="trackQtyLabel">SL nhận
           <input type="number" id="trackQtyInput" min="1" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
         </label>
         <label>Người thực hiện
-          <select id="trackNguoiSelect" onchange="onTrackNguoiChange_()" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px;"></select>
+          <select id="trackNguoiSelect" onchange="onTrackNguoiChange_()" style="width:100%; padding:8px; box-sizing:border-box; font-size:15px;"></select>
         </label>
-        <input type="text" id="trackNguoiOther" placeholder="Nhập tên..." style="display:none; width:100%; padding:8px; box-sizing:border-box; font-size:16px;" />
+        <input type="text" id="trackNguoiOther" placeholder="Nhập tên..." style="display:none; width:100%; padding:8px; box-sizing:border-box; font-size:15px;" />
 
         <button type="button" onclick="addToTrackingList_()" style="background:#00b894; color:#fff; font-weight:bold; border:none; border-radius:4px; padding:10px; cursor:pointer;">
           <i class="fa-solid fa-plus"></i> Thêm vào danh sách
@@ -5576,19 +5093,6 @@ function pollPriorityTagsSilently_() {
           style="border-radius:8px;">Hủy</button>
         <button type="button" onclick="submitChangePassword_()"
           style="background:#1a73e8; color:#fff; font-weight:bold; border:none; border-radius:8px; padding:8px 22px; cursor:pointer;">Lưu</button>
-      </div>
-    </div>
-  </div>
-
-    <div id="userAdminOverlay" class="colvis-overlay" style="display:none;">
-    <div class="colvis-modal" style="width:min(94vw, 640px); max-height:85vh;">
-      <div class="colvis-header">
-        <h3>Quản lý người dùng</h3>
-        <span class="upbom-close" onclick="closeUserAdminModal_()">&times;</span>
-      </div>
-      <div id="userAdminBody" style="overflow-y:auto; flex:1; padding:10px 16px;"></div>
-      <div class="upbom-footer">
-        <button type="button" class="upbom-save" onclick="closeUserAdminModal_()" style="background:#1a73e8;">Đóng</button>
       </div>
     </div>
   </div>
