@@ -3651,7 +3651,18 @@
               return true;
             });
             if (withPriority.length > 0) return withPriority;
-            return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
+
+            const almostDone = rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
+            if (almostDone.length > 0) return almostDone;
+
+            // KHÔNG có đơn ưu tiên VÀ KHÔNG có đơn sắp xong (80-99%) -> trước đây rơi vào
+            // đây sẽ trả về RỖNG, khiến Dashboard hiện "Không có dữ liệu" dù dữ liệu gốc
+            // vẫn còn nguyên trên Supabase (đây chính là nguyên nhân bảng trống). Giờ fallback
+            // thêm 2 lớp nữa để KHÔNG BAO GIỜ hiện trống oan khi vẫn còn đơn hàng thật:
+            const remaining = rows.filter(function(r) { return r.tienDoPercent < 100; });
+            if (remaining.length > 0) return remaining;
+
+            return rows; // toàn bộ đã hoàn thành hoặc không tính được % -> vẫn hiện hết, không để trống
           }
           default: return rows;
         }
@@ -3746,7 +3757,7 @@
         const labelMap = {
           all: 'Tất cả đơn hàng', completed: 'Đã hoàn thành', remaining: 'Còn lại',
           overdue: 'Trễ KHGH', today: 'KHGH hôm nay', almost: 'Sắp xong (>80%)',
-          priority_default: 'Đơn Gấp/Ưu tiên (mặc định) — không có thì hiện đơn sắp xong'
+          priority_default: 'Đơn Gấp/Ưu tiên (mặc định) — không có thì hiện đơn sắp xong, rồi đến đơn còn lại'
         };
         const text = dashDateFilter
           ? 'Đang lọc theo ngày KHGH: <b>' + formatDate(dashDateFilter) + '</b>'
