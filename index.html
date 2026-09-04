@@ -1327,6 +1327,23 @@
         }).join('');
       }
 
+      // Nạp TOÀN BỘ thông báo còn trong 7 ngày (afterId=0) - gọi 1 LẦN lúc đăng nhập,
+      // để không bị mất thông báo cũ khi tải lại trang (trước đây chỉ xin thông báo
+      // mới hơn lastNotifId_ đã lưu, nên chuông bị trống sau khi load lại app).
+      function loadAllNotifications_() {
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            notifList_ = rows || [];
+            if (notifList_.length > 0) lastNotifId_ = notifList_[notifList_.length - 1].id;
+            notifFirstLoad_ = false;
+            try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
+            updateNotifBadge_();
+            if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
+          })
+          .withFailureHandler(function() { /* mất mạng - poll định kỳ (10s sau) sẽ tự bù lại */ })
+          .getNotifications(0);
+      }
+
       const NOTIF_POLL_MS = 10000; // 10 giây - đủ nhanh để cảm giác gần realtime
       function pollNotifications_() {
         google.script.run
@@ -1376,7 +1393,7 @@
           loadPriorityTagsFromServer_();
           loadInitialAppData_();
           sendHeartbeat_();
-          pollNotifications_();
+          loadAllNotifications_(); // nạp đủ 7 ngày thông báo, tránh mất thông báo cũ khi tải lại app
         }, 800);
 
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
@@ -1409,10 +1426,11 @@
       // Bấm nút này khoảng 15-20 phút trước giờ họp để chắc chắn số liệu là mới nhất.
       function forceFullResyncNow_() {
         closeUserMenu_();
-        showToast('Đang bắt đầu đồng bộ toàn bộ dữ liệu, quá trình này có thể mất vài phút...', 'info');
+        showToast('Đang đồng bộ ngay dữ liệu Tiến độ (Dashboard) trước, sau đó tới BOM...', 'info');
         google.script.run
           .withSuccessHandler(function() {
-            showToast('Đã bắt đầu đồng bộ toàn bộ. Đợi khoảng 2-5 phút rồi bấm Làm mới để thấy số liệu mới nhất.', 'success');
+            showToast('Đã đồng bộ xong Tiến độ, đang tiếp tục đồng bộ BOM. Bấm Làm mới Dashboard ngay để xem số liệu mới nhất.', 'success');
+            refreshDashboard_();
           })
           .withFailureHandler(function(err) {
             showToast('Lỗi khi bắt đầu đồng bộ: ' + err.message, 'error');
