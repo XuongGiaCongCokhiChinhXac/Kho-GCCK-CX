@@ -1435,8 +1435,10 @@
       }
 
       /* ================= THÔNG BÁO ĐƠN GẤP/ƯU TIÊN ================= */
+      const NOTIF_LIST_CACHE_KEY_ = 'gcck_notif_list_cache'; // lưu lại danh sách thông báo đã tải, để khởi động lại app không bị mất
       let lastNotifId_ = Number(localStorage.getItem('gcck_last_notif_id') || 0);
       let notifList_ = [];
+      try { notifList_ = JSON.parse(localStorage.getItem(NOTIF_LIST_CACHE_KEY_) || '[]'); } catch (e) { notifList_ = []; }
       let notifFirstLoad_ = true; // lần tải đầu tiên -> chỉ nạp âm thầm, không toast dồn dập thông báo cũ
 
       function loadReadNotifIds_() {
@@ -1446,6 +1448,7 @@
         try { localStorage.setItem('gcck_read_notif_ids', JSON.stringify(Array.from(set))); } catch (e) {}
       }
       let readNotifIds_ = loadReadNotifIds_();
+      updateNotifBadge_(); // hiện lại số thông báo chưa đọc NGAY khi mở app, không cần đợi đợt poll đầu tiên (3.8s)
 
       function openNotifModal_() {
         document.getElementById('notifOverlay').style.display = 'flex';
@@ -1508,6 +1511,10 @@
       }
 
       const NOTIF_POLL_MS = 20000; // 20 giây - giảm tải Apps Script
+      const NOTIF_LIST_MAX_KEEP_ = 200; // chỉ giữ tối đa 200 thông báo gần nhất trong cache, tránh localStorage phình to
+      function saveNotifListCache_() {
+        try { localStorage.setItem(NOTIF_LIST_CACHE_KEY_, JSON.stringify(notifList_.slice(-NOTIF_LIST_MAX_KEEP_))); } catch (e) {}
+      }
       function pollNotifications_() {
         sbGetAll_('/rest/v1/notifications?id=gt.' + lastNotifId_ + '&select=*&order=id.asc&limit=50')
           .then(function(rows) {
@@ -1519,6 +1526,7 @@
             });
             notifFirstLoad_ = false;
             try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
+            saveNotifListCache_(); // lưu lại để lần khởi động app sau vẫn còn thấy các thông báo này
             updateNotifBadge_();
             if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
           })
@@ -3779,7 +3787,17 @@
 
         getDashboardDataDirect_()
           .then(function(rows) {
-            dashboardRows = rows || [];
+            rows = rows || [];
+            // Nếu lần tải này về RỖNG trong khi đang có dữ liệu -> nhiều khả năng là lỗi tạm
+            // thời (mất mạng chập chờn, đúng lúc Supabase đang được ghi lại...), KHÔNG ghi đè
+            // lên dữ liệu + cache đang có, tránh làm Dashboard "mất trắng" oan.
+            if (rows.length === 0 && dashboardRows.length > 0) {
+              showToast('Không tải được dữ liệu Dashboard mới, đang giữ nguyên dữ liệu cũ.', 'info');
+              markDashboardReadyForSplash_();
+              stop();
+              return;
+            }
+            dashboardRows = rows;
             saveDashboardCache_(dashboardRows);
             renderDashboard_();
             markDashboardReadyForSplash_();
@@ -3802,7 +3820,10 @@
       function refreshDashboardSilently_() {
         getDashboardDataDirect_()
           .then(function(rows) {
-            dashboardRows = rows || [];
+            rows = rows || [];
+            // Cùng lý do như refreshDashboard_: rỗng bất thường khi đang có dữ liệu -> bỏ qua.
+            if (rows.length === 0 && dashboardRows.length > 0) return;
+            dashboardRows = rows;
             saveDashboardCache_(dashboardRows);
             renderDashboard_();
           })
