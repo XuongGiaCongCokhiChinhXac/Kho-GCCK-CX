@@ -1238,7 +1238,7 @@
       const lsxInput = document.getElementById('lsxInput');
 
           let currentUser_ = null; // { msnv, hoTen }
-      const ONLINE_HEARTBEAT_MS = 20000; // 20 giây báo nhịp tim 1 lần
+      const ONLINE_HEARTBEAT_MS = 45000; // 45 giây - chỉ để hiện số người online, không cần quá dày
 
       function sendHeartbeat_() {
         if (!currentUser_) return;
@@ -1344,7 +1344,7 @@
           .getNotifications(0);
       }
 
-      const NOTIF_POLL_MS = 10000; // 10 giây - đủ nhanh để cảm giác gần realtime
+      const NOTIF_POLL_MS = 20000; // 20 giây - vẫn đủ nhanh, giảm 1 nửa số lần gọi
       function pollNotifications_() {
         google.script.run
           .withSuccessHandler(function(rows) {
@@ -1501,7 +1501,7 @@
               hideSuggestions();
             })
             .suggestLSX(value);
-        }, 100);
+        }, 250);
       });
 
       document.addEventListener('click', function(e) {
@@ -1577,7 +1577,7 @@
       let pollTimer = null;
       let searchRequestId = 0;       // dùng để bỏ qua kết quả trả về trễ/đã bị hủy
       const categoryCache = {};      // prefix -> rows, hiện ngay lập tức lần bấm sau (SWR)
-      const POLL_INTERVAL_MS = 15000; // 15 giây kiểm tra người khác vừa cập nhật gì mới
+      const POLL_INTERVAL_MS = 30000; // 30 giây - giảm tải Supabase, vẫn đủ nhanh để phát hiện thay đổi
 
       /* ================= CHỌN Ô KIỂU EXCEL (hỗ trợ Ctrl+Click / Shift+Click) ================= */
       let displayedRows = [];   // danh sách dòng đang hiển thị (sau lọc) theo đúng thứ tự trên bảng
@@ -2852,7 +2852,7 @@
 
       let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
       let trackingPollTimer_ = null;
-      const TRACKING_POLL_INTERVAL_MS = 10000; // 10 giây tự làm mới 1 lần cho mọi người cùng xem
+      const TRACKING_POLL_INTERVAL_MS = 20000; // 20 giây - giảm tải, vẫn đủ nhanh cho Nhận phôi/Giao hàng
 
       function switchTab(tabId) {
         document.querySelectorAll('.tab-pane').forEach(function(el) { el.classList.remove('active'); });
@@ -3590,7 +3590,7 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
-const PRIORITY_TAGS_POLL_MS = 8000; // 8 giây - đủ nhanh để cảm giác "gần như realtime", không quá tải server
+const PRIORITY_TAGS_POLL_MS = 15000; // 15 giây - kết hợp với cache server-side 8s ở dưới, vẫn đủ nhanh
 function pollPriorityTagsSilently_() {
   google.script.run
     .withSuccessHandler(function(tags) {
@@ -3731,7 +3731,7 @@ function pollPriorityTagsSilently_() {
           .withSuccessHandler(function(list) { if (myId === dashSuggestRequestId_) showDashSuggestions_(list); })
           .withFailureHandler(function() { if (myId === dashSuggestRequestId_) hideDashSuggestions_(); })
           .suggestLSX(value);
-      }, 150);
+      }, 250);
     });
 
     input.addEventListener('keydown', function(e) {
