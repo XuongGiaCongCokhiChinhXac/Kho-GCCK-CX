@@ -396,6 +396,18 @@
         ngay trên dòng đó (cùng độ ưu tiên CSS, quy tắc khai báo sau sẽ thắng). */
       tr.row-focus td { background: #eaf2ff; }
 
+      /* ===== Hiệu ứng nhấp nháy xanh khi trỏ tới 1 dòng LSX từ thông báo ===== */
+      @keyframes rowFlashHighlight {
+        0%, 100% { box-shadow: none; }
+        50% { box-shadow: inset 0 0 0 9999px rgba(52,168,83,0.35); }
+      }
+      tr.row-flash-highlight td {
+        animation: rowFlashHighlight 0.8s ease-in-out 2;
+      }
+      /* Dòng ưu tiên (Gấp/ƯT...) có nền riêng ép !important - override lại khi đang row-focus */
+      tr.dash-row-priority.row-focus td { background: #dbe9ff !important; }
+      body.dark-mode tr.dash-row-priority.row-focus td { background: #24344f !important; }
+
       /* ===== Sắp xếp theo cột ===== */
       .sort-icon { margin-left: 4px; font-size: 10px; cursor: pointer; user-select: none; }
       th .th-label { cursor: pointer; }
@@ -1306,6 +1318,74 @@
         }
       }
 
+      /* ================= TRỎ ĐẾN DÒNG LSX TRONG DASHBOARD KHI BẤM 1 THÔNG BÁO ================= */
+      function extractLsxFromNotifMessage_(msg) {
+        // Toàn bộ thông báo do server tạo đều có dạng "<LSX> ..." -> lấy từ đầu tiên
+        const m = String(msg || '').trim().match(/^(\S+)/);
+        return m ? m[1] : '';
+      }
+
+      function onNotifClick_(id, lsx) {
+        markNotifRead_(id);
+        jumpToLsxFromNotif_(lsx);
+      }
+
+      function jumpToLsxFromNotif_(lsx) {
+        if (!lsx) return;
+        closeNotifModal_();
+        switchTab('tab-dashboard');
+
+        // Bỏ hết bộ lọc đang áp dụng để chắc chắn tìm thấy đúng dòng LSX cần trỏ tới
+        dashCardFilter = 'all';
+        dashDateFilter = '';
+        const dateEl = document.getElementById('dashFilterDate');
+        if (dateEl) dateEl.value = '';
+        const dateLbl = document.getElementById('dashDateBtnLabel');
+        if (dateLbl) dateLbl.textContent = 'Chọn ngày';
+        dashboardTypeFilter = null;
+        priorityShowAllActive_ = false;
+        priorityFilterActive_.clear();
+        ['gap', 'ut1', 'ut2'].forEach(function(t) {
+          const btn = document.getElementById('prioFilterBtn-' + t);
+          if (btn) btn.classList.remove('active');
+        });
+        const allBtn = document.getElementById('prioFilterBtnAll');
+        if (allBtn) allBtn.classList.remove('active');
+        for (const k in dashboardFilters) delete dashboardFilters[k];
+
+        dashLsxSearch_ = [String(lsx).trim().toLowerCase()];
+        const searchInput = document.getElementById('dashLsxSearchInput');
+        if (searchInput) searchInput.value = lsx;
+        const clearBtn = document.getElementById('dashLsxSearchClear');
+        if (clearBtn) clearBtn.style.display = 'block';
+
+        renderDashboard_();
+        scrollToAndHighlightLsxRow_(lsx, 0);
+      }
+
+      function scrollToAndHighlightLsxRow_(lsx, attempt) {
+        const safeLsx = String(lsx).trim();
+        let target = null;
+        document.querySelectorAll('#dashboardResult tr[data-lsx]').forEach(function(tr) {
+          if (!target && tr.getAttribute('data-lsx') === safeLsx) target = tr;
+        });
+
+        // Bảng dashboard dựng theo requestAnimationFrame từng khối -> có thể dòng cần tìm
+        // chưa kịp render, thử lại vài lần trong ~2 giây trước khi bỏ cuộc.
+        if (!target) {
+          if (attempt < 20) {
+            setTimeout(function() { scrollToAndHighlightLsxRow_(lsx, attempt + 1); }, 100);
+          }
+          return;
+        }
+
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.remove('row-flash-highlight');
+        void target.offsetWidth; // ép reflow để bấm lại cùng 1 dòng vẫn nhấp nháy lại từ đầu
+        target.classList.add('row-flash-highlight');
+        setTimeout(function() { target.classList.remove('row-flash-highlight'); }, 1700);
+      }
+
       function renderNotifModal_() {
         const el = document.getElementById('notifModalBody');
         if (!el) return;
@@ -1322,7 +1402,8 @@
             ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
           const bg = isRead ? 'transparent' : '#eef4ff';
           const dot = isRead ? '' : '<span style="width:7px; height:7px; border-radius:50%; background:#1a73e8; display:inline-block; margin-right:6px; flex-shrink:0; margin-top:6px;"></span>';
-          return '<div onclick="markNotifRead_(' + n.id + ')" style="cursor:pointer; display:flex; align-items:flex-start; padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45; background:' + bg + ';">' +
+          const lsxForJump = extractLsxFromNotifMessage_(n.message).replace(/'/g, "\\'");
+          return '<div onclick="onNotifClick_(' + n.id + ', \'' + lsxForJump + '\')" style="cursor:pointer; display:flex; align-items:flex-start; padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45; background:' + bg + ';">' +
             dot +
             '<div style="flex:1; display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">' +
               '<div style="font-weight:' + (isRead ? '400' : '700') + ';">' + escapeHtml_(n.message) + '</div>' +
@@ -3307,6 +3388,8 @@
         dashSelAnchorR = dashSelAnchorC = dashActiveR = dashActiveC = -1;
         document.querySelectorAll('#dashboardResult td.cell-selected, #dashboardResult td.cell-active')
           .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
+        document.querySelectorAll('#dashboardResult tr.row-focus')
+          .forEach(function(tr) { tr.classList.remove('row-focus'); });
       }
       function dashSelectSingle_(r, c) {
         dashSelRegions = [{ r1: r, r2: r, c1: c, c2: c }];
@@ -3329,12 +3412,22 @@
       function dashPaintSelection_() {
         document.querySelectorAll('#dashboardResult td.cell-selected, #dashboardResult td.cell-active')
           .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
+        document.querySelectorAll('#dashboardResult tr.row-focus')
+          .forEach(function(tr) { tr.classList.remove('row-focus'); });
         document.querySelectorAll('#dashboardResult td[data-r]').forEach(function(td) {
           const r = Number(td.getAttribute('data-r')), c = Number(td.getAttribute('data-c'));
-          if (dashIsCellSelected_(r, c)) td.classList.add('cell-selected');
+          if (dashIsCellSelected_(r, c)) {
+            td.classList.add('cell-selected');
+            const tr = td.closest('tr');
+            if (tr) tr.classList.add('row-focus');
+          }
         });
         const activeTd = document.querySelector('#dashboardResult td[data-r="' + dashActiveR + '"][data-c="' + dashActiveC + '"]');
-        if (activeTd) activeTd.classList.add('cell-active');
+        if (activeTd) {
+          activeTd.classList.add('cell-active');
+          const activeTr = activeTd.closest('tr');
+          if (activeTr) activeTr.classList.add('row-focus');
+        }
       }
       function dashCopySelection_() {
         if (dashSelRegions.length === 0) return;
@@ -3416,8 +3509,10 @@
       }
 
       const DASHBOARD_AUTO_REFRESH_MS = 15 * 60 * 1000; // 15 phút - khớp chu kỳ đồng bộ Sheet -> Supabase
+      let lastDashboardAutoRefreshTs_ = 0; // mốc thời gian lần tải gần nhất, dùng để "bù" khi mở lại app
 
       function refreshDashboard_() {
+        lastDashboardAutoRefreshTs_ = Date.now(); // đánh dấu mốc ngay khi bắt đầu tải
         const btn = document.getElementById('refreshDashboardBtn');
         if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
         function stop() { if (btn) { btn.classList.remove('spinning'); btn.disabled = false; } }
@@ -3446,6 +3541,8 @@
       // Tự làm mới Dashboard mỗi 15 phút - ÂM THẦM, không spinner/toast để không làm
       // phiền người đang xem, chỉ âm thầm cập nhật lại số liệu trên các ô/thẻ.
       function refreshDashboardSilently_() {
+        lastDashboardAutoRefreshTs_ = Date.now(); // đánh dấu mốc NGAY khi bắt đầu gọi, tránh gọi dồn dập
+
         google.script.run
           .withSuccessHandler(function(rows) {
             dashboardRows = rows || [];
@@ -3460,6 +3557,33 @@
           .withFailureHandler(function() {})
           .getLastSyncTimeTienDo();
       }
+
+      // Trình duyệt/Android tạm "đóng băng" các setInterval khi app bị chuyển xuống nền
+      // (chuyển app khác, khoá màn hình, để lâu không đụng tới...) - đây chính là lý do
+      // phải TẢI LẠI TRANG mới thấy số liệu mới, dù đã có tự động làm mới mỗi 15 phút.
+      // Bù lại: mỗi khi app được MỞ LẠI (quay lại foreground), nếu đã hơn 1 phút kể từ
+      // lần tải gần nhất thì tải lại NGAY, không cần đợi đủ 15 phút hay F5.
+      const DASHBOARD_STALE_THRESHOLD_MS = 60 * 1000; // 1 phút
+
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible') return;
+        if (!currentUser_) return; // chưa đăng nhập -> chưa có gì để làm mới
+
+        if (Date.now() - lastDashboardAutoRefreshTs_ >= DASHBOARD_STALE_THRESHOLD_MS) {
+          refreshDashboardSilently_();
+        }
+        refreshSyncStatus();       // đồng thời cập nhật trạng thái đồng bộ ở tab Tra cứu
+        pollActiveTrackingTab_();  // và dữ liệu Nhận phôi/Giao hàng nếu tab đó đang mở
+      });
+
+      // Một số trình duyệt/thiết bị bắn "pageshow" (kể cả khi phục hồi từ bộ nhớ đệm
+      // bfcache) thay vì visibilitychange - bắt thêm sự kiện này cho chắc.
+      window.addEventListener('pageshow', function() {
+        if (!currentUser_) return;
+        if (Date.now() - lastDashboardAutoRefreshTs_ >= DASHBOARD_STALE_THRESHOLD_MS) {
+          refreshDashboardSilently_();
+        }
+      });
 
       function renderProgressSyncStatus_(iso) {
         const el = document.getElementById('progressSyncStatus');
@@ -4065,7 +4189,8 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           const rowStyle = priorityRowStyle_(tag);
           const rowClass = tag ? ' class="dash-row-priority"' : '';
           const safeLsxAttr = escapeHtml_(r.lsx).replace(/'/g, "\\'");
-          return '<tr' + rowClass + ' style="' + rowStyle + '">' +
+          const dataLsxAttr = ' data-lsx="' + escapeHtml_(r.lsx).replace(/"/g, '&quot;') + '"';
+          return '<tr' + rowClass + dataLsxAttr + ' style="' + rowStyle + '">' +
             '<td class="dash-lsx-cell"' + nextAttrs() + '>' +
               '<span class="dash-lsx-text">' + escapeHtml_(r.lsx) + '</span>' +
               '<i class="fa-solid fa-eye dash-lsx-eye" title="Xem chi tiết chưa giao hàng" ' +
