@@ -716,10 +716,12 @@
         box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: 14px; width: 240px; z-index: 80;
       }
       .notif-dropdown {
-        position: fixed; top: 58px; right: 18px; background: #fff; border-radius: 10px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.25); width: min(94vw, 400px); max-height: 75vh;
+        position: fixed; top: 52px; right: 0; bottom: 0; background: #fff;
+        box-shadow: -6px 0 24px rgba(0,0,0,0.18); width: min(94vw, 380px);
         display: flex; flex-direction: column; overflow: hidden; z-index: 90;
+        transform: translateX(100%); transition: transform 0.22s ease-out;
       }
+      .notif-dropdown.open { transform: translateX(0); }
 
       /* ===== Nút loại đơn hàng xếp dọc trong sidebar ===== */
       .sidebar-divider { height: 1px; background: rgba(255,255,255,0.15); margin: 8px 12px; }
@@ -1292,21 +1294,14 @@
 
       function openNotifModal_() {
         const overlay = document.getElementById('notifOverlay');
-        const bellBtn = document.querySelector('#notifBellMenu .topbar-icon-btn');
-        if (bellBtn) {
-          const rect = bellBtn.getBoundingClientRect();
-          const dropdownWidth = Math.min(window.innerWidth * 0.94, 400);
-          let left = rect.right - dropdownWidth; // căn mép phải dropdown trùng mép phải nút chuông
-          if (left < 8) left = 8;
-          overlay.style.top = (rect.bottom + 8) + 'px';
-          overlay.style.left = left + 'px';
-          overlay.style.right = 'auto';
-        }
         overlay.style.display = 'flex';
+        requestAnimationFrame(function() { overlay.classList.add('open'); }); // để trình duyệt kịp nhận display:flex trước khi trượt vào
         renderNotifModal_();
       }
       function closeNotifModal_() {
-        document.getElementById('notifOverlay').style.display = 'none';
+        const overlay = document.getElementById('notifOverlay');
+        overlay.classList.remove('open');
+        setTimeout(function() { overlay.style.display = 'none'; }, 220); // đợi hết hiệu ứng trượt ra mới ẩn hẳn
       }
 
       function markNotifRead_(id) {
@@ -1422,7 +1417,7 @@
             notifFirstLoad_ = false;
             try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
             updateNotifBadge_();
-            if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
+            if (document.getElementById('notifOverlay').classList.contains('open')) renderNotifModal_();
           })
           .withFailureHandler(function() { /* mất mạng - poll định kỳ (10s sau) sẽ tự bù lại */ })
           .getNotifications(0);
@@ -1442,7 +1437,7 @@
             notifFirstLoad_ = false;
             try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
             updateNotifBadge_();
-            if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
+            if (document.getElementById('notifOverlay').classList.contains('open')) renderNotifModal_();
 
             // Mọi thông báo trong hệ thống chỉ tạo cho đơn ƯU TIÊN, và backend đã đẩy %
             // Tiến độ mới lên Supabase gần như ngay lập tức khi phát hiện thay đổi (xem
