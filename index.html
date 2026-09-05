@@ -621,6 +621,7 @@
       body.dark-mode .dash-calendar-popup,
       body.dark-mode .zoom-popover,
       body.dark-mode .priority-popup,
+      body.dark-mode .notif-dropdown,
       body.dark-mode .topbar-user-dropdown { background: #1c1f26; color: #d8dadf; border-color: #2c313c; }
 
       body.dark-mode input, body.dark-mode select, body.dark-mode textarea {
@@ -713,6 +714,11 @@
       .zoom-popover {
         position: fixed; top: 58px; right: 18px; background: #fff; border-radius: 8px;
         box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: 14px; width: 240px; z-index: 80;
+      }
+      .notif-dropdown {
+        position: fixed; top: 58px; right: 18px; background: #fff; border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.25); width: min(94vw, 400px); max-height: 75vh;
+        display: flex; flex-direction: column; overflow: hidden; z-index: 90;
       }
 
       /* ===== Nút loại đơn hàng xếp dọc trong sidebar ===== */
@@ -1285,7 +1291,18 @@
       let readNotifIds_ = loadReadNotifIds_();
 
       function openNotifModal_() {
-        document.getElementById('notifOverlay').style.display = 'flex';
+        const overlay = document.getElementById('notifOverlay');
+        const bellBtn = document.querySelector('#notifBellMenu .topbar-icon-btn');
+        if (bellBtn) {
+          const rect = bellBtn.getBoundingClientRect();
+          const dropdownWidth = Math.min(window.innerWidth * 0.94, 400);
+          let left = rect.right - dropdownWidth; // căn mép phải dropdown trùng mép phải nút chuông
+          if (left < 8) left = 8;
+          overlay.style.top = (rect.bottom + 8) + 'px';
+          overlay.style.left = left + 'px';
+          overlay.style.right = 'auto';
+        }
+        overlay.style.display = 'flex';
         renderNotifModal_();
       }
       function closeNotifModal_() {
@@ -1335,31 +1352,8 @@
         closeNotifModal_();
         switchTab('tab-dashboard');
 
-        // Bỏ hết bộ lọc đang áp dụng để chắc chắn tìm thấy đúng dòng LSX cần trỏ tới
-        dashCardFilter = 'all';
-        dashDateFilter = '';
-        const dateEl = document.getElementById('dashFilterDate');
-        if (dateEl) dateEl.value = '';
-        const dateLbl = document.getElementById('dashDateBtnLabel');
-        if (dateLbl) dateLbl.textContent = 'Chọn ngày';
-        dashboardTypeFilter = null;
-        priorityShowAllActive_ = false;
-        priorityFilterActive_.clear();
-        ['gap', 'ut1', 'ut2'].forEach(function(t) {
-          const btn = document.getElementById('prioFilterBtn-' + t);
-          if (btn) btn.classList.remove('active');
-        });
-        const allBtn = document.getElementById('prioFilterBtnAll');
-        if (allBtn) allBtn.classList.remove('active');
-        for (const k in dashboardFilters) delete dashboardFilters[k];
-
-        dashLsxSearch_ = [String(lsx).trim().toLowerCase()];
-        const searchInput = document.getElementById('dashLsxSearchInput');
-        if (searchInput) searchInput.value = lsx;
-        const clearBtn = document.getElementById('dashLsxSearchClear');
-        if (clearBtn) clearBtn.style.display = 'block';
-
-        renderDashboard_();
+        // KHÔNG reset bộ lọc/tìm kiếm nữa - giữ nguyên đúng những gì người dùng đang xem
+        // trên Dashboard, chỉ cuộn tới đúng dòng LSX và tô sáng nó.
         scrollToAndHighlightLsxRow_(lsx, 0);
       }
 
@@ -1375,6 +1369,10 @@
         if (!target) {
           if (attempt < 20) {
             setTimeout(function() { scrollToAndHighlightLsxRow_(lsx, attempt + 1); }, 100);
+          } else {
+            // Đã thử đủ lâu mà vẫn không thấy -> nhiều khả năng dòng này đang bị bộ lọc/tìm
+            // kiếm hiện tại ẩn đi. Báo cho người dùng biết thay vì im lặng bỏ qua.
+            showToast('Không tìm thấy ' + safeLsx + ' trong bảng đang xem (có thể đang bị lọc).', 'info');
           }
           return;
         }
@@ -1435,15 +1433,22 @@
         google.script.run
           .withSuccessHandler(function(rows) {
             if (!rows || rows.length === 0) { notifFirstLoad_ = false; return; }
+            const isFreshBatch = !notifFirstLoad_; // true = có thông báo MỚI thật sự (không phải lần tải đầu)
             rows.forEach(function(n) {
               notifList_.push(n);
-              if (!notifFirstLoad_) showToast(n.message, 'info');
+              if (isFreshBatch) showToast(n.message, 'info');
               lastNotifId_ = n.id;
             });
             notifFirstLoad_ = false;
             try { localStorage.setItem('gcck_last_notif_id', String(lastNotifId_)); } catch (e) {}
             updateNotifBadge_();
             if (document.getElementById('notifOverlay').style.display === 'flex') renderNotifModal_();
+
+            // Mọi thông báo trong hệ thống chỉ tạo cho đơn ƯU TIÊN, và backend đã đẩy %
+            // Tiến độ mới lên Supabase gần như ngay lập tức khi phát hiện thay đổi (xem
+            // syncTienDoForLsxList_) - nên hễ có thông báo mới là làm mới luôn Dashboard
+            // ngầm, không cần đợi chu kỳ tự động 15 phút hay người dùng bấm Làm mới.
+            if (isFreshBatch) refreshDashboardSilently_();
           })
           .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
           .getNotifications(lastNotifId_);
@@ -3015,6 +3020,9 @@
         if (!e.target.closest('#zoomPopover') && !e.target.closest('.topbar-user-dropdown')) {
           const pop = document.getElementById('zoomPopover');
           if (pop) pop.style.display = 'none';
+        }
+        if (!e.target.closest('#notifOverlay') && !e.target.closest('#notifBellMenu')) {
+          closeNotifModal_();
         }
       });
 
@@ -5245,17 +5253,15 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       </div>
     </div>
 
-    <div id="notifOverlay" class="colvis-overlay" style="display:none;">
-      <div class="colvis-modal" style="width:min(94vw, 420px); max-height:80vh;">
-        <div class="colvis-header">
-          <h3><i class="fa-regular fa-bell" style="margin-right:8px;"></i>Thông báo</h3>
-          <span class="upbom-close" onclick="closeNotifModal_()">&times;</span>
-        </div>
-        <div id="notifModalBody" style="overflow-y:auto; flex:1;"></div>
-        <div class="upbom-footer">
-          <button type="button" class="upbom-cancel" onclick="markAllNotifsRead_()">Đánh dấu tất cả đã đọc</button>
-          <button type="button" class="upbom-save" onclick="closeNotifModal_()" style="background:#1a73e8;">Đóng</button>
-        </div>
+    <div id="notifOverlay" class="notif-dropdown" style="display:none;">
+      <div class="colvis-header">
+        <h3><i class="fa-regular fa-bell" style="margin-right:8px;"></i>Thông báo</h3>
+        <span class="upbom-close" onclick="closeNotifModal_()">&times;</span>
+      </div>
+      <div id="notifModalBody" style="overflow-y:auto; flex:1;"></div>
+      <div class="upbom-footer">
+        <button type="button" class="upbom-cancel" onclick="markAllNotifsRead_()">Đánh dấu tất cả đã đọc</button>
+        <button type="button" class="upbom-save" onclick="closeNotifModal_()" style="background:#1a73e8;">Đóng</button>
       </div>
     </div>
 
