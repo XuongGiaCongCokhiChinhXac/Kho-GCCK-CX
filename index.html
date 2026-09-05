@@ -3624,6 +3624,15 @@ function pollPriorityTagsSilently_() {
     }
   }
 
+  
+  /** Thứ tự ưu tiên khi sắp xếp bảng Dashboard: Gấp -> ƯT1 -> ƯT2 -> ƯT3 -> nhãn tự đặt khác -> không có nhãn. */
+  const PRIORITY_RANK_MAP_ = { gap: 0, ut1: 1, ut2: 2, ut3: 3 };
+  function priorityRank_(tag) {
+    if (!tag) return 99; // không có nhãn -> xếp cuối cùng
+    if (PRIORITY_RANK_MAP_.hasOwnProperty(tag)) return PRIORITY_RANK_MAP_[tag];
+    return 50; // nhãn tự đặt khác (VD "khẩn", "ưu tiên A"...) -> sau ƯT3, trước nhóm không nhãn
+  }
+
   function priorityRowStyle_(tag) {
     if (!tag) return '';
     const meta = priorityMeta_(tag);
@@ -4001,7 +4010,11 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
         const tableSourceRows = dashboardTypeFilter ? filtered.filter(function(r) { return r.loai === dashboardTypeFilter; }) : filtered;
         renderDashboardFilterInfo_(tableSourceRows.length);
-        const rows = tableSourceRows.slice(); // giữ nguyên thứ tự như Sheet, không sắp xếp theo % tiến độ
+        // Sắp xếp theo mức ưu tiên: Gấp -> ƯT1 -> ƯT2 -> ƯT3 -> nhãn tự đặt khác -> không có nhãn.
+        // Trong cùng 1 mức ưu tiên, giữ nguyên thứ tự tương đối như Sheet (sort ổn định).
+        const rows = tableSourceRows.slice().sort(function(a, b) {
+          return priorityRank_(priorityTags_[a.lsx]) - priorityRank_(priorityTags_[b.lsx]);
+        });
         const wrap = document.getElementById('dashboardResult');
 
         const CHUYEN_LABELS = [
