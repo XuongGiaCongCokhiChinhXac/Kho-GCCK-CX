@@ -879,6 +879,11 @@
 
     <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbwtE5EwOIp2Z8A0Rn1-lGpHno0JEo6ZXGNVpLJiOZOBJuAVqDrpDGHvjt5Z-TjIYSDt/exec';
+    // Gọi THẲNG Supabase từ trình duyệt cho riêng nhãn ưu tiên - không qua Apps Script,
+    // nên không bao giờ bị chặn bởi giới hạn "urlfetch" của Google nữa. Đây là khoá công
+    // khai (anon), CHỈ được phép đọc/ghi bảng priority_tags nhờ RLS đã bật trong Supabase.
+    const SUPABASE_URL_DIRECT_ = 'https://xbkdqhlcimmriwcyxdpf.supabase.co';
+    const SUPABASE_ANON_KEY_ = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhia2RxaGxjaW1tcml3Y3l4ZHBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTQ3OTcsImV4cCI6MjEwMjc3MDc5N30.ihDLc_P38OY8SOBmrjBRVrxSpnOuQIml69gEieoMwo8';
 
     function callServer_(fnName, args, retriesLeft) {
       if (retriesLeft === undefined) retriesLeft = 2; // tổng cộng thử tối đa 3 lần
@@ -1393,7 +1398,8 @@
           loadPriorityTagsFromServer_();
           loadInitialAppData_();
           sendHeartbeat_();
-          loadAllNotifications_(); // nạp đủ 7 ngày thông báo, tránh mất thông báo cũ khi tải lại app
+          loadAllNotifications_();
+          tryFlushPriorityQueue_(); // lưu bù ngay các nhãn còn tồn trong hàng đợi từ phiên trước
         }, 800);
 
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
@@ -3565,16 +3571,16 @@
 let priorityTags_ = {};
 try { priorityTags_ = JSON.parse(localStorage.getItem(PRIORITY_TAGS_CACHE_KEY) || '{}'); } catch (e) { priorityTags_ = {}; }
 
-// Tải nhãn ưu tiên THẬT từ Supabase - dùng chung cho mọi máy/mọi tài khoản, gọi lúc đăng nhập.
+// Tải nhãn ưu tiên THẬT từ Supabase - gọi THẲNG (không qua Apps Script) để không phụ
+// thuộc quota urlfetch và có tốc độ gần như tức thì cho mọi máy.
 function loadPriorityTagsFromServer_() {
-  google.script.run
-    .withSuccessHandler(function(tags) {
+  fetchPriorityTagsDirect_()
+    .then(function(tags) {
       priorityTags_ = tags || {};
       try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
       renderDashboard_();
     })
-    .withFailureHandler(function() { /* mất mạng -> tạm giữ cache cũ, không chặn app */ })
-    .getPriorityTags();
+    .catch(function() { /* mất mạng -> tạm giữ cache cũ, không chặn app */ });
 }
 
 // So sánh nhanh 2 object nhãn ưu tiên có khác nhau không (đủ dùng, không cần deep-equal phức tạp)
@@ -3590,10 +3596,10 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
-const PRIORITY_TAGS_POLL_MS = 15000; // 15 giây - kết hợp với cache server-side 8s ở dưới, vẫn đủ nhanh
+const PRIORITY_TAGS_POLL_MS = 10000; // 10 giây - gọi thẳng Supabase, không lo tốn quota Apps Script nữa
 function pollPriorityTagsSilently_() {
-  google.script.run
-    .withSuccessHandler(function(tags) {
+  fetchPriorityTagsDirect_()
+    .then(function(tags) {
       tags = tags || {};
       if (priorityTagsAreEqual_(tags, priorityTags_)) return; // không có gì đổi -> bỏ qua, không vẽ lại
       priorityTags_ = tags;
@@ -3602,8 +3608,7 @@ function pollPriorityTagsSilently_() {
         renderDashboard_();
       }
     })
-    .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
-    .getPriorityTags();
+    .catch(function() { /* im lặng, lần sau tự thử lại */ });
 }
   let dashLsxSearch_ = []; // mảng các từ khoá LSX, chỉ áp dụng khi bấm Enter / chọn gợi ý
   let priorityFilterActive_ = new Set(); // các nhãn ưu tiên (gap/ut1/ut2) đang bật để lọc bảng
@@ -3680,7 +3685,7 @@ function pollPriorityTagsSilently_() {
     if (popup) popup.style.display = 'none';
     priorityPopupLsx_ = null;
   }
-  function pickPriority_(value) {
+      function pickPriority_(value) {
   if (!priorityPopupLsx_) return;
   const lsx = priorityPopupLsx_;
   if (value) priorityTags_[lsx] = value; else delete priorityTags_[lsx];
@@ -3688,9 +3693,7 @@ function pollPriorityTagsSilently_() {
   closePriorityPopup_();
   renderDashboard_();
 
-  google.script.run
-    .withFailureHandler(function(err) { showToast('Lưu nhãn ưu tiên thất bại: ' + err.message, 'error'); })
-    .savePriorityTag(lsx, value);
+  savePriorityTagWithRetry_(lsx, value);
 }
   function pickPriorityCustom_() {
   const lsx = priorityPopupLsx_;
@@ -3703,10 +3706,114 @@ function pollPriorityTagsSilently_() {
   try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
   renderDashboard_();
 
-  google.script.run
-    .withFailureHandler(function(err) { showToast('Lưu nhãn ưu tiên thất bại: ' + err.message, 'error'); })
-    .savePriorityTag(lsx, tag);
+  savePriorityTagWithRetry_(lsx, tag);
 }
+
+/* ================= LƯU/ĐỌC NHÃN ƯU TIÊN GỌI THẲNG SUPABASE ================= */
+/* Không đi qua Apps Script nữa -> không còn bị chặn bởi quota "urlfetch" của Google.
+   Mọi máy (công nhân/quản lý) đều thấy gần như ngay lập tức vì đây là API thật của
+   Supabase, không phải hàng đợi/cache trung gian của Apps Script. */
+
+function supabaseHeaders_() {
+  return {
+    apikey: SUPABASE_ANON_KEY_,
+    Authorization: 'Bearer ' + SUPABASE_ANON_KEY_
+  };
+}
+
+async function fetchPriorityTagsDirect_() {
+  const url = SUPABASE_URL_DIRECT_ + '/rest/v1/priority_tags?select=lsx,tag';
+  const res = await fetch(url, { headers: supabaseHeaders_() });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const rows = await res.json();
+  const map = {};
+  rows.forEach(function(r) { if (r.lsx && r.tag) map[r.lsx] = r.tag; });
+  return map;
+}
+
+async function savePriorityTagDirect_(lsx, tag) {
+  if (!tag) {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/priority_tags?lsx=eq.' + encodeURIComponent(lsx);
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: Object.assign({ Prefer: 'return=minimal' }, supabaseHeaders_())
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return;
+  }
+  const url = SUPABASE_URL_DIRECT_ + '/rest/v1/priority_tags';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: Object.assign({
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=minimal'
+    }, supabaseHeaders_()),
+    body: JSON.stringify([{ lsx: lsx, tag: tag, updated_at: new Date().toISOString() }])
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+}
+
+/* ================= HÀNG ĐỢI DỰ PHÒNG - chỉ dùng khi mất mạng hẳn, hiếm khi cần tới ================= */
+const PRIORITY_SAVE_QUEUE_KEY = 'gcck_priority_save_queue';
+
+function getPrioritySaveQueue_() {
+  try {
+    const raw = localStorage.getItem(PRIORITY_SAVE_QUEUE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+function setPrioritySaveQueue_(queue) {
+  try { localStorage.setItem(PRIORITY_SAVE_QUEUE_KEY, JSON.stringify(queue)); } catch (e) {}
+}
+function queuePriorityTagSave_(lsx, tag) {
+  const queue = getPrioritySaveQueue_();
+  queue[lsx] = tag;
+  setPrioritySaveQueue_(queue);
+}
+
+function savePriorityTagWithRetry_(lsx, tag) {
+  savePriorityTagDirect_(lsx, tag)
+    .then(function() {
+      const queue = getPrioritySaveQueue_();
+      if (queue.hasOwnProperty(lsx) && queue[lsx] === tag) {
+        delete queue[lsx];
+        setPrioritySaveQueue_(queue);
+      }
+    })
+    .catch(function(err) {
+      // Chỉ còn xảy ra khi THẬT SỰ mất mạng hoặc Supabase đang bảo trì - không còn
+      // liên quan gì tới quota Apps Script nữa.
+      queuePriorityTagSave_(lsx, tag);
+      showToast('Chưa lưu được nhãn "' + lsx + '" (mất mạng?), sẽ tự thử lại sau.', 'info');
+    });
+}
+
+let isFlushingPriorityQueue_ = false;
+
+function tryFlushPriorityQueue_() {
+  if (isFlushingPriorityQueue_) return;
+  const queue = getPrioritySaveQueue_();
+  const lsxList = Object.keys(queue);
+  if (lsxList.length === 0) return;
+
+  isFlushingPriorityQueue_ = true;
+  const lsx = lsxList[0];
+  const tag = queue[lsx];
+
+  savePriorityTagDirect_(lsx, tag)
+    .then(function() {
+      const q = getPrioritySaveQueue_();
+      if (q[lsx] === tag) { delete q[lsx]; setPrioritySaveQueue_(q); }
+      isFlushingPriorityQueue_ = false;
+      if (Object.keys(getPrioritySaveQueue_()).length > 0) tryFlushPriorityQueue_();
+    })
+    .catch(function() {
+      isFlushingPriorityQueue_ = false; // vẫn lỗi -> đợi lượt sau
+    });
+}
+
+setInterval(tryFlushPriorityQueue_, 20000); // giờ nhẹ, gọi thẳng Supabase nên rút xuống 20s
+window.addEventListener('online', tryFlushPriorityQueue_);
   document.addEventListener('click', function(e) {
     if (!e.target.closest('#priorityPopup') && !e.target.closest('.priority-pill')) closePriorityPopup_();
   });
