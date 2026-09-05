@@ -1150,6 +1150,10 @@
             <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
           </button>
           <div class="topbar-user-dropdown" id="topbarUserDropdown">
+            <button type="button" onclick="showHomeMenu_(); closeUserMenu_();">
+              <i class="fa-solid fa-grip"></i> Phần mềm
+            </button>
+            <div class="topbar-menu-divider"></div>
             <button type="button" onclick="refreshCurrentData(); closeUserMenu_();">
               <i class="fa-solid fa-arrows-rotate"></i> Làm mới
             </button>
@@ -1161,14 +1165,14 @@
               <i class="fa-solid fa-magnifying-glass-plus"></i> Thu phóng
             </button>
             <button type="button" onclick="openChangePasswordModal_()">
-              <i class="fa-solid fa-key"></i> Đổi mật khẩu
+              <i class="fa-solid fa-user"></i> Tài khoản
             </button>
             <button type="button" onclick="forceFullResyncNow_()">
               <i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ toàn bộ dữ liệu ngay
             </button>
             <div class="topbar-menu-divider"></div>
             <button type="button" class="topbar-menu-exit" onclick="exitApp_()">
-              <i class="fa-solid fa-right-from-bracket"></i> Thoát
+              <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
             </button>
           </div>
         </div>
@@ -1190,11 +1194,6 @@
     <div id="homeMenuOverlay" class="home-menu-page">
       <div class="home-menu-body">
         <div class="home-menu-sidebar">
-          <div class="home-menu-search">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" placeholder="Tìm kiếm..." />
-            <span class="kbd">Ctrl+K</span>
-          </div>
           <div class="home-menu-nav-item">
             <i class="fa-solid fa-house"></i> Trang chủ
           </div>
@@ -1212,11 +1211,11 @@
               <div class="home-menu-label">Nhân sự</div>
             </div>
             <div class="home-menu-card" onclick="openExternalTool_('https://script.google.com/macros/s/AKfycbw2b0feSZGUW3wBnq6xceRJw6wgQGP8LWbDITvq1Xti317z79IcH4gIEUHa4C_uHGeC/exec')">
-              <div class="home-menu-icon"><i class="fa-solid fa-toolbox"></i></div>
+              <div class="home-menu-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
               <div class="home-menu-label">Dao cụ dụng cụ</div>
             </div>
             <div class="home-menu-card" onclick="openExternalTool_('https://script.google.com/macros/s/AKfycbzAxC-4OYlp9iUSvqK86FAy7jNz18geJgXuvHL0-beHNnlbdb7X0SdnQqDXmJBPCyRM/exec')">
-              <div class="home-menu-icon"><i class="fa-solid fa-warehouse"></i></div>
+              <div class="home-menu-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
               <div class="home-menu-label">Kiểm soát VT thép</div>
             </div>
           </div>
