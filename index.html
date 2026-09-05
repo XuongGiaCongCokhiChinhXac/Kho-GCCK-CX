@@ -3313,6 +3313,16 @@
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
       }
 
+      // Đơn đã hoàn thành 100% và ngày hoàn thành KHÁC hôm nay (tức là đã xong từ hôm qua
+      // trở về trước) -> không còn cần nhắc trong danh sách Ưu tiên nữa. Nếu vừa hoàn thành
+      // ĐÚNG HÔM NAY thì vẫn hiển thị để quản lý biết đơn vừa xong.
+      function isPriorityStillRelevant_(r, todayStr) {
+        if (r.tienDoPercent >= 100 && r.ngayHoanThanh && r.ngayHoanThanh < todayStr) {
+          return false;
+        }
+        return true;
+      }
+
       function applyDashCardFilter_(key) {
         dashCardFilter = key;
         dashDateFilter = '';
@@ -3423,9 +3433,12 @@
           case 'today': return rows.filter(function(r) { return r.khgh === todayStr; });
           case 'almost': return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
           case 'priority_default': {
-            // Mặc định: chỉ hiện các đơn đã gắn nhãn Gấp/ƯT1/ƯT2/ƯT3/nhãn tự đặt.
-            // Nếu chưa có đơn nào được gắn nhãn -> fallback sang "sắp xong" (>=80%, <100%).
-            const withPriority = rows.filter(function(r) { return !!priorityTags_[r.lsx]; });
+            // Mặc định: chỉ hiện các đơn đã gắn nhãn Gấp/ƯT1/ƯT2/ƯT3/nhãn tự đặt, TRỪ các đơn
+            // đã hoàn thành 100% từ trước hôm nay (xem isPriorityStillRelevant_).
+            // Nếu chưa có đơn nào được gắn nhãn (còn hợp lệ) -> fallback sang "sắp xong" (>=80%, <100%).
+            const withPriority = rows.filter(function(r) {
+              return !!priorityTags_[r.lsx] && isPriorityStillRelevant_(r, todayStr);
+            });
             if (withPriority.length > 0) return withPriority;
             return rows.filter(function(r) { return r.tienDoPercent >= 80 && r.tienDoPercent < 100; });
           }
@@ -4154,9 +4167,9 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           });
         }
         if (priorityShowAllActive_) {
-          filtered = filtered.filter(function(r) { return !!priorityTags_[r.lsx]; });
+          filtered = filtered.filter(function(r) { return !!priorityTags_[r.lsx] && isPriorityStillRelevant_(r, todayStr); });
         } else if (priorityFilterActive_ && priorityFilterActive_.size > 0) {
-          filtered = filtered.filter(function(r) { return priorityFilterActive_.has(priorityTags_[r.lsx]); });
+          filtered = filtered.filter(function(r) { return priorityFilterActive_.has(priorityTags_[r.lsx]) && isPriorityStillRelevant_(r, todayStr); });
         }
         filtered = applyDashboardColumnFilters_(filtered);
 
