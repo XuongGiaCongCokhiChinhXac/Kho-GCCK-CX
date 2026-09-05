@@ -723,6 +723,26 @@
       }
       .notif-dropdown.open { transform: translateX(0); }
 
+      /* ===== Từng dòng thông báo trong modal ===== */
+      .notif-item {
+        cursor: pointer; display: flex; align-items: flex-start; padding: 10px 14px;
+        border-bottom: 1px solid #eee; font-size: 13px; color: #333; line-height: 1.45;
+        background: transparent;
+      }
+      .notif-item-unread { background: #eef4ff; }
+      .notif-dot {
+        width: 7px; height: 7px; border-radius: 50%; background: #1a73e8; display: inline-block;
+        margin-right: 6px; flex-shrink: 0; margin-top: 6px;
+      }
+      .notif-item-body { flex: 1; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+      .notif-msg { font-weight: 400; }
+      .notif-item-unread .notif-msg { font-weight: 700; }
+      .notif-time { font-size: 11px; color: #999; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+
+      body.dark-mode .notif-item { color: #d8dadf; border-color: #2c313c; }
+      body.dark-mode .notif-item-unread { background: #1a2c4d; }
+      body.dark-mode .notif-time { color: #8a90a0; }
+
       /* ===== Nút loại đơn hàng xếp dọc trong sidebar ===== */
       .sidebar-divider { height: 1px; background: rgba(255,255,255,0.15); margin: 8px 12px; }
       .sidebar-section-label { padding: 4px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9db8e8; font-weight: bold; }
@@ -1033,7 +1053,7 @@
       </div>
       <div class="topbar-right">
         <div class="topbar-user" id="notifBellMenu" style="position:relative;">
-          <button class="topbar-icon-btn" onclick="openNotifModal_()" style="position:relative; display:flex; align-items:center; justify-content:center;">
+          <button class="topbar-icon-btn" onclick="toggleNotifModal_()" style="position:relative; display:flex; align-items:center; justify-content:center;">
             <i class="fa-regular fa-bell" style="line-height:1;"></i>
             <span id="notifBadgeCount" style="display:none; position:absolute; top:-3px; right:-3px; background:#d62828; color:#fff; border-radius:50%; font-size:10px; font-weight:bold; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 3px;"></span>
           </button>
@@ -1299,12 +1319,25 @@
         const overlay = document.getElementById('notifOverlay');
         overlay.style.display = 'flex';
         requestAnimationFrame(function() { overlay.classList.add('open'); }); // để trình duyệt kịp nhận display:flex trước khi trượt vào
+        notifLsxSearch_ = '';
+        const searchInput = document.getElementById('notifLsxSearchInput');
+        if (searchInput) searchInput.value = '';
         renderNotifModal_();
       }
       function closeNotifModal_() {
         const overlay = document.getElementById('notifOverlay');
         overlay.classList.remove('open');
         setTimeout(function() { overlay.style.display = 'none'; }, 220); // đợi hết hiệu ứng trượt ra mới ẩn hẳn
+      }
+
+      /** Bấm chuông lần 1 -> mở modal thông báo; bấm lần nữa (khi đang mở) -> đóng lại. */
+      function toggleNotifModal_() {
+        const overlay = document.getElementById('notifOverlay');
+        if (overlay && overlay.classList.contains('open')) {
+          closeNotifModal_();
+        } else {
+          openNotifModal_();
+        }
       }
 
       function markNotifRead_(id) {
@@ -1382,31 +1415,49 @@
         setTimeout(function() { target.classList.remove('row-flash-highlight'); }, 1700);
       }
 
+      let notifLsxSearch_ = ''; // từ khoá đang gõ để lọc thông báo theo LSX
+
       function renderNotifModal_() {
         const el = document.getElementById('notifModalBody');
         if (!el) return;
-        if (notifList_.length === 0) {
+
+        let list = notifList_.slice().reverse();
+        if (notifLsxSearch_) {
+          list = list.filter(function(n) {
+            return extractLsxFromNotifMessage_(n.message).toLowerCase().indexOf(notifLsxSearch_) !== -1;
+          });
+        }
+
+        if (list.length === 0) {
           el.innerHTML = '<div style="padding:36px 18px; text-align:center; color:#999; font-size:13px;">' +
             '<i class="fa-regular fa-bell-slash" style="font-size:28px; display:block; margin-bottom:10px; opacity:0.5;"></i>' +
-            'Không có thông báo mới.</div>';
+            (notifLsxSearch_ ? 'Không có thông báo phù hợp với LSX đã lọc.' : 'Không có thông báo mới.') + '</div>';
           return;
         }
-        el.innerHTML = notifList_.slice().reverse().map(function(n) {
+
+        el.innerHTML = list.map(function(n) {
           const isRead = readNotifIds_.has(n.id);
           const d = new Date(n.created_at);
           const timeStr = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') +
             ' ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
-          const bg = isRead ? 'transparent' : '#eef4ff';
-          const dot = isRead ? '' : '<span style="width:7px; height:7px; border-radius:50%; background:#1a73e8; display:inline-block; margin-right:6px; flex-shrink:0; margin-top:6px;"></span>';
+          const dot = isRead ? '' : '<span class="notif-dot"></span>';
+          const itemCls = 'notif-item' + (isRead ? ' notif-item-read' : ' notif-item-unread');
           const lsxForJump = extractLsxFromNotifMessage_(n.message).replace(/'/g, "\\'");
-          return '<div onclick="onNotifClick_(' + n.id + ', \'' + lsxForJump + '\')" style="cursor:pointer; display:flex; align-items:flex-start; padding:10px 14px; border-bottom:1px solid #eee; font-size:13px; color:#333; line-height:1.45; background:' + bg + ';">' +
+          return '<div class="' + itemCls + '" onclick="onNotifClick_(' + n.id + ', \'' + lsxForJump + '\')">' +
             dot +
-            '<div style="flex:1; display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">' +
-              '<div style="font-weight:' + (isRead ? '400' : '700') + ';">' + escapeHtml_(n.message) + '</div>' +
-              '<div style="font-size:11px; color:#999; white-space:nowrap; flex-shrink:0; margin-top:1px;">' + timeStr + '</div>' +
+            '<div class="notif-item-body">' +
+              '<div class="notif-msg">' + escapeHtml_(n.message) + '</div>' +
+              '<div class="notif-time">' + timeStr + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
+      }
+
+      /** Gõ vào ô lọc LSX trong modal thông báo -> lọc lại danh sách ngay lập tức. */
+      function onNotifLsxSearchInput_() {
+        const input = document.getElementById('notifLsxSearchInput');
+        notifLsxSearch_ = input ? input.value.trim().toLowerCase() : '';
+        renderNotifModal_();
       }
 
       // Nạp TOÀN BỘ thông báo còn trong 7 ngày (afterId=0) - gọi 1 LẦN lúc đăng nhập,
@@ -5360,6 +5411,11 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       <div class="colvis-header">
         <h3><i class="fa-regular fa-bell" style="margin-right:8px;"></i>Thông báo</h3>
         <span class="upbom-close" onclick="closeNotifModal_()">&times;</span>
+      </div>
+      <div style="padding:10px 14px; border-bottom:1px solid #eee;">
+        <input type="text" id="notifLsxSearchInput" placeholder="Lọc theo LSX..." autocomplete="off"
+          oninput="onNotifLsxSearchInput_()"
+          style="width:100%; padding:8px 10px; box-sizing:border-box; font-size:13px; border:1px solid #ddd; border-radius:6px;" />
       </div>
       <div id="notifModalBody" style="overflow-y:auto; flex:1;"></div>
       <div class="upbom-footer">
