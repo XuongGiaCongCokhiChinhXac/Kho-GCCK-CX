@@ -1201,11 +1201,6 @@
               Dashboard tiến độ đơn hàng
               <span id="progressSyncStatus" class="sync-status" style="font-weight:bold; font-size:13px;"></span>
             </h2>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <button id="refreshDashboardBtn" class="icon-btn" title="Làm mới" onclick="refreshDashboard_()">
-                <i class="fa-solid fa-arrows-rotate"></i>
-              </button>
-            </div>
           </div>
           <div id="dashboardStats" class="dash-stats-row">
             <div class="dash-date-card" style="position:relative;">
@@ -1238,6 +1233,14 @@
           </div>
           <div id="dashboardFilterInfo" style="padding:0 16px 6px 16px; font-size:13px;"></div>
           <div id="dashboardSummary" style="padding:0 16px 10px 16px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px;"></div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; padding:0 16px 8px 16px;">
+            <button id="captureDashboardBtn" class="icon-btn" title="Chụp ảnh bảng đang xem" onclick="captureDashboardTable_()">
+              <i class="fa-solid fa-camera"></i>
+            </button>
+            <button id="refreshDashboardBtn" class="icon-btn" title="Làm mới" onclick="refreshDashboard_()">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
           <div id="dashboardResult" class="tracking-table-wrap"></div>
         </div>
 
@@ -3245,6 +3248,7 @@
 
       /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
       let dashboardRows = [];
+      let dashboardVisibleRows_ = []; // dữ liệu ĐANG hiển thị trên bảng Dashboard (đã lọc + sắp xếp) - dùng khi chụp ảnh
       let dashboardTypeFilter = null; // loại đơn đang được lọc trên bảng, null = không lọc
       let dashCardFilter = 'priority_default'; // mặc định: hiện đơn Gấp/Ưu tiên; không có thì hiện đơn sắp xong
       let dashDateFilter = '';        // yyyy-mm-dd, khi có giá trị sẽ ưu tiên hơn dashCardFilter
@@ -4142,6 +4146,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         const rows = tableSourceRows.slice().sort(function(a, b) {
           return priorityRank_(priorityTags_[a.lsx]) - priorityRank_(priorityTags_[b.lsx]);
         });
+        dashboardVisibleRows_ = rows; // lưu lại đúng dữ liệu đang hiển thị (sau lọc+sắp xếp) để dùng khi chụp ảnh
         const wrap = document.getElementById('dashboardResult');
 
         const CHUYEN_LABELS = [
@@ -4228,6 +4233,114 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           }
         }
         requestAnimationFrame(renderChunk);
+      }
+
+      /* ================= CHỤP ẢNH BẢNG DASHBOARD ĐANG XEM ================= */
+      function captureDashboardTable_() {
+        if (typeof html2canvas === 'undefined') {
+          showToast('Chưa tải được thư viện chụp ảnh, vui lòng thử lại sau vài giây.', 'error');
+          return;
+        }
+        if (!dashboardVisibleRows_ || dashboardVisibleRows_.length === 0) {
+          showToast('Không có dữ liệu để chụp.', 'error');
+          return;
+        }
+
+        showToast('Đang tạo ảnh, vui lòng đợi...', 'info');
+
+        const CHUYEN_LABELS = [
+          { key: 'ducNhom', label: 'Đúc nhôm' }, { key: 'cuaVong', label: 'Cửa vòng' },
+          { key: 'tien', label: 'Tiện' }, { key: 'phay', label: 'Phay' },
+          { key: 'nguoi', label: 'Nguội' }, { key: 'nhiet', label: 'Nhiệt' }
+        ];
+
+        const th_ = function(label) {
+          return '<th style="background:#003DA5;color:#fff;border:1px solid #ddd;padding:6px 8px;white-space:nowrap;">' + label + '</th>';
+        };
+
+        let html = '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;"><tr>' +
+          th_('LSX') + th_('Sản phẩm') + th_('Ưu tiên') + th_('KHGH');
+        CHUYEN_LABELS.forEach(function(c) { html += th_(c.label); });
+        html += th_('Tiến độ') + th_('% Kho giao hàng') + '</tr>';
+
+        dashboardVisibleRows_.forEach(function(r) {
+          const tag = priorityTags_[r.lsx] || '';
+          const meta = priorityMeta_(tag);
+          const tagHtml = tag
+            ? '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;background:' + meta.bg + ';color:' + meta.color + ';">' + meta.label + '</span>'
+            : '';
+          const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ff8a3d');
+
+          html += '<tr>';
+          html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;font-weight:800;color:#003DA5;">' + escapeHtml_(r.lsx) + '</td>';
+          html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;">' + escapeHtml_(r.sanPham || '') + '</td>';
+          html += '<td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">' + tagHtml + '</td>';
+          html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;">' + formatDate(r.khgh) + '</td>';
+
+          CHUYEN_LABELS.forEach(function(c) {
+            const info = r.chuyen && r.chuyen[c.key];
+            const tong = Number(info && info.tong) || 0;
+            if (tong === 0) {
+              html += '<td style="border:1px solid #ddd;padding:6px 8px;text-align:center;color:#bbb;">-</td>';
+            } else {
+              const gc = Number(info.gc) || 0;
+              const conRaw = info.con;
+              const conLai = (conRaw === null || conRaw === undefined || conRaw === '') ? Math.max(tong - gc, 0) : Number(conRaw);
+              const pctNum = Number(info.td);
+              const pct = isNaN(pctNum) ? Math.round((gc / tong) * 100) : Math.round(pctNum * 100);
+              const bg = chuyenPercentColor_(pct);
+              const textColor = (pct >= 33 && pct < 66) ? '#3a2e00' : '#fff';
+              html += '<td style="border:1px solid #ddd;padding:4px;text-align:center;">' +
+                '<div style="display:flex;flex-direction:column;gap:2px;">' +
+                  '<div style="background:' + bg + ';color:' + textColor + ';border-radius:4px;padding:2px;font-weight:800;">' + pct + '%</div>' +
+                  '<div style="font-size:10px;color:#666;">Tổng ' + tong + ' &middot; GC ' + gc + ' &middot; Còn ' + conLai + '</div>' +
+                '</div></td>';
+            }
+          });
+
+          html += '<td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">' + percentBadge_(r.tienDoDonHang) + '</td>';
+          html += '<td style="border:1px solid #ddd;padding:6px 8px;text-align:center;min-width:120px;">' +
+            '<div style="background:#eee;border-radius:4px;overflow:hidden;height:14px;">' +
+              '<div style="width:' + r.percent + '%;background:' + barColor + ';height:100%;"></div>' +
+            '</div>' +
+            '<span style="font-size:11px;">' + r.percent + '%</span>' +
+          '</td>';
+          html += '</tr>';
+        });
+
+        html += '</table>';
+
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.left = '-99999px';
+        wrapper.style.top = '0';
+        wrapper.style.background = '#fff';
+        wrapper.style.padding = '14px';
+        wrapper.innerHTML = html;
+        document.body.appendChild(wrapper);
+
+        html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2 }).then(function(canvas) {
+          document.body.removeChild(wrapper);
+
+          const link = document.createElement('a');
+          link.download = 'Dashboard_TienDo.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+
+          canvas.toBlob(function(blob) {
+            if (!blob) return;
+            if (navigator.clipboard && window.ClipboardItem) {
+              navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+                .then(function() { showToast('Đã chụp ảnh và copy vào clipboard, dán (Ctrl+V) để gửi.', 'success'); })
+                .catch(function() { showToast('Đã tải ảnh, nhưng không copy được vào clipboard (trình duyệt chặn).', 'info'); });
+            } else {
+              showToast('Đã tải ảnh (trình duyệt không hỗ trợ copy ảnh vào clipboard).', 'info');
+            }
+          }, 'image/png');
+        }).catch(function(err) {
+          document.body.removeChild(wrapper);
+          showToast('Lỗi khi chụp ảnh: ' + err.message, 'error');
+        });
       }
 
       /* ================= MODAL XEM CHI TIẾT CHƯA GIAO HÀNG (con mắt cạnh LSX) ================= */
