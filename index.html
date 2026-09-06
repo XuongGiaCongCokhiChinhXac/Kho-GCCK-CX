@@ -3350,6 +3350,10 @@
         hideHomeMenu_();
         setActiveApp_('nhansu');
         switchTab('tab-nhansu-dashboard');
+        // Tải luôn danh sách Nhân sự song song với Dashboard (switchTab ở trên đã tự gọi
+        // loadNhanSuDashboard_) - để khi người dùng bấm sang tab "Nhân sự" thì bảng đã có
+        // sẵn dữ liệu, không phải đợi tải mới thấy.
+        if (nhanSuAll_.length === 0) loadNhanSuList_();
       }
 
       function openExternalTool_(url) {
@@ -5595,14 +5599,20 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           }).join('') : '<tr><td colspan="4" class="empty-state-cell">Chưa có dữ liệu lịch sử vắng.</td></tr>');
       }
 
-      function loadNhanSuList_() {
+      function loadNhanSuList_(forceRefresh) {
+        const btn = document.getElementById('nsRefreshBtn');
+        if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+        function stop() { if (btn) { btn.classList.remove('spinning'); btn.disabled = false; } }
+
         google.script.run
           .withSuccessHandler(function(rows) {
             nhanSuAll_ = rows || [];
             renderNhanSuTable_();
+            stop();
+            if (forceRefresh) showToast('Đã làm mới danh sách Nhân sự.', 'success');
           })
-          .withFailureHandler(function(err) { showToast('Lỗi tải danh sách Nhân sự: ' + err.message, 'error'); })
-          .getNhanSuData();
+          .withFailureHandler(function(err) { showToast('Lỗi tải danh sách Nhân sự: ' + err.message, 'error'); stop(); })
+          .getNhanSuData(!!forceRefresh);
       }
 
       function renderNhanSuTable_() {
