@@ -242,6 +242,22 @@
         font-size: 12px;
         font-weight: bold;
       }
+      .badge {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 800;
+        color: #fff;
+        white-space: nowrap;
+      }
+      .badge-off { background: #d62828; }
+      .badge-on { background: #34a853; }
+      /* 2 nhóm nút điều hướng (Tiến độ / Nhân sự) thay phiên nhau hiện trong sidebar -
+        phải tự làm flex-column + flex:1 y hệt .sidebar gốc, nếu không các phần tử con
+        dùng flex:1 (VD .sidebar-category-list) sẽ mất khả năng co giãn đúng chiều cao. */
+      #sidebarTienDoGroup, #sidebarNhanSuGroup {
+        display: flex; flex-direction: column; flex: 1; min-height: 0;
+      }
       .filter-icon {
         display: inline-block;
         margin-left: 6px;
@@ -1206,7 +1222,7 @@
               <div class="home-menu-icon"><i class="fa-solid fa-chart-pie"></i></div>
               <div class="home-menu-label">Tiến độ đơn hàng</div>
             </div>
-            <div class="home-menu-card" onclick="openExternalTool_(API_URL + '?page=nhansu')">
+            <div class="home-menu-card" onclick="openNhanSuApp_()">
               <div class="home-menu-icon"><i class="fa-solid fa-users"></i></div>
               <div class="home-menu-label">Nhân sự</div>
             </div>
@@ -1226,15 +1242,27 @@
     <div class="app-layout" id="appLayout" style="display:none;">
       <nav class="sidebar collapsed" id="mainSidebar">
         <button class="sidebar-toggle" onclick="showHomeMenu_()" title="Về màn hình chọn phần mềm"><i class="fa-solid fa-bars"></i></button>
-        <button class="sidebar-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
-          <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
-        </button>
-        <button class="sidebar-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
-          <i class="fa-solid fa-magnifying-glass-chart"></i><span class="nav-label">Tra cứu</span>
-        </button>
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-section-label nav-label">Loại đơn hàng</div>
-        <div id="sidebarCategoryButtons" class="sidebar-category-list"></div>
+
+        <div id="sidebarTienDoGroup">
+          <button class="sidebar-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+            <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
+          </button>
+          <button class="sidebar-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
+            <i class="fa-solid fa-magnifying-glass-chart"></i><span class="nav-label">Tra cứu</span>
+          </button>
+          <div class="sidebar-divider"></div>
+          <div class="sidebar-section-label nav-label">Loại đơn hàng</div>
+          <div id="sidebarCategoryButtons" class="sidebar-category-list"></div>
+        </div>
+
+        <div id="sidebarNhanSuGroup" style="display:none;">
+          <button class="sidebar-nav-btn" data-tab="tab-nhansu-dashboard" onclick="switchTab('tab-nhansu-dashboard')">
+            <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
+          </button>
+          <button class="sidebar-nav-btn" data-tab="tab-nhansu-list" onclick="switchTab('tab-nhansu-list')">
+            <i class="fa-solid fa-address-card"></i><span class="nav-label">Nhân sự</span>
+          </button>
+        </div>
       </nav>
 
       <!-- Thanh điều hướng dưới cùng - CHỈ hiện trên mobile (xem media query 768px),
@@ -1243,11 +1271,17 @@
         <button class="mobile-nav-btn" onclick="showHomeMenu_()">
           <i class="fa-solid fa-house"></i><span>Trang chủ</span>
         </button>
-        <button class="mobile-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+        <button class="mobile-nav-btn mobile-nav-tiendo active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
           <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
         </button>
-        <button class="mobile-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
+        <button class="mobile-nav-btn mobile-nav-tiendo" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
           <i class="fa-solid fa-magnifying-glass-chart"></i><span>Tra cứu</span>
+        </button>
+        <button class="mobile-nav-btn mobile-nav-nhansu" data-tab="tab-nhansu-dashboard" style="display:none;" onclick="switchTab('tab-nhansu-dashboard')">
+          <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+        </button>
+        <button class="mobile-nav-btn mobile-nav-nhansu" data-tab="tab-nhansu-list" style="display:none;" onclick="switchTab('tab-nhansu-list')">
+          <i class="fa-solid fa-address-card"></i><span>Nhân sự</span>
         </button>
       </nav>
 
@@ -1352,6 +1386,46 @@
             </button>
           </div>
           <div id="dashboardResult" class="tracking-table-wrap"></div>
+        </div>
+
+        <div id="tab-nhansu-dashboard" class="tab-pane">
+          <div class="tracking-toolbar" style="flex-wrap:wrap;">
+            <h2 style="margin:0;">Dashboard Nhân sự</h2>
+          </div>
+          <div id="nsDashStats" class="dash-stats-row"></div>
+
+          <div style="padding:0 16px; overflow:auto;">
+            <h3 style="color:#003DA5; font-size:15px; margin:14px 0 8px 0;">Nhân sự vắng hôm nay</h3>
+            <div class="tracking-table-wrap" style="max-height:320px; margin-bottom:22px; overflow:auto;">
+              <table id="nsAbsentTodayTable"></table>
+            </div>
+
+            <h3 style="color:#003DA5; font-size:15px; margin:14px 0 8px 0;">Vắng nhiều trong tháng</h3>
+            <div class="tracking-table-wrap" style="max-height:320px; overflow:auto;">
+              <table id="nsMonthlyAbsentTable"></table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-nhansu-list" class="tab-pane">
+          <div class="header-area">
+            <div class="title-row">
+              <h2>Danh sách Nhân sự</h2>
+              <div class="title-row-actions">
+                <button id="nsRefreshBtn" class="icon-btn" title="Làm mới dữ liệu" onclick="loadNhanSuList_(true)">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+              </div>
+            </div>
+            <div class="search-row">
+              <div class="search-input-wrap">
+                <input type="text" id="nsSearchInput" placeholder="Tìm theo MSNV / Họ tên / Bộ phận..." oninput="renderNhanSuTable_()" autocomplete="off" />
+              </div>
+            </div>
+          </div>
+          <div class="tracking-table-wrap">
+            <table id="nsListTable"></table>
+          </div>
         </div>
 
         </div><!-- /app-main -->
@@ -3116,6 +3190,13 @@
           // chuyển qua lại tab Dashboard đều build lại hàng ngàn dòng gây giật, khựng.
           if (dashboardRows.length === 0) refreshDashboard_();
           else if (!dashboardRenderedOnce_) renderDashboard_();
+        } else if (tabId === 'tab-nhansu-dashboard') {
+          activeTrackingTab_ = null;
+          loadNhanSuDashboard_();
+        } else if (tabId === 'tab-nhansu-list') {
+          activeTrackingTab_ = null;
+          if (nhanSuAll_.length === 0) loadNhanSuList_();
+          else renderNhanSuTable_();
         } else {
           activeTrackingTab_ = null;
         }
@@ -3171,9 +3252,28 @@
         if (layout) layout.style.display = 'flex';
       }
 
+      let currentApp_ = 'tiendo'; // 'tiendo' | 'nhansu' - app nào đang hiển thị trong appLayout
+
+      // Ẩn/hiện đúng nhóm nút sidebar (desktop) + bottom nav (mobile) tương ứng với app đang mở.
+      function setActiveApp_(appName) {
+        currentApp_ = appName;
+        const isNhanSu = appName === 'nhansu';
+        document.getElementById('sidebarTienDoGroup').style.display = isNhanSu ? 'none' : 'flex';
+        document.getElementById('sidebarNhanSuGroup').style.display = isNhanSu ? 'flex' : 'none';
+        document.querySelectorAll('.mobile-nav-tiendo').forEach(function(el) { el.style.display = isNhanSu ? 'none' : 'flex'; });
+        document.querySelectorAll('.mobile-nav-nhansu').forEach(function(el) { el.style.display = isNhanSu ? 'flex' : 'none'; });
+      }
+
       function openTienDoApp_() {
         hideHomeMenu_();
+        setActiveApp_('tiendo');
         switchTab('tab-dashboard');
+      }
+
+      function openNhanSuApp_() {
+        hideHomeMenu_();
+        setActiveApp_('nhansu');
+        switchTab('tab-nhansu-dashboard');
       }
 
       function openExternalTool_(url) {
@@ -5347,6 +5447,71 @@ window.addEventListener('online', tryFlushPriorityQueue_);
             showToast('Không tải được dữ liệu ban đầu: ' + err.message, 'error');
           })
           .getInitialAppData();
+      }
+
+      /* ================= NHÂN SỰ (gộp chung app, không mở tab mới nữa) =================
+        Dùng lại đúng 2 hàm backend đã có sẵn trong Code.gs và đã nằm trong
+        API_ALLOWED_FUNCTIONS: getNhanSuDashboard() và getNhanSuData() - không cần
+        sửa gì phía server, chỉ gọi qua google.script.run như các phần khác của app. */
+      let nhanSuAll_ = [];
+
+      function loadNhanSuDashboard_() {
+        google.script.run
+          .withSuccessHandler(function(data) { renderNhanSuDashboard_(data); })
+          .withFailureHandler(function(err) { showToast('Lỗi tải Dashboard Nhân sự: ' + err.message, 'error'); })
+          .getNhanSuDashboard();
+      }
+
+      function renderNhanSuDashboard_(data) {
+        document.getElementById('nsDashStats').innerHTML =
+          '<div class="dash-stat-card"><div class="dash-stat-label">Tổng nhân sự</div><div class="dash-stat-value">' + data.totalNhanSu + '</div></div>' +
+          '<div class="dash-stat-card dash-stat-danger"><div class="dash-stat-label">Vắng hôm nay</div><div class="dash-stat-value">' + data.absentCount + '</div></div>' +
+          '<div class="dash-stat-card dash-stat-success"><div class="dash-stat-label">Đi làm hôm nay</div><div class="dash-stat-value">' + (data.totalNhanSu - data.absentCount) + '</div></div>';
+
+        document.getElementById('nsAbsentTodayTable').innerHTML =
+          '<tr><th>MSNV</th><th>Họ và tên</th><th>Bộ phận</th><th>Lý do vắng</th></tr>' +
+          (data.absentToday.length ? data.absentToday.map(function(r) {
+            return '<tr><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td><td>' + escapeHtml_(r.boPhan) + '</td><td>' + escapeHtml_(r.lyDoVang || '(chưa ghi lý do)') + '</td></tr>';
+          }).join('') : '<tr><td colspan="4" class="empty-state-cell">Không có ai vắng hôm nay 🎉</td></tr>');
+
+        document.getElementById('nsMonthlyAbsentTable').innerHTML =
+          '<tr><th>MSNV</th><th>Họ và tên</th><th>Bộ phận</th><th>Số lần vắng trong tháng</th></tr>' +
+          (data.monthlyAbsence.length ? data.monthlyAbsence.map(function(r) {
+            return '<tr><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td><td>' + escapeHtml_(r.boPhan || '') + '</td><td><b>' + r.soLanVang + '</b></td></tr>';
+          }).join('') : '<tr><td colspan="4" class="empty-state-cell">Chưa có dữ liệu lịch sử vắng.</td></tr>');
+      }
+
+      function loadNhanSuList_() {
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            nhanSuAll_ = rows || [];
+            renderNhanSuTable_();
+          })
+          .withFailureHandler(function(err) { showToast('Lỗi tải danh sách Nhân sự: ' + err.message, 'error'); })
+          .getNhanSuData();
+      }
+
+      function renderNhanSuTable_() {
+        const kwEl = document.getElementById('nsSearchInput');
+        const kw = kwEl ? kwEl.value.trim().toLowerCase() : '';
+        const rows = nhanSuAll_.filter(function(r) {
+          if (!kw) return true;
+          return (r.msnv + r.hoTen + r.boPhan).toLowerCase().indexOf(kw) !== -1;
+        });
+
+        let html = '<tr><th>STT</th><th>MSNV</th><th>Họ và tên</th><th>Đi làm/Nghỉ</th><th>Lý do vắng</th>' +
+          '<th>Bộ phận</th><th>Chức danh</th><th>Giới tính</th><th>Thành phần</th><th>Ca đêm</th></tr>';
+
+        rows.forEach(function(r, i) {
+          html += '<tr>' +
+            '<td>' + (i + 1) + '</td><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td>' +
+            '<td><span class="badge ' + (r.diLam ? 'badge-on' : 'badge-off') + '">' + (r.diLam ? 'Đi làm' : 'Nghỉ') + '</span></td>' +
+            '<td>' + escapeHtml_(r.lyDoVang || '') + '</td><td>' + escapeHtml_(r.boPhan) + '</td><td>' + escapeHtml_(r.chucDanh) + '</td>' +
+            '<td>' + escapeHtml_(r.gioiTinh) + '</td><td>' + escapeHtml_(r.thanhPhan) + '</td>' +
+            '<td>' + (r.caDem ? '✔' : '') + '</td></tr>';
+        });
+
+        document.getElementById('nsListTable').innerHTML = html || '<tr><td class="empty-state-cell">Không có dữ liệu.</td></tr>';
       }
           function applyLoginScreenState_() {
       let lastUser = null;
