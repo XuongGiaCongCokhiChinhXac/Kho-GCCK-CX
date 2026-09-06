@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nhân sự - Xưởng GCCK Chính Xác</title>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; background: #f4f6f9; }
+    body.dark-mode { background: #14171c; color: #d8dadf; }
+
+    .topbar {
+      height: 52px; background: #003DA5; color: #fff; display: flex; align-items: center;
+      justify-content: space-between; padding: 0 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      position: sticky; top: 0; z-index: 20;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 15px; }
+    .topbar-left a { color: #fff; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .topbar-left a:hover { opacity: 0.85; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #e8f0ff; }
+
+    .content { padding: 18px; max-width: 1400px; margin: 0 auto; }
+
+    .page-title { font-size: 20px; font-weight: 800; color: #003DA5; margin: 4px 0 16px 0; display: flex; align-items: center; gap: 10px; }
+    body.dark-mode .page-title { color: #8fc1ff; }
+
+    .ns-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .ns-tab-btn {
+      padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 700;
+      border: 1px solid #ddd; background: #fff; color: #444; cursor: pointer;
+    }
+    .ns-tab-btn.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+    body.dark-mode .ns-tab-btn { background: #1c1f26; border-color: #3a3f4a; color: #d8dadf; }
+    body.dark-mode .ns-tab-btn.active { background: #1a73e8; color: #fff; }
+
+    .ns-pane { display: none; }
+    .ns-pane.active { display: block; }
+
+    .ns-summary-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .ns-stat-card {
+      flex: 1; min-width: 140px; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
+      padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .ns-stat-label { font-size: 12px; color: #666; font-weight: 700; margin-bottom: 4px; }
+    .ns-stat-value { font-size: 24px; font-weight: 800; color: #1a1a1a; }
+    .ns-stat-card.danger .ns-stat-value { color: #c62828; }
+    body.dark-mode .ns-stat-card { background: #1c1f26; border-color: #2c313c; }
+    body.dark-mode .ns-stat-label { color: #9aa0ab; }
+    body.dark-mode .ns-stat-value { color: #eceef0; }
+
+    .ns-boards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 900px) { .ns-boards { grid-template-columns: 1fr; } }
+    .ns-board-card { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .ns-board-header { background: #003DA5; color: #fff; font-weight: bold; padding: 10px 14px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .ns-board-header .count { background: rgba(255,255,255,0.2); border-radius: 12px; padding: 2px 10px; font-size: 12px; }
+    .ns-board-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .ns-board-table th, .ns-board-table td { border-bottom: 1px solid #eee; padding: 8px 10px; text-align: left; }
+    .ns-board-table th { background: #f2f5fc; font-size: 11px; text-transform: uppercase; color: #555; }
+    .ns-empty { padding: 20px; text-align: center; color: #999; font-size: 13px; }
+    body.dark-mode .ns-board-card { background: #1c1f26; border-color: #2c313c; }
+    body.dark-mode .ns-board-table th { background: #23262d; color: #9aa0ab; }
+    body.dark-mode .ns-board-table td { color: #d8dadf; border-color: #2c313c; }
+
+    .ns-list-toolbar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+    .ns-list-toolbar input {
+      flex: 1; min-width: 220px; max-width: 340px; padding: 9px 12px; font-size: 13px;
+      border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;
+    }
+    body.dark-mode .ns-list-toolbar input { background: #1c1f26; color: #d8dadf; border-color: #3a3f4a; }
+
+    .ns-list-wrap { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; overflow: auto; max-height: 70vh; }
+    body.dark-mode .ns-list-wrap { background: #1c1f26; border-color: #2c313c; }
+    table.ns-list-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    table.ns-list-table th, table.ns-list-table td { border-bottom: 1px solid #eee; padding: 8px 10px; text-align: center; white-space: nowrap; }
+    table.ns-list-table th { background: #003DA5; color: #fff; position: sticky; top: 0; z-index: 2; }
+    body.dark-mode table.ns-list-table td { color: #d8dadf; border-color: #2c313c; }
+    body.dark-mode table.ns-list-table th { background: #0c2f6e; }
+
+    .loading-row { text-align: center; padding: 30px; color: #999; }
+    .icon-btn {
+      background: rgba(255,255,255,0.15); border: none; color: #fff; width: 32px; height: 32px;
+      border-radius: 50%; cursor: pointer; font-size: 13px;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.28); }
+    .icon-btn.spinning i { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+
+  <script>
+    // ===== Y HỆT cơ chế trong Index.html: gọi Apps Script qua fetch, giả lập google.script.run =====
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwtE5EwOIp2Z8A0Rn1-lGpHno0JEo6ZXGNVpLJiOZOBJuAVqDrpDGHvjt5Z-TjIYSDt/exec';
+
+    function callServer_(fnName, args, retriesLeft) {
+      if (retriesLeft === undefined) retriesLeft = 2;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(function() { controller.abort(); }, 20000);
+
+      return fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ fn: fnName, args: args || [] }),
+        signal: controller.signal
+      })
+        .then(function(res) { clearTimeout(timeoutId); return res.json(); })
+        .then(function(data) {
+          if (!data.ok) throw new Error(data.error);
+          return data.result;
+        })
+        .catch(function(err) {
+          clearTimeout(timeoutId);
+          const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
+          if (isNetworkError && retriesLeft > 0) {
+            const delayMs = (3 - retriesLeft) * 800 + 500;
+            return new Promise(function(resolve) { setTimeout(resolve, delayMs); })
+              .then(function() { return callServer_(fnName, args, retriesLeft - 1); });
+          }
+          throw err;
+        });
+    }
+
+    function createScriptRunProxy_() {
+      let successCb = null, failureCb = null;
+      const proxy = new Proxy({}, {
+        get: function(_, prop) {
+          if (prop === 'withSuccessHandler') return function(cb) { successCb = cb; return proxy; };
+          if (prop === 'withFailureHandler') return function(cb) { failureCb = cb; return proxy; };
+          return function() {
+            const args = Array.prototype.slice.call(arguments);
+            callServer_(prop, args)
+              .then(function(result) { if (successCb) successCb(result); })
+              .catch(function(err) { if (failureCb) failureCb(err); });
+          };
+        }
+      });
+      return proxy;
+    }
+
+    window.google = window.google || {};
+    window.google.script = window.google.script || {};
+    Object.defineProperty(window.google.script, 'run', { get: createScriptRunProxy_ });
+  </script>
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <a href="index.html" title="Về Tiến độ đơn hàng">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <i class="fa-solid fa-users"></i>
+      <span>Nhân sự - Xưởng Gia Công Cơ Khí Chính Xác</span>
+    </div>
+    <div class="topbar-right">
+      <span id="nsWelcome"></span>
+      <button class="icon-btn" id="nsRefreshBtn" title="Làm mới" onclick="refreshNhanSu_()">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-title"><i class="fa-solid fa-users"></i> Quản lý Nhân sự</div>
+
+    <div class="ns-tabs">
+      <button type="button" class="ns-tab-btn active" data-tab="ns-dashboard" onclick="switchTab_('ns-dashboard')">Dashboard</button>
+      <button type="button" class="ns-tab-btn" data-tab="ns-list" onclick="switchTab_('ns-list')">Nhân Sự</button>
+    </div>
+
+    <div id="ns-dashboard" class="ns-pane active">
+      <div class="ns-summary-row" id="nsSummaryRow">
+        <div class="loading-row">Đang tải dữ liệu...</div>
+      </div>
+      <div class="ns-boards" id="nsBoards"></div>
+    </div>
+
+    <div id="ns-list" class="ns-pane">
+      <div class="ns-list-toolbar">
+        <input type="text" id="nsListSearch" placeholder="Tìm theo MSNV / Họ tên / Bộ phận..." oninput="renderList_()" />
+        <span id="nsListCount" style="font-size:13px; color:#666;"></span>
+      </div>
+      <div class="ns-list-wrap">
+        <table class="ns-list-table" id="nsListTable">
+          <tr><td class="loading-row">Đang tải dữ liệu...</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let nsRows_ = [];
+
+    function applyDarkModeFromStorage_() {
+      let dark = '0';
+      try { dark = localStorage.getItem('gcck_dark_mode') || '0'; } catch (e) {}
+      document.body.classList.toggle('dark-mode', dark === '1');
+    }
+
+    function showWelcome_() {
+      try {
+        const u = JSON.parse(localStorage.getItem('gcck_last_user') || 'null');
+        if (u && u.hoTen) document.getElementById('nsWelcome').textContent = u.hoTen;
+      } catch (e) {}
+    }
+
+    function escapeHtml_(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function switchTab_(tabId) {
+      document.querySelectorAll('.ns-pane').forEach(function(el) { el.classList.remove('active'); });
+      document.querySelectorAll('.ns-tab-btn').forEach(function(el) { el.classList.remove('active'); });
+      document.getElementById(tabId).classList.add('active');
+      document.querySelector('.ns-tab-btn[data-tab="' + tabId + '"]').classList.add('active');
+    }
+
+    // "x" ở cột Đi làm/Nghỉ = đang NGHỈ. Đổi lại điều kiện này nếu ý nghĩa cột thật ngược lại.
+    function isAbsentToday_(r) {
+      return String(r.diLamNghi || '').trim().toLowerCase() === 'x';
+    }
+    function boPhanMatches_(boPhan, keyword) {
+      return String(boPhan || '').toLowerCase().indexOf(keyword) !== -1;
+    }
+
+    function refreshNhanSu_() {
+      const btn = document.getElementById('nsRefreshBtn');
+      btn.classList.add('spinning'); btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function(rows) {
+          nsRows_ = rows || [];
+          renderDashboard_();
+          renderList_();
+          btn.classList.remove('spinning'); btn.disabled = false;
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('nsSummaryRow').innerHTML =
+            '<div class="ns-stat-card danger"><div class="ns-stat-label">Lỗi</div><div class="ns-stat-value" style="font-size:14px;">' + escapeHtml_(err.message) + '</div></div>';
+          btn.classList.remove('spinning'); btn.disabled = false;
+        })
+        .getNhanSuData();
+    }
+
+    function renderDashboard_() {
+      const absentToday = nsRows_.filter(isAbsentToday_);
+
+      document.getElementById('nsSummaryRow').innerHTML =
+        '<div class="ns-stat-card"><div class="ns-stat-label">Tổng CBCNV</div><div class="ns-stat-value">' + nsRows_.length + '</div></div>' +
+        '<div class="ns-stat-card danger"><div class="ns-stat-label">Vắng hôm nay</div><div class="ns-stat-value">' + absentToday.length + '</div></div>' +
+        '<div class="ns-stat-card"><div class="ns-stat-label">Đi làm hôm nay</div><div class="ns-stat-value">' + (nsRows_.length - absentToday.length) + '</div></div>';
+
+      const groups = [
+        { key: 'tien', label: 'Tiện' },
+        { key: 'phay', label: 'Phay' },
+        { key: 'nguoi', label: 'Nguội' }
+      ];
+
+      document.getElementById('nsBoards').innerHTML = groups.map(function(g) {
+        const rowsOfGroup = absentToday.filter(function(r) { return boPhanMatches_(r.boPhan, g.label.toLowerCase()); });
+        let bodyHtml;
+        if (rowsOfGroup.length === 0) {
+          bodyHtml = '<div class="ns-empty">Không có ai vắng hôm nay.</div>';
+        } else {
+          bodyHtml = '<table class="ns-board-table"><tr><th>MSNV</th><th>Họ và tên</th><th>Lý do vắng</th></tr>' +
+            rowsOfGroup.map(function(r) {
+              return '<tr><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td><td>' + escapeHtml_(r.lyDoVang || '') + '</td></tr>';
+            }).join('') + '</table>';
+        }
+        return '<div class="ns-board-card">' +
+          '<div class="ns-board-header"><span>' + g.label + '</span><span class="count">' + rowsOfGroup.length + ' vắng</span></div>' +
+          bodyHtml +
+          '</div>';
+      }).join('');
+    }
+
+    function renderList_() {
+      const search = (document.getElementById('nsListSearch').value || '').trim().toLowerCase();
+      let rows = nsRows_;
+      if (search) {
+        rows = rows.filter(function(r) {
+          return String(r.msnv).toLowerCase().indexOf(search) !== -1 ||
+            String(r.hoTen).toLowerCase().indexOf(search) !== -1 ||
+            String(r.boPhan).toLowerCase().indexOf(search) !== -1;
+        });
+      }
+      document.getElementById('nsListCount').textContent = 'Tổng: ' + rows.length + ' người';
+
+      const cols = [
+        { key: 'stt', label: 'STT' }, { key: 'msnv', label: 'MSNV' }, { key: 'hoTen', label: 'Họ và tên' },
+        { key: 'diLamNghi', label: 'Đi làm/Nghỉ' }, { key: 'lyDoVang', label: 'Lý do vắng' },
+        { key: 'boPhan', label: 'Bộ phận' }, { key: 'chucDanh', label: 'Chức danh' },
+        { key: 'gioiTinh', label: 'Giới tính' }, { key: 'thanhPhan', label: 'Thành phần' }, { key: 'caDem', label: 'Ca đêm' }
+      ];
+
+      let html = '<tr>' + cols.map(function(c) { return '<th>' + c.label + '</th>'; }).join('') + '</tr>';
+      if (rows.length === 0) {
+        html += '<tr><td colspan="' + cols.length + '" class="loading-row">Không có dữ liệu.</td></tr>';
+      } else {
+        rows.forEach(function(r) {
+          html += '<tr>' + cols.map(function(c) {
+            return '<td>' + escapeHtml_(r[c.key] || '') + '</td>';
+          }).join('') + '</tr>';
+        });
+      }
+      document.getElementById('nsListTable').innerHTML = html;
+    }
+
+    applyDarkModeFromStorage_();
+    showWelcome_();
+    refreshNhanSu_();
+  </script>
+
+</body>
+</html>
