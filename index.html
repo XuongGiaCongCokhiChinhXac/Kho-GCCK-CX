@@ -1206,7 +1206,7 @@
               <div class="home-menu-icon"><i class="fa-solid fa-chart-pie"></i></div>
               <div class="home-menu-label">Tiến độ đơn hàng</div>
             </div>
-            <div class="home-menu-card" onclick="openNhanSuPlaceholder_()">
+            <div class="home-menu-card" onclick="openExternalTool_(API_URL + '?page=nhansu')">
               <div class="home-menu-icon"><i class="fa-solid fa-users"></i></div>
               <div class="home-menu-label">Nhân sự</div>
             </div>
@@ -1567,7 +1567,7 @@
           .getNotifications(0);
       }
 
-      const NOTIF_POLL_MS = 20000; // 20 giây - vẫn đủ nhanh, giảm 1 nửa số lần gọi
+      const NOTIF_POLL_MS = 45000; // 45 giây - thông báo không cần realtime tới mức 20s - vẫn đủ nhanh, giảm 1 nửa số lần gọi
       function pollNotifications_() {
         google.script.run
           .withSuccessHandler(function(rows) {
@@ -1813,7 +1813,7 @@
       let pollTimer = null;
       let searchRequestId = 0;       // dùng để bỏ qua kết quả trả về trễ/đã bị hủy
       const categoryCache = {};      // prefix -> rows, hiện ngay lập tức lần bấm sau (SWR)
-      const POLL_INTERVAL_MS = 30000; // 30 giây - giảm tải Supabase, vẫn đủ nhanh để phát hiện thay đổi
+      const POLL_INTERVAL_MS = 90000; // tăng lên 90s - giảm 3 lần số lệnh gọi Supabase/ngày cho tra cứu
 
       /* ================= CHỌN Ô KIỂU EXCEL (hỗ trợ Ctrl+Click / Shift+Click) ================= */
       let displayedRows = [];   // danh sách dòng đang hiển thị (sau lọc) theo đúng thứ tự trên bảng
@@ -2590,8 +2590,20 @@
       function startPolling() {
         stopPolling();
         if (!currentQuery) return;
+        if (document.hidden) return; // tab đang ẩn (chuyển app khác/khóa máy) -> không poll vô ích
         pollTimer = setInterval(pollForUpdates, POLL_INTERVAL_MS);
       }
+
+      // Dừng hẳn polling khi tab bị ẩn, bật lại + lấy ngay bản mới nhất khi quay lại xem -
+      // đây là phần quan trọng nhất: trước đây poll chạy NGẦM 30s/lần dù không ai nhìn màn hình.
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+          stopPolling();
+        } else if (currentQuery) {
+          pollForUpdates();
+          startPolling();
+        }
+      });
 
       function stopPolling() {
         if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -3088,7 +3100,7 @@
 
       let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
       let trackingPollTimer_ = null;
-      const TRACKING_POLL_INTERVAL_MS = 20000; // 20 giây - giảm tải, vẫn đủ nhanh cho Nhận phôi/Giao hàng
+      const TRACKING_POLL_INTERVAL_MS = 60000; // 60 giây - Nhận phôi/Giao hàng đã có cập nhật lạc quan ngay khi lưu, không cần poll dày - giảm tải, vẫn đủ nhanh cho Nhận phôi/Giao hàng
 
       function switchTab(tabId) {
         document.querySelectorAll('.tab-pane').forEach(function(el) { el.classList.remove('active'); });
@@ -3910,7 +3922,7 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
-const PRIORITY_TAGS_POLL_MS = 10000; // 10 giây - gọi thẳng Supabase, không lo tốn quota Apps Script nữa
+const PRIORITY_TAGS_POLL_MS = 30000; // 30 giây - nhãn ưu tiên không đổi liên tục, khỏi cần dày - gọi thẳng Supabase, không lo tốn quota Apps Script nữa
 function pollPriorityTagsSilently_() {
   fetchPriorityTagsDirect_()
     .then(function(tags) {
