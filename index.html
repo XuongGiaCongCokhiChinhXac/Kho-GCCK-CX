@@ -736,6 +736,7 @@
         border-color: #1a73e8 !important;
       }
       body.dark-mode .filter-empty { color: #7a808c; }
+      body.dark-mode .ns-dept-item[style*="fdecea"] { background: #3a2020 !important; }
       body.dark-mode .empty-state-cell { background: #1c1f26; color: #7a808c; }
 
       /* ===== Sửa lỗi các dòng Gấp/Ưu tiên "biến mất" trong Dashboard khi bật chế độ tối:
@@ -1462,14 +1463,66 @@
 
           <div id="nsDashStats" class="ns-stats-row"></div>
 
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:0 16px 10px 16px;">
+            <div id="nsPeriodFilters" class="quick-filters" style="margin:0;"></div>
+            <div id="nsCompareRow" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+          </div>
+
           <div class="ns-panels-row">
             <div class="ns-panel">
               <div class="ns-panel-header"><i class="fa-solid fa-user-slash" style="color:#d62828;"></i>Ai vắng hôm nay</div>
               <div class="ns-panel-body" id="nsAbsentTodayPanel"></div>
             </div>
             <div class="ns-panel">
-              <div class="ns-panel-header"><i class="fa-solid fa-chart-simple" style="color:#1a73e8;"></i>Theo bộ phận</div>
+              <div class="ns-panel-header"><i class="fa-solid fa-chart-simple" style="color:#1a73e8;"></i>Theo bộ phận (hôm nay)</div>
               <div class="ns-panel-body" id="nsDeptPanel"></div>
+            </div>
+          </div>
+
+          <div class="ns-panels-row">
+            <div class="ns-panel">
+              <div class="ns-panel-header"><i class="fa-solid fa-chart-line" style="color:#00b894;"></i>Xu hướng vắng
+                <span id="nsPeriodLabel1" style="font-weight:400; color:#999; font-size:12px; margin-left:6px;"></span></div>
+              <div class="ns-panel-body" id="nsTrendPanel" style="padding:14px;"></div>
+            </div>
+            <div class="ns-panel">
+              <div class="ns-panel-header"><i class="fa-solid fa-ranking-star" style="color:#b45309;"></i>Top vắng nhiều nhất trong kỳ</div>
+              <div class="ns-panel-body" id="nsTopAbsencePanel"></div>
+            </div>
+          </div>
+
+          <div class="ns-panels-row">
+            <div class="ns-panel">
+              <div class="ns-panel-header"><i class="fa-solid fa-triangle-exclamation" style="color:#d62828;"></i>Tỷ lệ vắng theo bộ phận trong kỳ</div>
+              <div class="ns-panel-body" id="nsDeptRatePanel"></div>
+            </div>
+            <div class="ns-panel">
+              <div class="ns-panel-header"><i class="fa-solid fa-calendar" style="color:#1a73e8;"></i>Lịch mật độ vắng
+                <span id="nsPeriodLabel2" style="font-weight:400; color:#999; font-size:12px; margin-left:6px;"></span></div>
+              <div class="ns-panel-body" id="nsHeatmapPanel" style="padding:14px;"></div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:16px; flex-wrap:wrap; padding:0 16px 16px 16px; align-items:flex-start;">
+            <div class="ns-panel" style="flex:1; min-width:320px;">
+              <div class="ns-panel-header"><i class="fa-solid fa-clock" style="color:#1a73e8;"></i>Tăng ca hôm nay</div>
+              <div class="ns-panel-body" style="max-height:340px; overflow:auto;">
+                <table id="nsTangCaTable"></table>
+              </div>
+            </div>
+            <div class="ns-panel" style="flex:1; min-width:320px;">
+              <div class="ns-panel-header"><i class="fa-solid fa-calendar-week" style="color:#8e44ad;"></i>Đăng ký đi làm Chủ nhật</div>
+              <div class="ns-panel-body" style="max-height:340px; overflow:auto;">
+                <table id="nsChuNhatTable"></table>
+              </div>
+            </div>
+          </div>
+
+          <div class="ns-panels-row">
+            <div class="ns-panel" style="flex:1;">
+              <div class="ns-panel-header"><i class="fa-solid fa-business-time" style="color:#8e44ad;"></i>Tổng hợp Tăng ca/Chủ nhật theo kỳ
+                <span id="nsPeriodLabel3" style="font-weight:400; color:#999; font-size:12px; margin-left:6px;"></span></div>
+              <div class="ns-panel-body" id="nsTangCaSummaryPanel"></div>
             </div>
           </div>
 
@@ -5537,11 +5590,171 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
       const NS_WEEKDAY_NAMES_ = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 
+      let currentNsPeriod_ = 'today';
+      const NS_PERIOD_OPTIONS_ = [
+        { key: 'today', label: 'Hôm nay' },
+        { key: 'week', label: 'Tuần này' },
+        { key: 'month', label: 'Tháng này' },
+        { key: 'quarter', label: 'Quý này' },
+        { key: 'year', label: 'Năm nay' }
+      ];
+      const NS_RATE_WARN_THRESHOLD = 15; // % - vượt ngưỡng này thì cảnh báo đỏ (tính năng 6)
+
+      function renderNsPeriodFilters_() {
+        const el = document.getElementById('nsPeriodFilters');
+        if (!el) return;
+        el.innerHTML = NS_PERIOD_OPTIONS_.map(function(o) {
+          return '<button type="button" class="quick-btn' + (currentNsPeriod_ === o.key ? ' active' : '') +
+            '" onclick="onNsPeriodChange_(\'' + o.key + '\')">' + o.label + '</button>';
+        }).join('');
+      }
+
+      function onNsPeriodChange_(period) {
+        currentNsPeriod_ = period;
+        renderNsPeriodFilters_();
+        loadNhanSuPeriodStats_();
+      }
+
       function loadNhanSuDashboard_() {
         google.script.run
           .withSuccessHandler(function(data) { renderNhanSuDashboard_(data); })
           .withFailureHandler(function(err) { showToast('Lỗi tải Dashboard Nhân sự: ' + err.message, 'error'); })
           .getNhanSuDashboard();
+
+        renderNsPeriodFilters_();
+        loadNhanSuPeriodStats_();
+        loadTangCaAndChuNhatBlocks_();
+      }
+
+      function loadNhanSuPeriodStats_() {
+        google.script.run
+          .withSuccessHandler(function(stats) { renderNsPeriodStats_(stats); })
+          .withFailureHandler(function(err) { showToast('Lỗi tải thống kê theo kỳ: ' + err.message, 'error'); })
+          .getNhanSuPeriodStats(currentNsPeriod_);
+
+        google.script.run
+          .withSuccessHandler(function(summary) { renderNsTangCaSummary_(summary); })
+          .withFailureHandler(function() { /* im lặng - có thể chưa có log ngày nào */ })
+          .getTangCaChuNhatSummary(currentNsPeriod_);
+      }
+
+      function renderNsPeriodStats_(stats) {
+        document.getElementById('nsPeriodLabel1').textContent = stats.periodLabel || '';
+        document.getElementById('nsPeriodLabel2').textContent = stats.periodLabel || '';
+        const lbl3 = document.getElementById('nsPeriodLabel3');
+        if (lbl3) lbl3.textContent = stats.periodLabel || '';
+
+        // ---- Tính năng 2: Biểu đồ xu hướng vắng (bar ngang theo ngày/tháng) ----
+        const trendEl = document.getElementById('nsTrendPanel');
+        if (!stats.trend || stats.trend.length === 0) {
+          trendEl.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu trong kỳ này.</div>';
+        } else {
+          const maxCount = Math.max.apply(null, stats.trend.map(function(t) { return t.count; })) || 1;
+          trendEl.innerHTML = stats.trend.map(function(t) {
+            const pct = Math.round((t.count / maxCount) * 100);
+            return '<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px;">' +
+              '<span style="width:56px; color:#777; flex-shrink:0;">' + t.label + '</span>' +
+              '<div style="flex:1; background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
+                '<div style="width:' + pct + '%; background:#00b894; height:100%;"></div>' +
+              '</div>' +
+              '<span style="width:24px; text-align:right; font-weight:700; color:#333;">' + t.count + '</span>' +
+            '</div>';
+          }).join('');
+        }
+
+        // ---- Tính năng 3: Top vắng nhiều nhất trong kỳ ----
+        const topEl = document.getElementById('nsTopAbsencePanel');
+        topEl.innerHTML = (stats.topAbsence && stats.topAbsence.length) ? stats.topAbsence.map(function(r) {
+          return '<div class="ns-absent-item">' +
+            '<div><div class="ns-absent-name">' + escapeHtml_(r.hoTen) + '</div>' +
+              '<div class="ns-absent-sub">' + escapeHtml_(r.boPhan || '') + '</div></div>' +
+            '<span class="ns-absent-reason" style="background:#fdecea; color:#c62828;">' + r.soLan + ' lần</span>' +
+          '</div>';
+        }).join('') : '<div class="empty-state-cell">Không có ai vắng trong kỳ này 🎉</div>';
+
+        // ---- Tính năng 4 + 6: Tỷ lệ vắng theo bộ phận, cảnh báo >15% ----
+        const deptRateEl = document.getElementById('nsDeptRatePanel');
+        deptRateEl.innerHTML = (stats.byDept && stats.byDept.length) ? stats.byDept.map(function(d) {
+          const isWarn = d.tyLe >= NS_RATE_WARN_THRESHOLD;
+          const barColor = isWarn ? '#d62828' : (d.tyLe >= 8 ? '#fbbc04' : '#34a853');
+          return '<div class="ns-dept-item"' + (isWarn ? ' style="background:#fdecea;"' : '') + '>' +
+            '<div class="ns-dept-top">' +
+              '<span class="ns-dept-name">' + escapeHtml_(d.boPhan) +
+                (isWarn ? ' <i class="fa-solid fa-triangle-exclamation" style="color:#d62828;" title="Tỷ lệ vắng cao"></i>' : '') + '</span>' +
+              '<span class="ns-dept-count">' + d.soLuotVang + ' lượt &middot; ' + d.tyLe + '%</span>' +
+            '</div>' +
+            '<div class="ns-dept-bar-track"><div class="ns-dept-bar-fill" style="width:' + Math.min(d.tyLe, 100) + '%; background:' + barColor + ';"></div></div>' +
+          '</div>';
+        }).join('') : '<div class="empty-state-cell">Không có dữ liệu.</div>';
+
+        // ---- Tính năng 7: Lịch mật độ vắng (heatmap đơn giản dạng lưới ô vuông) ----
+        const heatmapEl = document.getElementById('nsHeatmapPanel');
+        if (!stats.trend || stats.trend.length === 0) {
+          heatmapEl.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu.</div>';
+        } else {
+          const maxCount = Math.max.apply(null, stats.trend.map(function(t) { return t.count; })) || 1;
+          heatmapEl.innerHTML = '<div style="display:flex; flex-wrap:wrap; gap:4px;">' +
+            stats.trend.map(function(t) {
+              const intensity = t.count / maxCount;
+              const bg = intensity === 0 ? '#eee' : ('rgba(214,40,40,' + (0.2 + intensity * 0.8).toFixed(2) + ')');
+              return '<div title="' + t.label + ': ' + t.count + ' lượt vắng" ' +
+                'style="width:26px; height:26px; border-radius:4px; background:' + bg +
+                '; display:flex; align-items:center; justify-content:center; font-size:9px; color:' + (intensity > 0.5 ? '#fff' : '#666') + ';">' +
+                t.count + '</div>';
+            }).join('') +
+          '</div>';
+        }
+      }
+
+      // ---- Tính năng 8: Tổng hợp Tăng ca/Chủ nhật theo kỳ ----
+      function renderNsTangCaSummary_(summary) {
+        const el = document.getElementById('nsTangCaSummaryPanel');
+        if (!el) return;
+        if (!summary || !summary.byDept || summary.byDept.length === 0) {
+          el.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu lịch sử (log bắt đầu chạy từ khi bật trigger, cần chờ ít nhất 1 ngày).</div>';
+          return;
+        }
+        let html = '<table style="width:100%;"><tr><th>Bộ phận</th><th>Tổng suất tăng ca</th><th>Tổng lượt đi làm CN</th></tr>';
+        summary.byDept.forEach(function(d) {
+          html += '<tr><td>' + escapeHtml_(d.boPhan) + '</td><td><b>' + d.tongTangCa + '</b></td><td><b>' + d.tongChuNhat + '</b></td></tr>';
+        });
+        html += '</table>';
+        el.innerHTML = html;
+      }
+
+      /** Tải + vẽ 2 bảng Tăng ca / Đi làm Chủ nhật, đọc trực tiếp từ sheet "DS TC". */
+      function loadTangCaAndChuNhatBlocks_() {
+        google.script.run
+          .withSuccessHandler(function(block) { renderGenericBlockTable_('nsTangCaTable', block); })
+          .withFailureHandler(function(err) { showToast('Lỗi tải bảng Tăng ca: ' + err.message, 'error'); })
+          .getTangCaData();
+
+        google.script.run
+          .withSuccessHandler(function(block) { renderGenericBlockTable_('nsChuNhatTable', block); })
+          .withFailureHandler(function(err) { showToast('Lỗi tải bảng Đi làm Chủ nhật: ' + err.message, 'error'); })
+          .getDiLamChuNhatData();
+      }
+
+      /** Vẽ 1 bảng generic từ {headers, rows} - tự tô đậm dòng "Tổng cộng". */
+      function renderGenericBlockTable_(tableId, block) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        if (!block || !block.headers || block.headers.length === 0 || block.rows.length === 0) {
+          table.innerHTML = '<tr><td class="empty-state-cell">Không có dữ liệu.</td></tr>';
+          return;
+        }
+        let html = '<tr>' + block.headers.map(function(h) {
+          return '<th style="white-space:normal;">' + escapeHtml_(h) + '</th>';
+        }).join('') + '</tr>';
+
+        block.rows.forEach(function(row) {
+          const firstCell = String(row[0] || '').trim().toLowerCase();
+          const isTotal = firstCell.indexOf('tổng') === 0;
+          html += '<tr' + (isTotal ? ' style="font-weight:800; background:#eaf2ff;"' : '') + '>' +
+            row.map(function(v) { return '<td>' + escapeHtml_(String(v)) + '</td>'; }).join('') +
+            '</tr>';
+        });
+        table.innerHTML = html;
       }
 
       function renderNhanSuDashboard_(data) {
@@ -5567,6 +5780,20 @@ window.addEventListener('online', tryFlushPriorityQueue_);
             '<div class="ns-stat-icon"><i class="fa-solid fa-user-slash"></i></div>' +
             '<div><div class="ns-stat-value">' + data.absentCount + '</div><div class="ns-stat-label">Vắng hôm nay</div></div>' +
           '</div>';
+
+        // ---- So sánh nhanh: hôm nay vs trung bình 7/30 ngày (tính năng 5) ----
+        const cmp = data.compare || { todayCount: data.absentCount, avg7: 0, avg30: 0 };
+        function deltaBadge_(current, avg) {
+          if (!avg) return '';
+          const diff = current - avg;
+          const color = diff > 0 ? '#d62828' : (diff < 0 ? '#2e7d32' : '#777');
+          const icon = diff > 0 ? '&#9650;' : (diff < 0 ? '&#9660;' : '&#9679;');
+          return '<span style="color:' + color + '; font-size:11px; font-weight:700; margin-left:6px;">' + icon + ' ' + Math.abs(diff).toFixed(1) + '</span>';
+        }
+        document.getElementById('nsCompareRow').innerHTML =
+          '<div class="dash-date-card"><div class="dash-stat-label">Vắng hôm nay</div><div class="dash-stat-value">' + cmp.todayCount + '</div></div>' +
+          '<div class="dash-date-card"><div class="dash-stat-label">TB 7 ngày qua</div><div class="dash-stat-value">' + cmp.avg7 + deltaBadge_(cmp.todayCount, cmp.avg7) + '</div></div>' +
+          '<div class="dash-date-card"><div class="dash-stat-label">TB 30 ngày qua</div><div class="dash-stat-value">' + cmp.avg30 + deltaBadge_(cmp.todayCount, cmp.avg30) + '</div></div>';
 
         // ---- Panel "Ai vắng hôm nay" ----
         const absentPanel = document.getElementById('nsAbsentTodayPanel');
