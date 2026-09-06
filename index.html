@@ -1206,7 +1206,7 @@
               <div class="home-menu-icon"><i class="fa-solid fa-chart-pie"></i></div>
               <div class="home-menu-label">Tiến độ đơn hàng</div>
             </div>
-            <div class="home-menu-card" onclick="location.href='nhansu.html'">
+            <div class="home-menu-card" onclick="openNhanSuPlaceholder_()">
               <div class="home-menu-icon"><i class="fa-solid fa-users"></i></div>
               <div class="home-menu-label">Nhân sự</div>
             </div>
@@ -1223,6 +1223,7 @@
       </div>
     </div>
 
+    <div class="app-layout" id="appLayout" style="display:none;">
       <nav class="sidebar collapsed" id="mainSidebar">
         <button class="sidebar-toggle" onclick="showHomeMenu_()" title="Về màn hình chọn phần mềm"><i class="fa-solid fa-bars"></i></button>
         <button class="sidebar-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
@@ -1726,13 +1727,16 @@
         const myRequestId = ++suggestRequestId;
 
         suggestTimer = setTimeout(function() {
-          suggestLSXDirect_(value).then(function(list) {
-              if (myRequestId !== suggestRequestId) return;
+          google.script.run
+            .withSuccessHandler(function(list) {
+              if (myRequestId !== suggestRequestId) return; // đã gõ thêm ký tự mới, bỏ kết quả trễ này
               showSuggestions(list);
-            }).catch(function() {
+            })
+            .withFailureHandler(function() {
               if (myRequestId !== suggestRequestId) return;
               hideSuggestions();
-            });
+            })
+            .suggestLSX(value);
         }, 250);
       });
 
@@ -1861,18 +1865,21 @@
 
         const myRequestId = ++searchRequestId;
 
-        searchByLSXDirect_(lsx).then(function(rows) {
-            if (myRequestId !== searchRequestId) return;
+        google.script.run
+          .withSuccessHandler(function(rows) {
+            if (myRequestId !== searchRequestId) return; // đã bị hủy / có lượt tìm mới hơn
             lastRows = rows;
             currentQuery = lsx;
             currentQueryMode = 'lsx';
-            render(applyFilters(rows));
+            render(applyFilters(rows)); // render() tự đếm theo dữ liệu sau lọc
             startPolling();
-          }).catch(function(err) {
+          })
+          .withFailureHandler(function(err) {
             if (myRequestId !== searchRequestId) return;
             setLoading(false);
             status.textContent = 'Lỗi: ' + err.message;
-          });
+          })
+          .searchByLSX(lsx);
       }
 
           const CATEGORIES = [
@@ -1938,7 +1945,8 @@
           setLoading(true);
         }
 
-        searchByPrefixDirect_(prefix).then(function(rows) {
+        google.script.run
+          .withSuccessHandler(function(rows) {
             if (myRequestId !== searchRequestId) return;
             categoryCache[prefix] = rows;
             lastRows = rows;
@@ -1946,11 +1954,13 @@
             currentQueryMode = 'prefix';
             render(applyFilters(rows));
             startPolling();
-          }).catch(function(err) {
+          })
+          .withFailureHandler(function(err) {
             if (myRequestId !== searchRequestId) return;
             setLoading(false);
             status.textContent = 'Lỗi: ' + err.message;
-          });
+          })
+          .searchByPrefix(prefix);
       }
 
       function updateSummary(rows) {
@@ -2589,8 +2599,15 @@
 
       function pollForUpdates() {
         if (!currentQuery) return;
-        const p = currentQueryMode === 'prefix' ? searchByPrefixDirect_(currentQuery) : searchByLSXDirect_(currentQuery);
-        p.then(mergeRemoteChanges).catch(function() { /* im lặng bỏ qua, lần sau tự thử lại */ });
+        const runner = google.script.run
+          .withSuccessHandler(mergeRemoteChanges)
+          .withFailureHandler(function() { /* im lặng bỏ qua, lần sau tự thử lại */ });
+
+        if (currentQueryMode === 'prefix') {
+          runner.searchByPrefix(currentQuery);
+        } else {
+          runner.searchByLSX(currentQuery);
+        }
       }
 
       // So sánh dữ liệu mới nhất từ server với dữ liệu đang hiển thị,
@@ -3151,126 +3168,12 @@
         window.open(url, '_blank');
       }
 
+      function openNhanSuPlaceholder_() {
+        document.getElementById('devNoticeOverlay').style.display = 'flex';
+      }
+
       function closeDevNotice_() {
         document.getElementById('devNoticeOverlay').style.display = 'none';
-      }
-
-      /* ================= NHÂN SỰ ================= */
-      let nhanSuRows_ = [];
-      let nhanSuLoadedOnce_ = false;
-
-      function openNhanSuApp_() {
-        hideHomeMenu_();
-        document.getElementById('appLayout').style.display = 'none';
-        document.getElementById('nhanSuOverlay').style.display = 'block';
-        switchNhanSuTab_('ns-dashboard');
-        if (!nhanSuLoadedOnce_) refreshNhanSu_();
-      }
-
-      function closeNhanSuApp_() {
-        document.getElementById('nhanSuOverlay').style.display = 'none';
-        showHomeMenu_();
-      }
-
-      function switchNhanSuTab_(tabId) {
-        document.querySelectorAll('#nhanSuOverlay .tab-pane').forEach(function(el) { el.classList.remove('active'); });
-        document.querySelectorAll('.ns-tab-btn').forEach(function(el) { el.classList.remove('active'); });
-        document.getElementById(tabId).classList.add('active');
-        document.querySelector('.ns-tab-btn[data-nstab="' + tabId + '"]').classList.add('active');
-      }
-
-      function refreshNhanSu_() {
-        google.script.run
-          .withSuccessHandler(function(rows) {
-            nhanSuRows_ = rows || [];
-            nhanSuLoadedOnce_ = true;
-            renderNhanSuDashboard_();
-            renderNhanSuList_();
-          })
-          .withFailureHandler(function(err) { showToast('Lỗi tải Nhân sự: ' + err.message, 'error'); })
-          .getNhanSuData();
-      }
-
-      // "Nghỉ" hôm nay = cột diLamNghi có đánh dấu (VD 'x'). ĐIỀU CHỈNH điều kiện này nếu
-      // ý nghĩa cột trên Sheet thật ngược lại (x = đi làm thay vì x = nghỉ).
-      function isAbsentToday_(r) {
-        return String(r.diLamNghi || '').trim().toLowerCase() === 'x';
-      }
-
-      function boPhanMatches_(boPhan, keyword) {
-        return String(boPhan || '').toLowerCase().indexOf(keyword) !== -1;
-      }
-
-      function renderNhanSuDashboard_() {
-        const absentToday = nhanSuRows_.filter(isAbsentToday_);
-
-        // Tổng hợp nghỉ nhiều trong tháng - vì Sheet chỉ có trạng thái CỦA HÔM NAY (không có
-        // lịch sử theo ngày), nên đây là số lần MSNV xuất hiện trong danh sách nghỉ hôm nay
-        // cộng dồn qua các lần refresh trong phiên làm việc. Muốn chính xác theo cả tháng cần
-        // Sheet có thêm 1 cột lịch sử theo ngày - hiện tại tạm đếm trong phiên đang mở app.
-        const summaryEl = document.getElementById('nsDashSummary');
-        summaryEl.innerHTML =
-          '<div class="dash-stat-card"><div class="dash-stat-label">Tổng CBCNV</div><div class="dash-stat-value">' + nhanSuRows_.length + '</div></div>' +
-          '<div class="dash-stat-card dash-stat-danger"><div class="dash-stat-label">Vắng hôm nay</div><div class="dash-stat-value">' + absentToday.length + '</div></div>';
-
-        const groups = [
-          { key: 'tien', label: 'Tiện' },
-          { key: 'phay', label: 'Phay' },
-          { key: 'nguoi', label: 'Nguội' }
-        ];
-
-        const boardsEl = document.getElementById('nsDashBoards');
-        boardsEl.innerHTML = groups.map(function(g) {
-          const rowsOfGroup = absentToday.filter(function(r) { return boPhanMatches_(r.boPhan, g.label.toLowerCase()); });
-          let bodyHtml;
-          if (rowsOfGroup.length === 0) {
-            bodyHtml = '<div class="ns-empty">Không có ai vắng hôm nay.</div>';
-          } else {
-            bodyHtml = '<table class="ns-board-table"><tr><th>MSNV</th><th>Họ và tên</th><th>Lý do vắng</th></tr>' +
-              rowsOfGroup.map(function(r) {
-                return '<tr><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td><td>' + escapeHtml_(r.lyDoVang || '') + '</td></tr>';
-              }).join('') + '</table>';
-          }
-          return '<div class="ns-board-card">' +
-            '<div class="ns-board-header">' + g.label + ' (' + rowsOfGroup.length + ' vắng)</div>' +
-            bodyHtml +
-            '</div>';
-        }).join('');
-      }
-
-      function renderNhanSuList_() {
-        const search = (document.getElementById('nsListSearchInput').value || '').trim().toLowerCase();
-        let rows = nhanSuRows_;
-        if (search) {
-          rows = rows.filter(function(r) {
-            return (String(r.msnv).toLowerCase().indexOf(search) !== -1) ||
-              (String(r.hoTen).toLowerCase().indexOf(search) !== -1) ||
-              (String(r.boPhan).toLowerCase().indexOf(search) !== -1);
-          });
-        }
-
-        const cols = [
-          { key: 'stt', label: 'STT' }, { key: 'msnv', label: 'MSNV' }, { key: 'hoTen', label: 'Họ và tên' },
-          { key: 'diLamNghi', label: 'Đi làm/Nghỉ' }, { key: 'lyDoVang', label: 'Lý do vắng' },
-          { key: 'boPhan', label: 'Bộ phận' }, { key: 'chucDanh', label: 'Chức danh' },
-          { key: 'gioiTinh', label: 'Giới tính' }, { key: 'thanhPhan', label: 'Thành phần' }, { key: 'caDem', label: 'Ca đêm' }
-        ];
-
-        let html = '<tr>' + cols.map(function(c) {
-          return '<th style="background:#003DA5;color:#fff;position:sticky;top:0;padding:6px 8px;border:1px solid #ddd;">' + c.label + '</th>';
-        }).join('') + '</tr>';
-
-        if (rows.length === 0) {
-          html += '<tr><td colspan="' + cols.length + '" class="empty-state-cell">Không có dữ liệu.</td></tr>';
-        } else {
-          rows.forEach(function(r) {
-            html += '<tr>' + cols.map(function(c) {
-              return '<td style="padding:6px 8px;border:1px solid #ddd;">' + escapeHtml_(r[c.key] || '') + '</td>';
-            }).join('') + '</tr>';
-          });
-        }
-
-        document.getElementById('nsListTable').innerHTML = html;
       }
 
       /* ================= THANH TRÊN CÙNG: MENU NGƯỜI DÙNG ================= */
@@ -4141,66 +4044,6 @@ function supabaseHeaders_() {
   };
 }
 
-/* ================= TRA CỨU BOM GỌI THẲNG SUPABASE (bỏ Apps Script khỏi đường tra cứu) =================
-   Lý do: tra cứu poll mỗi 30s x nhiều máy cả ngày -> từng là nguyên nhân chính ngốn hết quota
-   UrlFetchApp của Apps Script, khiến syncAllBOM/syncAllTienDo bị lỗi âm thầm -> Tiến độ không
-   cập nhật. Chuyển toàn bộ tra cứu (không ghi dữ liệu) sang gọi thẳng Supabase như đã làm với
-   nhãn ưu tiên, để không còn tốn quota Apps Script nữa. */
-const BOM_TABLE_DIRECT_ = 'bom_giao_viec';
-const MIN_LSX_TOKEN_LENGTH_DIRECT_ = 3;
-
-async function supabaseFetchAllDirect_(baseUrl) {
-  const PAGE_SIZE = 1000;
-  let allRows = [];
-  let from = 0;
-  while (true) {
-    const res = await fetch(baseUrl, {
-      headers: Object.assign({ Range: from + '-' + (from + PAGE_SIZE - 1) }, supabaseHeaders_())
-    });
-    if (!res.ok && res.status !== 206) throw new Error('HTTP ' + res.status);
-    const rows = await res.json();
-    allRows = allRows.concat(rows);
-    if (rows.length === 0) break;
-    from += rows.length;
-  }
-  return allRows;
-}
-
-async function searchByLSXDirect_(lsx) {
-  const rawTokens = lsx.split(/[,;\s]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
-  const tokens = rawTokens.filter(function(t) { return t.length >= MIN_LSX_TOKEN_LENGTH_DIRECT_; });
-  if (tokens.length === 0) throw new Error('Từ khóa tìm kiếm quá ngắn.');
-
-  let filterParam;
-  if (tokens.length === 1) {
-    filterParam = 'lsx=ilike.*' + encodeURIComponent(tokens[0]) + '*';
-  } else {
-    filterParam = 'or=(' + tokens.map(function(t) { return 'lsx.ilike.*' + encodeURIComponent(t) + '*'; }).join(',') + ')';
-  }
-  const url = SUPABASE_URL_DIRECT_ + '/rest/v1/' + BOM_TABLE_DIRECT_ + '?' + filterParam + '&select=*&order=thu_tu.asc';
-  return supabaseFetchAllDirect_(url);
-}
-
-async function searchByPrefixDirect_(prefix) {
-  const url = SUPABASE_URL_DIRECT_ + '/rest/v1/' + BOM_TABLE_DIRECT_ +
-    '?lsx=like.' + encodeURIComponent(prefix.trim().toUpperCase() + '.') + '*' +
-    '&select=*&order=thu_tu.asc';
-  return supabaseFetchAllDirect_(url);
-}
-
-async function suggestLSXDirect_(query) {
-  if (!query || query.trim().length < 2) return [];
-  const url = SUPABASE_URL_DIRECT_ + '/rest/v1/' + BOM_TABLE_DIRECT_ +
-    '?lsx=ilike.*' + encodeURIComponent(query.trim()) + '*' +
-    '&select=lsx&order=lsx.asc&limit=300';
-  const res = await fetch(url, { headers: supabaseHeaders_() });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const rows = await res.json();
-  const seen = {}; const result = [];
-  rows.forEach(function(r) { if (r.lsx && !seen[r.lsx]) { seen[r.lsx] = true; result.push(r.lsx); } });
-  return result.slice(0, 10);
-}
-
 async function fetchPriorityTagsDirect_() {
   const url = SUPABASE_URL_DIRECT_ + '/rest/v1/priority_tags?select=lsx,tag';
   const res = await fetch(url, { headers: supabaseHeaders_() });
@@ -4314,9 +4157,10 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       if (value.trim().length < 1) { hideDashSuggestions_(); return; }
       const myId = ++dashSuggestRequestId_;
       dashSuggestTimer_ = setTimeout(function() {
-        suggestLSXDirect_(value)
-          .then(function(list) { if (myId === dashSuggestRequestId_) showDashSuggestions_(list); })
-          .catch(function() { if (myId === dashSuggestRequestId_) hideDashSuggestions_(); });
+        google.script.run
+          .withSuccessHandler(function(list) { if (myId === dashSuggestRequestId_) showDashSuggestions_(list); })
+          .withFailureHandler(function() { if (myId === dashSuggestRequestId_) hideDashSuggestions_(); })
+          .suggestLSX(value);
       }, 250);
     });
 
@@ -5461,13 +5305,16 @@ window.addEventListener('online', tryFlushPriorityQueue_);
             .getGiaoHangData();
         } else {
           if (!currentQuery) { stop(); return; }
-          const p = currentQueryMode === 'prefix' ? searchByPrefixDirect_(currentQuery) : searchByLSXDirect_(currentQuery);
-          p.then(function(rows) {
+          const runner = google.script.run
+            .withSuccessHandler(function(rows) {
               lastRows = rows;
               render(applyFilters(rows));
               refreshSyncStatus();
               stop();
-            }).catch(function(err) { showToast('Lỗi: ' + err.message, 'error'); stop(); });
+            })
+            .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); stop(); });
+          if (currentQueryMode === 'prefix') runner.searchByPrefix(currentQuery);
+          else runner.searchByLSX(currentQuery);
         }
       }
 
