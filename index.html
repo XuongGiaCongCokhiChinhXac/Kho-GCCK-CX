@@ -2,6 +2,7 @@
   <html>
   <head>
     <base target="_top">
+    <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/gh/XuongGiaCongCokhiChinhXac/PHAN-MEM-THEO-DOI@main/favicon.png">
     <style>
       html, body { height: 100%; margin: 0; }
       body { font-family: Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box; }
@@ -241,85 +242,6 @@
         line-height: 16px;
         font-size: 12px;
         font-weight: bold;
-      }
-      .badge {
-        padding: 3px 10px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 800;
-        color: #fff;
-        white-space: nowrap;
-      }
-      .badge-off { background: #d62828; }
-      .badge-on { background: #34a853; }
-
-      /* ===== Dashboard Nhân sự - bố cục kiểu thẻ hiện đại ===== */
-      .ns-header-card {
-        background: linear-gradient(135deg, #003DA5, #1a56c4);
-        color: #fff; border-radius: 12px; padding: 18px 22px; margin: 0 16px 16px 16px;
-        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
-      }
-      .ns-header-title { font-size: 18px; font-weight: 800; }
-      .ns-header-date { font-size: 13px; opacity: 0.85; margin-top: 4px; }
-      .ns-header-updated { font-size: 12px; opacity: 0.85; display: flex; align-items: center; gap: 6px; }
-
-      .ns-stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 16px 18px 16px; }
-      .ns-stat-card {
-        flex: 1; min-width: 150px; background: #fff; border-radius: 10px; padding: 14px 16px;
-        display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        border-left: 4px solid #ccc;
-      }
-      .ns-stat-card.ns-total { border-left-color: #1a73e8; }
-      .ns-stat-card.ns-present { border-left-color: #34a853; }
-      .ns-stat-card.ns-absent { border-left-color: #d62828; }
-      .ns-stat-icon {
-        width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        font-size: 18px; color: #fff; flex-shrink: 0;
-      }
-      .ns-total .ns-stat-icon { background: #1a73e8; }
-      .ns-present .ns-stat-icon { background: #34a853; }
-      .ns-absent .ns-stat-icon { background: #d62828; }
-      .ns-stat-value { font-size: 22px; font-weight: 800; color: #1a1a1a; line-height: 1.2; }
-      .ns-stat-label { font-size: 12px; color: #777; font-weight: 700; }
-
-      .ns-panels-row { display: flex; gap: 16px; padding: 0 16px 16px 16px; flex-wrap: wrap; align-items: flex-start; }
-      .ns-panel { flex: 1; min-width: 320px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }
-      .ns-panel-header {
-        padding: 12px 16px; font-weight: 800; font-size: 14px; color: #003DA5; border-bottom: 1px solid #eee;
-        display: flex; align-items: center; gap: 8px;
-      }
-      .ns-panel-body { max-height: 380px; overflow: auto; }
-
-      .ns-absent-item {
-        display: flex; justify-content: space-between; align-items: center; gap: 10px;
-        padding: 10px 16px; border-bottom: 1px solid #f2f2f2; font-size: 13px;
-      }
-      .ns-absent-item:last-child { border-bottom: none; }
-      .ns-absent-name { font-weight: 700; color: #222; }
-      .ns-absent-sub { font-size: 12px; color: #888; margin-top: 2px; }
-      .ns-absent-reason {
-        background: #fdecea; color: #c62828; font-size: 11px; font-weight: 800;
-        padding: 3px 10px; border-radius: 12px; white-space: nowrap;
-      }
-
-      .ns-dept-item { padding: 10px 16px; border-bottom: 1px solid #f2f2f2; }
-      .ns-dept-item:last-child { border-bottom: none; }
-      .ns-dept-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
-      .ns-dept-name { font-weight: 700; color: #333; }
-      .ns-dept-count { color: #666; font-weight: 700; }
-      .ns-dept-bar-track { background: #eee; border-radius: 4px; height: 8px; overflow: hidden; }
-      .ns-dept-bar-fill { height: 100%; border-radius: 4px; background: #34a853; }
-
-      body.dark-mode .ns-stat-card, body.dark-mode .ns-panel { background: #1c1f26; }
-      body.dark-mode .ns-stat-label, body.dark-mode .ns-dept-count, body.dark-mode .ns-absent-sub { color: #9aa0ab; }
-      body.dark-mode .ns-stat-value, body.dark-mode .ns-dept-name, body.dark-mode .ns-absent-name { color: #eceef0; }
-      body.dark-mode .ns-panel-header { border-color: #2c313c; }
-      body.dark-mode .ns-absent-item, body.dark-mode .ns-dept-item { border-color: #2c313c; }
-      /* 2 nhóm nút điều hướng (Tiến độ / Nhân sự) thay phiên nhau hiện trong sidebar -
-        phải tự làm flex-column + flex:1 y hệt .sidebar gốc, nếu không các phần tử con
-        dùng flex:1 (VD .sidebar-category-list) sẽ mất khả năng co giãn đúng chiều cao. */
-      #sidebarTienDoGroup, #sidebarNhanSuGroup {
-        display: flex; flex-direction: column; flex: 1; min-height: 0;
       }
       .filter-icon {
         display: inline-block;
@@ -736,7 +658,6 @@
         border-color: #1a73e8 !important;
       }
       body.dark-mode .filter-empty { color: #7a808c; }
-      body.dark-mode .ns-dept-item[style*="fdecea"] { background: #3a2020 !important; }
       body.dark-mode .empty-state-cell { background: #1c1f26; color: #7a808c; }
 
       /* ===== Sửa lỗi các dòng Gấp/Ưu tiên "biến mất" trong Dashboard khi bật chế độ tối:
@@ -1286,7 +1207,7 @@
               <div class="home-menu-icon"><i class="fa-solid fa-chart-pie"></i></div>
               <div class="home-menu-label">Tiến độ đơn hàng</div>
             </div>
-            <div class="home-menu-card" onclick="openNhanSuApp_()">
+            <div class="home-menu-card" onclick="openNhanSuPlaceholder_()">
               <div class="home-menu-icon"><i class="fa-solid fa-users"></i></div>
               <div class="home-menu-label">Nhân sự</div>
             </div>
@@ -1306,27 +1227,15 @@
     <div class="app-layout" id="appLayout" style="display:none;">
       <nav class="sidebar collapsed" id="mainSidebar">
         <button class="sidebar-toggle" onclick="showHomeMenu_()" title="Về màn hình chọn phần mềm"><i class="fa-solid fa-bars"></i></button>
-
-        <div id="sidebarTienDoGroup">
-          <button class="sidebar-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
-            <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
-          </button>
-          <button class="sidebar-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
-            <i class="fa-solid fa-magnifying-glass-chart"></i><span class="nav-label">Tra cứu</span>
-          </button>
-          <div class="sidebar-divider"></div>
-          <div class="sidebar-section-label nav-label">Loại đơn hàng</div>
-          <div id="sidebarCategoryButtons" class="sidebar-category-list"></div>
-        </div>
-
-        <div id="sidebarNhanSuGroup" style="display:none;">
-          <button class="sidebar-nav-btn" data-tab="tab-nhansu-dashboard" onclick="switchTab('tab-nhansu-dashboard')">
-            <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
-          </button>
-          <button class="sidebar-nav-btn" data-tab="tab-nhansu-list" onclick="switchTab('tab-nhansu-list')">
-            <i class="fa-solid fa-address-card"></i><span class="nav-label">Nhân sự</span>
-          </button>
-        </div>
+        <button class="sidebar-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+          <i class="fa-solid fa-chart-pie"></i><span class="nav-label">Dashboard</span>
+        </button>
+        <button class="sidebar-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
+          <i class="fa-solid fa-magnifying-glass-chart"></i><span class="nav-label">Tra cứu</span>
+        </button>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section-label nav-label">Loại đơn hàng</div>
+        <div id="sidebarCategoryButtons" class="sidebar-category-list"></div>
       </nav>
 
       <!-- Thanh điều hướng dưới cùng - CHỈ hiện trên mobile (xem media query 768px),
@@ -1335,17 +1244,11 @@
         <button class="mobile-nav-btn" onclick="showHomeMenu_()">
           <i class="fa-solid fa-house"></i><span>Trang chủ</span>
         </button>
-        <button class="mobile-nav-btn mobile-nav-tiendo active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+        <button class="mobile-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
           <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
         </button>
-        <button class="mobile-nav-btn mobile-nav-tiendo" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
+        <button class="mobile-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
           <i class="fa-solid fa-magnifying-glass-chart"></i><span>Tra cứu</span>
-        </button>
-        <button class="mobile-nav-btn mobile-nav-nhansu" data-tab="tab-nhansu-dashboard" style="display:none;" onclick="switchTab('tab-nhansu-dashboard')">
-          <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
-        </button>
-        <button class="mobile-nav-btn mobile-nav-nhansu" data-tab="tab-nhansu-list" style="display:none;" onclick="switchTab('tab-nhansu-list')">
-          <i class="fa-solid fa-address-card"></i><span>Nhân sự</span>
         </button>
       </nav>
 
@@ -1450,111 +1353,6 @@
             </button>
           </div>
           <div id="dashboardResult" class="tracking-table-wrap"></div>
-        </div>
-
-        <div id="tab-nhansu-dashboard" class="tab-pane" style="flex-direction:column; overflow:auto;">
-          <div class="ns-header-card" style="margin-top:16px;">
-            <div>
-              <div class="ns-header-title"><i class="fa-solid fa-users" style="margin-right:8px;"></i>Dashboard Nhân sự</div>
-              <div class="ns-header-date" id="nsHeaderDate"></div>
-            </div>
-            <div class="ns-header-updated"><i class="fa-solid fa-clock"></i><span id="nsHeaderUpdated"></span></div>
-          </div>
-
-          <div id="nsDashStats" class="ns-stats-row"></div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:0 16px 10px 16px;">
-            <div id="nsPeriodFilters" class="quick-filters" style="margin:0;"></div>
-            <div id="nsCompareRow" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
-          </div>
-
-          <div class="ns-panels-row">
-            <div class="ns-panel">
-              <div class="ns-panel-header"><i class="fa-solid fa-user-slash" style="color:#d62828;"></i>Ai vắng hôm nay</div>
-              <div class="ns-panel-body" id="nsAbsentTodayPanel"></div>
-            </div>
-            <div class="ns-panel">
-              <div class="ns-panel-header"><i class="fa-solid fa-chart-simple" style="color:#1a73e8;"></i>Theo bộ phận (hôm nay)</div>
-              <div class="ns-panel-body" id="nsDeptPanel"></div>
-            </div>
-          </div>
-
-          <div class="ns-panels-row">
-            <div class="ns-panel">
-              <div class="ns-panel-header"><i class="fa-solid fa-chart-line" style="color:#00b894;"></i>Xu hướng vắng
-                <span id="nsPeriodLabel1" style="font-weight:400; color:#999; font-size:12px; margin-left:6px;"></span></div>
-              <div class="ns-panel-body" id="nsTrendPanel" style="padding:14px;"></div>
-            </div>
-            <div class="ns-panel">
-              <div class="ns-panel-header"><i class="fa-solid fa-ranking-star" style="color:#b45309;"></i>Top vắng nhiều nhất trong kỳ</div>
-              <div class="ns-panel-body" id="nsTopAbsencePanel"></div>
-            </div>
-          </div>
-
-          <div class="ns-panels-row">
-            <div class="ns-panel">
-              <div class="ns-panel-header"><i class="fa-solid fa-triangle-exclamation" style="color:#d62828;"></i>Tỷ lệ vắng theo bộ phận trong kỳ</div>
-              <div class="ns-panel-body" id="nsDeptRatePanel"></div>
-            </div>
-            <div class="ns-panel">
-              <div class="ns-panel-header"><i class="fa-solid fa-calendar" style="color:#1a73e8;"></i>Lịch mật độ vắng
-                <span id="nsPeriodLabel2" style="font-weight:400; color:#999; font-size:12px; margin-left:6px;"></span></div>
-              <div class="ns-panel-body" id="nsHeatmapPanel" style="padding:14px;"></div>
-            </div>
-          </div>
-
-          <div style="display:flex; gap:16px; flex-wrap:wrap; padding:0 16px 16px 16px; align-items:flex-start;">
-            <div class="ns-panel" style="flex:1; min-width:320px;">
-              <div class="ns-panel-header"><i class="fa-solid fa-clock" style="color:#1a73e8;"></i>Tăng ca hôm nay</div>
-              <div class="ns-panel-body" style="max-height:340px; overflow:auto;">
-                <table id="nsTangCaTable"></table>
-              </div>
-            </div>
-            <div class="ns-panel" style="flex:1; min-width:320px;">
-              <div class="ns-panel-header"><i class="fa-solid fa-calendar-week" style="color:#8e44ad;"></i>Đăng ký đi làm Chủ nhật</div>
-              <div class="ns-panel-body" style="max-height:340px; overflow:auto;">
-                <table id="nsChuNhatTable"></table>
-              </div>
-            </div>
-          </div>
-
-          <div class="ns-panels-row">
-            <div class="ns-panel" style="flex:1;">
-              <div class="ns-panel-header"><i class="fa-solid fa-business-time" style="color:#8e44ad;"></i>Tổng hợp Tăng ca/Chủ nhật theo kỳ
-                <span id="nsPeriodLabel3" style="font-weight:400; color:#999; font-size:12px; margin-left:6px;"></span></div>
-              <div class="ns-panel-body" id="nsTangCaSummaryPanel"></div>
-            </div>
-          </div>
-
-          <div style="padding:0 16px 20px 16px;">
-            <div class="ns-panel">
-              <div class="ns-panel-header"><i class="fa-solid fa-calendar-days" style="color:#b45309;"></i>Vắng nhiều trong tháng</div>
-              <div class="ns-panel-body" style="max-height:none;">
-                <table id="nsMonthlyAbsentTable"></table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="tab-nhansu-list" class="tab-pane">
-          <div class="header-area">
-            <div class="title-row">
-              <h2>Danh sách Nhân sự</h2>
-              <div class="title-row-actions">
-                <button id="nsRefreshBtn" class="icon-btn" title="Làm mới dữ liệu" onclick="loadNhanSuList_(true)">
-                  <i class="fa-solid fa-arrows-rotate"></i>
-                </button>
-              </div>
-            </div>
-            <div class="search-row">
-              <div class="search-input-wrap">
-                <input type="text" id="nsSearchInput" placeholder="Tìm theo MSNV / Họ tên / Bộ phận..." oninput="renderNhanSuTable_()" autocomplete="off" />
-              </div>
-            </div>
-          </div>
-          <div class="tracking-table-wrap">
-            <table id="nsListTable"></table>
-          </div>
         </div>
 
         </div><!-- /app-main -->
@@ -1770,7 +1568,7 @@
           .getNotifications(0);
       }
 
-      const NOTIF_POLL_MS = 45000; // 45 giây - thông báo không cần realtime tới mức 20s - vẫn đủ nhanh, giảm 1 nửa số lần gọi
+      const NOTIF_POLL_MS = 20000; // 20 giây - vẫn đủ nhanh, giảm 1 nửa số lần gọi
       function pollNotifications_() {
         google.script.run
           .withSuccessHandler(function(rows) {
@@ -2016,7 +1814,7 @@
       let pollTimer = null;
       let searchRequestId = 0;       // dùng để bỏ qua kết quả trả về trễ/đã bị hủy
       const categoryCache = {};      // prefix -> rows, hiện ngay lập tức lần bấm sau (SWR)
-      const POLL_INTERVAL_MS = 90000; // tăng lên 90s - giảm 3 lần số lệnh gọi Supabase/ngày cho tra cứu
+      const POLL_INTERVAL_MS = 30000; // 30 giây - giảm tải Supabase, vẫn đủ nhanh để phát hiện thay đổi
 
       /* ================= CHỌN Ô KIỂU EXCEL (hỗ trợ Ctrl+Click / Shift+Click) ================= */
       let displayedRows = [];   // danh sách dòng đang hiển thị (sau lọc) theo đúng thứ tự trên bảng
@@ -2793,20 +2591,8 @@
       function startPolling() {
         stopPolling();
         if (!currentQuery) return;
-        if (document.hidden) return; // tab đang ẩn (chuyển app khác/khóa máy) -> không poll vô ích
         pollTimer = setInterval(pollForUpdates, POLL_INTERVAL_MS);
       }
-
-      // Dừng hẳn polling khi tab bị ẩn, bật lại + lấy ngay bản mới nhất khi quay lại xem -
-      // đây là phần quan trọng nhất: trước đây poll chạy NGẦM 30s/lần dù không ai nhìn màn hình.
-      document.addEventListener('visibilitychange', function() {
-        if (document.hidden) {
-          stopPolling();
-        } else if (currentQuery) {
-          pollForUpdates();
-          startPolling();
-        }
-      });
 
       function stopPolling() {
         if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -3303,7 +3089,7 @@
 
       let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
       let trackingPollTimer_ = null;
-      const TRACKING_POLL_INTERVAL_MS = 60000; // 60 giây - Nhận phôi/Giao hàng đã có cập nhật lạc quan ngay khi lưu, không cần poll dày - giảm tải, vẫn đủ nhanh cho Nhận phôi/Giao hàng
+      const TRACKING_POLL_INTERVAL_MS = 20000; // 20 giây - giảm tải, vẫn đủ nhanh cho Nhận phôi/Giao hàng
 
       function switchTab(tabId) {
         document.querySelectorAll('.tab-pane').forEach(function(el) { el.classList.remove('active'); });
@@ -3319,13 +3105,6 @@
           // chuyển qua lại tab Dashboard đều build lại hàng ngàn dòng gây giật, khựng.
           if (dashboardRows.length === 0) refreshDashboard_();
           else if (!dashboardRenderedOnce_) renderDashboard_();
-        } else if (tabId === 'tab-nhansu-dashboard') {
-          activeTrackingTab_ = null;
-          loadNhanSuDashboard_();
-        } else if (tabId === 'tab-nhansu-list') {
-          activeTrackingTab_ = null;
-          if (nhanSuAll_.length === 0) loadNhanSuList_();
-          else renderNhanSuTable_();
         } else {
           activeTrackingTab_ = null;
         }
@@ -3381,32 +3160,9 @@
         if (layout) layout.style.display = 'flex';
       }
 
-      let currentApp_ = 'tiendo'; // 'tiendo' | 'nhansu' - app nào đang hiển thị trong appLayout
-
-      // Ẩn/hiện đúng nhóm nút sidebar (desktop) + bottom nav (mobile) tương ứng với app đang mở.
-      function setActiveApp_(appName) {
-        currentApp_ = appName;
-        const isNhanSu = appName === 'nhansu';
-        document.getElementById('sidebarTienDoGroup').style.display = isNhanSu ? 'none' : 'flex';
-        document.getElementById('sidebarNhanSuGroup').style.display = isNhanSu ? 'flex' : 'none';
-        document.querySelectorAll('.mobile-nav-tiendo').forEach(function(el) { el.style.display = isNhanSu ? 'none' : 'flex'; });
-        document.querySelectorAll('.mobile-nav-nhansu').forEach(function(el) { el.style.display = isNhanSu ? 'flex' : 'none'; });
-      }
-
       function openTienDoApp_() {
         hideHomeMenu_();
-        setActiveApp_('tiendo');
         switchTab('tab-dashboard');
-      }
-
-      function openNhanSuApp_() {
-        hideHomeMenu_();
-        setActiveApp_('nhansu');
-        switchTab('tab-nhansu-dashboard');
-        // Tải luôn danh sách Nhân sự song song với Dashboard (switchTab ở trên đã tự gọi
-        // loadNhanSuDashboard_) - để khi người dùng bấm sang tab "Nhân sự" thì bảng đã có
-        // sẵn dữ liệu, không phải đợi tải mới thấy.
-        if (nhanSuAll_.length === 0) loadNhanSuList_();
       }
 
       function openExternalTool_(url) {
@@ -4155,7 +3911,7 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
-const PRIORITY_TAGS_POLL_MS = 30000; // 30 giây - nhãn ưu tiên không đổi liên tục, khỏi cần dày - gọi thẳng Supabase, không lo tốn quota Apps Script nữa
+const PRIORITY_TAGS_POLL_MS = 10000; // 10 giây - gọi thẳng Supabase, không lo tốn quota Apps Script nữa
 function pollPriorityTagsSilently_() {
   fetchPriorityTagsDirect_()
     .then(function(tags) {
@@ -5580,289 +5336,6 @@ window.addEventListener('online', tryFlushPriorityQueue_);
             showToast('Không tải được dữ liệu ban đầu: ' + err.message, 'error');
           })
           .getInitialAppData();
-      }
-
-      /* ================= NHÂN SỰ (gộp chung app, không mở tab mới nữa) =================
-        Dùng lại đúng 2 hàm backend đã có sẵn trong Code.gs và đã nằm trong
-        API_ALLOWED_FUNCTIONS: getNhanSuDashboard() và getNhanSuData() - không cần
-        sửa gì phía server, chỉ gọi qua google.script.run như các phần khác của app. */
-      let nhanSuAll_ = [];
-
-      const NS_WEEKDAY_NAMES_ = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-
-      let currentNsPeriod_ = 'today';
-      const NS_PERIOD_OPTIONS_ = [
-        { key: 'today', label: 'Hôm nay' },
-        { key: 'week', label: 'Tuần này' },
-        { key: 'month', label: 'Tháng này' },
-        { key: 'quarter', label: 'Quý này' },
-        { key: 'year', label: 'Năm nay' }
-      ];
-      const NS_RATE_WARN_THRESHOLD = 15; // % - vượt ngưỡng này thì cảnh báo đỏ (tính năng 6)
-
-      function renderNsPeriodFilters_() {
-        const el = document.getElementById('nsPeriodFilters');
-        if (!el) return;
-        el.innerHTML = NS_PERIOD_OPTIONS_.map(function(o) {
-          return '<button type="button" class="quick-btn' + (currentNsPeriod_ === o.key ? ' active' : '') +
-            '" onclick="onNsPeriodChange_(\'' + o.key + '\')">' + o.label + '</button>';
-        }).join('');
-      }
-
-      function onNsPeriodChange_(period) {
-        currentNsPeriod_ = period;
-        renderNsPeriodFilters_();
-        loadNhanSuPeriodStats_();
-      }
-
-      function loadNhanSuDashboard_() {
-        google.script.run
-          .withSuccessHandler(function(data) { renderNhanSuDashboard_(data); })
-          .withFailureHandler(function(err) { showToast('Lỗi tải Dashboard Nhân sự: ' + err.message, 'error'); })
-          .getNhanSuDashboard();
-
-        renderNsPeriodFilters_();
-        loadNhanSuPeriodStats_();
-        loadTangCaAndChuNhatBlocks_();
-      }
-
-      function loadNhanSuPeriodStats_() {
-        google.script.run
-          .withSuccessHandler(function(stats) { renderNsPeriodStats_(stats); })
-          .withFailureHandler(function(err) { showToast('Lỗi tải thống kê theo kỳ: ' + err.message, 'error'); })
-          .getNhanSuPeriodStats(currentNsPeriod_);
-
-        google.script.run
-          .withSuccessHandler(function(summary) { renderNsTangCaSummary_(summary); })
-          .withFailureHandler(function() { /* im lặng - có thể chưa có log ngày nào */ })
-          .getTangCaChuNhatSummary(currentNsPeriod_);
-      }
-
-      function renderNsPeriodStats_(stats) {
-        document.getElementById('nsPeriodLabel1').textContent = stats.periodLabel || '';
-        document.getElementById('nsPeriodLabel2').textContent = stats.periodLabel || '';
-        const lbl3 = document.getElementById('nsPeriodLabel3');
-        if (lbl3) lbl3.textContent = stats.periodLabel || '';
-
-        // ---- Tính năng 2: Biểu đồ xu hướng vắng (bar ngang theo ngày/tháng) ----
-        const trendEl = document.getElementById('nsTrendPanel');
-        if (!stats.trend || stats.trend.length === 0) {
-          trendEl.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu trong kỳ này.</div>';
-        } else {
-          const maxCount = Math.max.apply(null, stats.trend.map(function(t) { return t.count; })) || 1;
-          trendEl.innerHTML = stats.trend.map(function(t) {
-            const pct = Math.round((t.count / maxCount) * 100);
-            return '<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px;">' +
-              '<span style="width:56px; color:#777; flex-shrink:0;">' + t.label + '</span>' +
-              '<div style="flex:1; background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
-                '<div style="width:' + pct + '%; background:#00b894; height:100%;"></div>' +
-              '</div>' +
-              '<span style="width:24px; text-align:right; font-weight:700; color:#333;">' + t.count + '</span>' +
-            '</div>';
-          }).join('');
-        }
-
-        // ---- Tính năng 3: Top vắng nhiều nhất trong kỳ ----
-        const topEl = document.getElementById('nsTopAbsencePanel');
-        topEl.innerHTML = (stats.topAbsence && stats.topAbsence.length) ? stats.topAbsence.map(function(r) {
-          return '<div class="ns-absent-item">' +
-            '<div><div class="ns-absent-name">' + escapeHtml_(r.hoTen) + '</div>' +
-              '<div class="ns-absent-sub">' + escapeHtml_(r.boPhan || '') + '</div></div>' +
-            '<span class="ns-absent-reason" style="background:#fdecea; color:#c62828;">' + r.soLan + ' lần</span>' +
-          '</div>';
-        }).join('') : '<div class="empty-state-cell">Không có ai vắng trong kỳ này 🎉</div>';
-
-        // ---- Tính năng 4 + 6: Tỷ lệ vắng theo bộ phận, cảnh báo >15% ----
-        const deptRateEl = document.getElementById('nsDeptRatePanel');
-        deptRateEl.innerHTML = (stats.byDept && stats.byDept.length) ? stats.byDept.map(function(d) {
-          const isWarn = d.tyLe >= NS_RATE_WARN_THRESHOLD;
-          const barColor = isWarn ? '#d62828' : (d.tyLe >= 8 ? '#fbbc04' : '#34a853');
-          return '<div class="ns-dept-item"' + (isWarn ? ' style="background:#fdecea;"' : '') + '>' +
-            '<div class="ns-dept-top">' +
-              '<span class="ns-dept-name">' + escapeHtml_(d.boPhan) +
-                (isWarn ? ' <i class="fa-solid fa-triangle-exclamation" style="color:#d62828;" title="Tỷ lệ vắng cao"></i>' : '') + '</span>' +
-              '<span class="ns-dept-count">' + d.soLuotVang + ' lượt &middot; ' + d.tyLe + '%</span>' +
-            '</div>' +
-            '<div class="ns-dept-bar-track"><div class="ns-dept-bar-fill" style="width:' + Math.min(d.tyLe, 100) + '%; background:' + barColor + ';"></div></div>' +
-          '</div>';
-        }).join('') : '<div class="empty-state-cell">Không có dữ liệu.</div>';
-
-        // ---- Tính năng 7: Lịch mật độ vắng (heatmap đơn giản dạng lưới ô vuông) ----
-        const heatmapEl = document.getElementById('nsHeatmapPanel');
-        if (!stats.trend || stats.trend.length === 0) {
-          heatmapEl.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu.</div>';
-        } else {
-          const maxCount = Math.max.apply(null, stats.trend.map(function(t) { return t.count; })) || 1;
-          heatmapEl.innerHTML = '<div style="display:flex; flex-wrap:wrap; gap:4px;">' +
-            stats.trend.map(function(t) {
-              const intensity = t.count / maxCount;
-              const bg = intensity === 0 ? '#eee' : ('rgba(214,40,40,' + (0.2 + intensity * 0.8).toFixed(2) + ')');
-              return '<div title="' + t.label + ': ' + t.count + ' lượt vắng" ' +
-                'style="width:26px; height:26px; border-radius:4px; background:' + bg +
-                '; display:flex; align-items:center; justify-content:center; font-size:9px; color:' + (intensity > 0.5 ? '#fff' : '#666') + ';">' +
-                t.count + '</div>';
-            }).join('') +
-          '</div>';
-        }
-      }
-
-      // ---- Tính năng 8: Tổng hợp Tăng ca/Chủ nhật theo kỳ ----
-      function renderNsTangCaSummary_(summary) {
-        const el = document.getElementById('nsTangCaSummaryPanel');
-        if (!el) return;
-        if (!summary || !summary.byDept || summary.byDept.length === 0) {
-          el.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu lịch sử (log bắt đầu chạy từ khi bật trigger, cần chờ ít nhất 1 ngày).</div>';
-          return;
-        }
-        let html = '<table style="width:100%;"><tr><th>Bộ phận</th><th>Tổng suất tăng ca</th><th>Tổng lượt đi làm CN</th></tr>';
-        summary.byDept.forEach(function(d) {
-          html += '<tr><td>' + escapeHtml_(d.boPhan) + '</td><td><b>' + d.tongTangCa + '</b></td><td><b>' + d.tongChuNhat + '</b></td></tr>';
-        });
-        html += '</table>';
-        el.innerHTML = html;
-      }
-
-      /** Tải + vẽ 2 bảng Tăng ca / Đi làm Chủ nhật, đọc trực tiếp từ sheet "DS TC". */
-      function loadTangCaAndChuNhatBlocks_() {
-        google.script.run
-          .withSuccessHandler(function(block) { renderGenericBlockTable_('nsTangCaTable', block); })
-          .withFailureHandler(function(err) { showToast('Lỗi tải bảng Tăng ca: ' + err.message, 'error'); })
-          .getTangCaData();
-
-        google.script.run
-          .withSuccessHandler(function(block) { renderGenericBlockTable_('nsChuNhatTable', block); })
-          .withFailureHandler(function(err) { showToast('Lỗi tải bảng Đi làm Chủ nhật: ' + err.message, 'error'); })
-          .getDiLamChuNhatData();
-      }
-
-      /** Vẽ 1 bảng generic từ {headers, rows} - tự tô đậm dòng "Tổng cộng". */
-      function renderGenericBlockTable_(tableId, block) {
-        const table = document.getElementById(tableId);
-        if (!table) return;
-        if (!block || !block.headers || block.headers.length === 0 || block.rows.length === 0) {
-          table.innerHTML = '<tr><td class="empty-state-cell">Không có dữ liệu.</td></tr>';
-          return;
-        }
-        let html = '<tr>' + block.headers.map(function(h) {
-          return '<th style="white-space:normal;">' + escapeHtml_(h) + '</th>';
-        }).join('') + '</tr>';
-
-        block.rows.forEach(function(row) {
-          const firstCell = String(row[0] || '').trim().toLowerCase();
-          const isTotal = firstCell.indexOf('tổng') === 0;
-          html += '<tr' + (isTotal ? ' style="font-weight:800; background:#eaf2ff;"' : '') + '>' +
-            row.map(function(v) { return '<td>' + escapeHtml_(String(v)) + '</td>'; }).join('') +
-            '</tr>';
-        });
-        table.innerHTML = html;
-      }
-
-      function renderNhanSuDashboard_(data) {
-        const now = new Date();
-        const dateStr = NS_WEEKDAY_NAMES_[now.getDay()] + ', ' +
-          String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
-        document.getElementById('nsHeaderDate').textContent = dateStr;
-        document.getElementById('nsHeaderUpdated').textContent = 'Cập nhật ' + now.toLocaleTimeString('vi-VN');
-
-        const coMat = data.totalNhanSu - data.absentCount;
-
-        // ---- 3 thẻ thống kê ----
-        document.getElementById('nsDashStats').innerHTML =
-          '<div class="ns-stat-card ns-total">' +
-            '<div class="ns-stat-icon"><i class="fa-solid fa-users"></i></div>' +
-            '<div><div class="ns-stat-value">' + data.totalNhanSu + '</div><div class="ns-stat-label">Tổng nhân sự</div></div>' +
-          '</div>' +
-          '<div class="ns-stat-card ns-present">' +
-            '<div class="ns-stat-icon"><i class="fa-solid fa-circle-check"></i></div>' +
-            '<div><div class="ns-stat-value">' + coMat + '</div><div class="ns-stat-label">Có mặt hôm nay</div></div>' +
-          '</div>' +
-          '<div class="ns-stat-card ns-absent">' +
-            '<div class="ns-stat-icon"><i class="fa-solid fa-user-slash"></i></div>' +
-            '<div><div class="ns-stat-value">' + data.absentCount + '</div><div class="ns-stat-label">Vắng hôm nay</div></div>' +
-          '</div>';
-
-        // ---- So sánh nhanh: hôm nay vs trung bình 7/30 ngày (tính năng 5) ----
-        const cmp = data.compare || { todayCount: data.absentCount, avg7: 0, avg30: 0 };
-        function deltaBadge_(current, avg) {
-          if (!avg) return '';
-          const diff = current - avg;
-          const color = diff > 0 ? '#d62828' : (diff < 0 ? '#2e7d32' : '#777');
-          const icon = diff > 0 ? '&#9650;' : (diff < 0 ? '&#9660;' : '&#9679;');
-          return '<span style="color:' + color + '; font-size:11px; font-weight:700; margin-left:6px;">' + icon + ' ' + Math.abs(diff).toFixed(1) + '</span>';
-        }
-        document.getElementById('nsCompareRow').innerHTML =
-          '<div class="dash-date-card"><div class="dash-stat-label">Vắng hôm nay</div><div class="dash-stat-value">' + cmp.todayCount + '</div></div>' +
-          '<div class="dash-date-card"><div class="dash-stat-label">TB 7 ngày qua</div><div class="dash-stat-value">' + cmp.avg7 + deltaBadge_(cmp.todayCount, cmp.avg7) + '</div></div>' +
-          '<div class="dash-date-card"><div class="dash-stat-label">TB 30 ngày qua</div><div class="dash-stat-value">' + cmp.avg30 + deltaBadge_(cmp.todayCount, cmp.avg30) + '</div></div>';
-
-        // ---- Panel "Ai vắng hôm nay" ----
-        const absentPanel = document.getElementById('nsAbsentTodayPanel');
-        absentPanel.innerHTML = data.absentToday.length ? data.absentToday.map(function(r) {
-          return '<div class="ns-absent-item">' +
-            '<div><div class="ns-absent-name">' + escapeHtml_(r.hoTen) + '</div>' +
-              '<div class="ns-absent-sub">' + escapeHtml_(r.boPhan || '') + '</div></div>' +
-            '<span class="ns-absent-reason">' + escapeHtml_(r.lyDoVang || 'Chưa rõ lý do') + '</span>' +
-          '</div>';
-        }).join('') : '<div class="empty-state-cell">Không có ai vắng hôm nay 🎉</div>';
-
-        // ---- Panel "Theo bộ phận" ----
-        const deptPanel = document.getElementById('nsDeptPanel');
-        const dept = data.theoBoPhan || [];
-        deptPanel.innerHTML = dept.length ? dept.map(function(d) {
-          const pct = d.tong ? Math.round((d.coMat / d.tong) * 100) : 0;
-          const barColor = pct >= 90 ? '#34a853' : (pct >= 70 ? '#fbbc04' : '#d62828');
-          return '<div class="ns-dept-item">' +
-            '<div class="ns-dept-top"><span class="ns-dept-name">' + escapeHtml_(d.boPhan) + '</span>' +
-              '<span class="ns-dept-count">' + d.coMat + '/' + d.tong + '</span></div>' +
-            '<div class="ns-dept-bar-track"><div class="ns-dept-bar-fill" style="width:' + pct + '%; background:' + barColor + ';"></div></div>' +
-          '</div>';
-        }).join('') : '<div class="empty-state-cell">Chưa có dữ liệu.</div>';
-
-        // ---- Bảng vắng nhiều trong tháng (giữ dạng bảng, đã đủ rõ) ----
-        document.getElementById('nsMonthlyAbsentTable').innerHTML =
-          '<tr><th>MSNV</th><th>Họ và tên</th><th>Bộ phận</th><th>Số lần vắng trong tháng</th></tr>' +
-          (data.monthlyAbsence.length ? data.monthlyAbsence.map(function(r) {
-            return '<tr><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td><td>' + escapeHtml_(r.boPhan || '') + '</td><td><b>' + r.soLanVang + '</b></td></tr>';
-          }).join('') : '<tr><td colspan="4" class="empty-state-cell">Chưa có dữ liệu lịch sử vắng.</td></tr>');
-      }
-
-      function loadNhanSuList_(forceRefresh) {
-        const btn = document.getElementById('nsRefreshBtn');
-        if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
-        function stop() { if (btn) { btn.classList.remove('spinning'); btn.disabled = false; } }
-
-        google.script.run
-          .withSuccessHandler(function(rows) {
-            nhanSuAll_ = rows || [];
-            renderNhanSuTable_();
-            stop();
-            if (forceRefresh) showToast('Đã làm mới danh sách Nhân sự.', 'success');
-          })
-          .withFailureHandler(function(err) { showToast('Lỗi tải danh sách Nhân sự: ' + err.message, 'error'); stop(); })
-          .getNhanSuData(!!forceRefresh);
-      }
-
-      function renderNhanSuTable_() {
-        const kwEl = document.getElementById('nsSearchInput');
-        const kw = kwEl ? kwEl.value.trim().toLowerCase() : '';
-        const rows = nhanSuAll_.filter(function(r) {
-          if (!kw) return true;
-          return (r.msnv + r.hoTen + r.boPhan).toLowerCase().indexOf(kw) !== -1;
-        });
-
-        let html = '<tr><th>STT</th><th>MSNV</th><th>Họ và tên</th><th>Đi làm/Nghỉ</th><th>Lý do vắng</th>' +
-          '<th>Bộ phận</th><th>Chức danh</th><th>Giới tính</th><th>Thành phần</th><th>Ca đêm</th></tr>';
-
-        rows.forEach(function(r, i) {
-          html += '<tr>' +
-            '<td>' + (i + 1) + '</td><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td>' +
-            '<td><span class="badge ' + (r.diLam ? 'badge-on' : 'badge-off') + '">' + (r.diLam ? 'Đi làm' : 'Nghỉ') + '</span></td>' +
-            '<td>' + escapeHtml_(r.lyDoVang || '') + '</td><td>' + escapeHtml_(r.boPhan) + '</td><td>' + escapeHtml_(r.chucDanh) + '</td>' +
-            '<td>' + escapeHtml_(r.gioiTinh) + '</td><td>' + escapeHtml_(r.thanhPhan) + '</td>' +
-            '<td>' + (r.caDem ? '✔' : '') + '</td></tr>';
-        });
-
-        document.getElementById('nsListTable').innerHTML = html || '<tr><td class="empty-state-cell">Không có dữ liệu.</td></tr>';
       }
           function applyLoginScreenState_() {
       let lastUser = null;
