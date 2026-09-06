@@ -252,6 +252,69 @@
       }
       .badge-off { background: #d62828; }
       .badge-on { background: #34a853; }
+
+      /* ===== Dashboard Nhân sự - bố cục kiểu thẻ hiện đại ===== */
+      .ns-header-card {
+        background: linear-gradient(135deg, #003DA5, #1a56c4);
+        color: #fff; border-radius: 12px; padding: 18px 22px; margin: 0 16px 16px 16px;
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+      }
+      .ns-header-title { font-size: 18px; font-weight: 800; }
+      .ns-header-date { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+      .ns-header-updated { font-size: 12px; opacity: 0.85; display: flex; align-items: center; gap: 6px; }
+
+      .ns-stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 16px 18px 16px; }
+      .ns-stat-card {
+        flex: 1; min-width: 150px; background: #fff; border-radius: 10px; padding: 14px 16px;
+        display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        border-left: 4px solid #ccc;
+      }
+      .ns-stat-card.ns-total { border-left-color: #1a73e8; }
+      .ns-stat-card.ns-present { border-left-color: #34a853; }
+      .ns-stat-card.ns-absent { border-left-color: #d62828; }
+      .ns-stat-icon {
+        width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: 18px; color: #fff; flex-shrink: 0;
+      }
+      .ns-total .ns-stat-icon { background: #1a73e8; }
+      .ns-present .ns-stat-icon { background: #34a853; }
+      .ns-absent .ns-stat-icon { background: #d62828; }
+      .ns-stat-value { font-size: 22px; font-weight: 800; color: #1a1a1a; line-height: 1.2; }
+      .ns-stat-label { font-size: 12px; color: #777; font-weight: 700; }
+
+      .ns-panels-row { display: flex; gap: 16px; padding: 0 16px 16px 16px; flex-wrap: wrap; align-items: flex-start; }
+      .ns-panel { flex: 1; min-width: 320px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }
+      .ns-panel-header {
+        padding: 12px 16px; font-weight: 800; font-size: 14px; color: #003DA5; border-bottom: 1px solid #eee;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .ns-panel-body { max-height: 380px; overflow: auto; }
+
+      .ns-absent-item {
+        display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        padding: 10px 16px; border-bottom: 1px solid #f2f2f2; font-size: 13px;
+      }
+      .ns-absent-item:last-child { border-bottom: none; }
+      .ns-absent-name { font-weight: 700; color: #222; }
+      .ns-absent-sub { font-size: 12px; color: #888; margin-top: 2px; }
+      .ns-absent-reason {
+        background: #fdecea; color: #c62828; font-size: 11px; font-weight: 800;
+        padding: 3px 10px; border-radius: 12px; white-space: nowrap;
+      }
+
+      .ns-dept-item { padding: 10px 16px; border-bottom: 1px solid #f2f2f2; }
+      .ns-dept-item:last-child { border-bottom: none; }
+      .ns-dept-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+      .ns-dept-name { font-weight: 700; color: #333; }
+      .ns-dept-count { color: #666; font-weight: 700; }
+      .ns-dept-bar-track { background: #eee; border-radius: 4px; height: 8px; overflow: hidden; }
+      .ns-dept-bar-fill { height: 100%; border-radius: 4px; background: #34a853; }
+
+      body.dark-mode .ns-stat-card, body.dark-mode .ns-panel { background: #1c1f26; }
+      body.dark-mode .ns-stat-label, body.dark-mode .ns-dept-count, body.dark-mode .ns-absent-sub { color: #9aa0ab; }
+      body.dark-mode .ns-stat-value, body.dark-mode .ns-dept-name, body.dark-mode .ns-absent-name { color: #eceef0; }
+      body.dark-mode .ns-panel-header { border-color: #2c313c; }
+      body.dark-mode .ns-absent-item, body.dark-mode .ns-dept-item { border-color: #2c313c; }
       /* 2 nhóm nút điều hướng (Tiến độ / Nhân sự) thay phiên nhau hiện trong sidebar -
         phải tự làm flex-column + flex:1 y hệt .sidebar gốc, nếu không các phần tử con
         dùng flex:1 (VD .sidebar-category-list) sẽ mất khả năng co giãn đúng chiều cao. */
@@ -1388,21 +1451,34 @@
           <div id="dashboardResult" class="tracking-table-wrap"></div>
         </div>
 
-        <div id="tab-nhansu-dashboard" class="tab-pane">
-          <div class="tracking-toolbar" style="flex-wrap:wrap;">
-            <h2 style="margin:0;">Dashboard Nhân sự</h2>
-          </div>
-          <div id="nsDashStats" class="dash-stats-row"></div>
-
-          <div style="padding:0 16px; overflow:auto;">
-            <h3 style="color:#003DA5; font-size:15px; margin:14px 0 8px 0;">Nhân sự vắng hôm nay</h3>
-            <div class="tracking-table-wrap" style="max-height:320px; margin-bottom:22px; overflow:auto;">
-              <table id="nsAbsentTodayTable"></table>
+        <div id="tab-nhansu-dashboard" class="tab-pane" style="flex-direction:column; overflow:auto;">
+          <div class="ns-header-card" style="margin-top:16px;">
+            <div>
+              <div class="ns-header-title"><i class="fa-solid fa-users" style="margin-right:8px;"></i>Dashboard Nhân sự</div>
+              <div class="ns-header-date" id="nsHeaderDate"></div>
             </div>
+            <div class="ns-header-updated"><i class="fa-solid fa-clock"></i><span id="nsHeaderUpdated"></span></div>
+          </div>
 
-            <h3 style="color:#003DA5; font-size:15px; margin:14px 0 8px 0;">Vắng nhiều trong tháng</h3>
-            <div class="tracking-table-wrap" style="max-height:320px; overflow:auto;">
-              <table id="nsMonthlyAbsentTable"></table>
+          <div id="nsDashStats" class="ns-stats-row"></div>
+
+          <div class="ns-panels-row">
+            <div class="ns-panel">
+              <div class="ns-panel-header"><i class="fa-solid fa-user-slash" style="color:#d62828;"></i>Ai vắng hôm nay</div>
+              <div class="ns-panel-body" id="nsAbsentTodayPanel"></div>
+            </div>
+            <div class="ns-panel">
+              <div class="ns-panel-header"><i class="fa-solid fa-chart-simple" style="color:#1a73e8;"></i>Theo bộ phận</div>
+              <div class="ns-panel-body" id="nsDeptPanel"></div>
+            </div>
+          </div>
+
+          <div style="padding:0 16px 20px 16px;">
+            <div class="ns-panel">
+              <div class="ns-panel-header"><i class="fa-solid fa-calendar-days" style="color:#b45309;"></i>Vắng nhiều trong tháng</div>
+              <div class="ns-panel-body" style="max-height:none;">
+                <table id="nsMonthlyAbsentTable"></table>
+              </div>
             </div>
           </div>
         </div>
@@ -5455,6 +5531,8 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         sửa gì phía server, chỉ gọi qua google.script.run như các phần khác của app. */
       let nhanSuAll_ = [];
 
+      const NS_WEEKDAY_NAMES_ = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
       function loadNhanSuDashboard_() {
         google.script.run
           .withSuccessHandler(function(data) { renderNhanSuDashboard_(data); })
@@ -5463,17 +5541,53 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       }
 
       function renderNhanSuDashboard_(data) {
+        const now = new Date();
+        const dateStr = NS_WEEKDAY_NAMES_[now.getDay()] + ', ' +
+          String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+        document.getElementById('nsHeaderDate').textContent = dateStr;
+        document.getElementById('nsHeaderUpdated').textContent = 'Cập nhật ' + now.toLocaleTimeString('vi-VN');
+
+        const coMat = data.totalNhanSu - data.absentCount;
+
+        // ---- 3 thẻ thống kê ----
         document.getElementById('nsDashStats').innerHTML =
-          '<div class="dash-stat-card"><div class="dash-stat-label">Tổng nhân sự</div><div class="dash-stat-value">' + data.totalNhanSu + '</div></div>' +
-          '<div class="dash-stat-card dash-stat-danger"><div class="dash-stat-label">Vắng hôm nay</div><div class="dash-stat-value">' + data.absentCount + '</div></div>' +
-          '<div class="dash-stat-card dash-stat-success"><div class="dash-stat-label">Đi làm hôm nay</div><div class="dash-stat-value">' + (data.totalNhanSu - data.absentCount) + '</div></div>';
+          '<div class="ns-stat-card ns-total">' +
+            '<div class="ns-stat-icon"><i class="fa-solid fa-users"></i></div>' +
+            '<div><div class="ns-stat-value">' + data.totalNhanSu + '</div><div class="ns-stat-label">Tổng nhân sự</div></div>' +
+          '</div>' +
+          '<div class="ns-stat-card ns-present">' +
+            '<div class="ns-stat-icon"><i class="fa-solid fa-circle-check"></i></div>' +
+            '<div><div class="ns-stat-value">' + coMat + '</div><div class="ns-stat-label">Có mặt hôm nay</div></div>' +
+          '</div>' +
+          '<div class="ns-stat-card ns-absent">' +
+            '<div class="ns-stat-icon"><i class="fa-solid fa-user-slash"></i></div>' +
+            '<div><div class="ns-stat-value">' + data.absentCount + '</div><div class="ns-stat-label">Vắng hôm nay</div></div>' +
+          '</div>';
 
-        document.getElementById('nsAbsentTodayTable').innerHTML =
-          '<tr><th>MSNV</th><th>Họ và tên</th><th>Bộ phận</th><th>Lý do vắng</th></tr>' +
-          (data.absentToday.length ? data.absentToday.map(function(r) {
-            return '<tr><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td><td>' + escapeHtml_(r.boPhan) + '</td><td>' + escapeHtml_(r.lyDoVang || '(chưa ghi lý do)') + '</td></tr>';
-          }).join('') : '<tr><td colspan="4" class="empty-state-cell">Không có ai vắng hôm nay 🎉</td></tr>');
+        // ---- Panel "Ai vắng hôm nay" ----
+        const absentPanel = document.getElementById('nsAbsentTodayPanel');
+        absentPanel.innerHTML = data.absentToday.length ? data.absentToday.map(function(r) {
+          return '<div class="ns-absent-item">' +
+            '<div><div class="ns-absent-name">' + escapeHtml_(r.hoTen) + '</div>' +
+              '<div class="ns-absent-sub">' + escapeHtml_(r.boPhan || '') + '</div></div>' +
+            '<span class="ns-absent-reason">' + escapeHtml_(r.lyDoVang || 'Chưa rõ lý do') + '</span>' +
+          '</div>';
+        }).join('') : '<div class="empty-state-cell">Không có ai vắng hôm nay 🎉</div>';
 
+        // ---- Panel "Theo bộ phận" ----
+        const deptPanel = document.getElementById('nsDeptPanel');
+        const dept = data.theoBoPhan || [];
+        deptPanel.innerHTML = dept.length ? dept.map(function(d) {
+          const pct = d.tong ? Math.round((d.coMat / d.tong) * 100) : 0;
+          const barColor = pct >= 90 ? '#34a853' : (pct >= 70 ? '#fbbc04' : '#d62828');
+          return '<div class="ns-dept-item">' +
+            '<div class="ns-dept-top"><span class="ns-dept-name">' + escapeHtml_(d.boPhan) + '</span>' +
+              '<span class="ns-dept-count">' + d.coMat + '/' + d.tong + '</span></div>' +
+            '<div class="ns-dept-bar-track"><div class="ns-dept-bar-fill" style="width:' + pct + '%; background:' + barColor + ';"></div></div>' +
+          '</div>';
+        }).join('') : '<div class="empty-state-cell">Chưa có dữ liệu.</div>';
+
+        // ---- Bảng vắng nhiều trong tháng (giữ dạng bảng, đã đủ rõ) ----
         document.getElementById('nsMonthlyAbsentTable').innerHTML =
           '<tr><th>MSNV</th><th>Họ và tên</th><th>Bộ phận</th><th>Số lần vắng trong tháng</th></tr>' +
           (data.monthlyAbsence.length ? data.monthlyAbsence.map(function(r) {
