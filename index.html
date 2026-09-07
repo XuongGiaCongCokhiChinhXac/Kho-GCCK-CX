@@ -2,7 +2,7 @@
   <html>
   <head>
     <base target="_top">
-   <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/XuongGiaCongCokhiChinhXac/PHAN-MEM-THEO-DOI/main/favicon.png?v=2">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/XuongGiaCongCokhiChinhXac/PHAN-MEM-THEO-DOI/main/favicon.png?v=2">
     <style>
       html, body { height: 100%; margin: 0; }
       body { font-family: Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box; }
@@ -461,7 +461,10 @@
       #prioFilterBtnAll.active,
       #prioFilterBtn-gap.active,
       #prioFilterBtn-ut1.active,
-      #prioFilterBtn-ut2.active {
+      #prioFilterBtn-ut2.active,
+      #prioFilterBtn-ut3.active,
+      #prioFilterBtn-ut4.active,
+      #prioFilterBtn-ut5.active {
         color: #fff !important;
       }
 
@@ -1028,7 +1031,7 @@
       }
       .home-menu-card:hover { box-shadow: 0 6px 16px rgba(26,115,232,0.2); transform: translateY(-2px); }
       .home-menu-icon { font-size: 42px; color: #1a73e8; line-height: 1; }
-      .home-menu-label { font-size: 13px; font-weight: 800; color: #1a73e8; letter-spacing: 0.3px; text-transform: uppercase; }
+      .home-menu-label { font-size: 13px; font-weight: 800; color: #1a73e8; letter-spacing: 0.3px; font-family: Arial, "Segoe UI", "Helvetica Neue", sans-serif; }
 
       body.dark-mode .home-menu-page { background: #14171c; }
       body.dark-mode .home-menu-sidebar { background: #1c1f26; border-color: #2c313c; }
@@ -1285,19 +1288,19 @@
           <div class="home-menu-grid">
             <div class="home-menu-card" onclick="openTienDoApp_()">
               <div class="home-menu-icon"><i class="fa-solid fa-chart-pie"></i></div>
-              <div class="home-menu-label">Tiến độ đơn hàng</div>
+              <div class="home-menu-label">TIẾN ĐỘ ĐƠN HÀNG</div>
             </div>
             <div class="home-menu-card" onclick="openNhanSuApp_()">
               <div class="home-menu-icon"><i class="fa-solid fa-users"></i></div>
-              <div class="home-menu-label">Nhân sự</div>
+              <div class="home-menu-label">NHÂN SỰ</div>
             </div>
             <div class="home-menu-card" onclick="openExternalTool_('https://script.google.com/macros/s/AKfycbw2b0feSZGUW3wBnq6xceRJw6wgQGP8LWbDITvq1Xti317z79IcH4gIEUHa4C_uHGeC/exec')">
               <div class="home-menu-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
-              <div class="home-menu-label">Dao cụ dụng cụ</div>
+              <div class="home-menu-label">DAO CỤ DỤNG CỤ</div>
             </div>
             <div class="home-menu-card" onclick="openExternalTool_('https://script.google.com/macros/s/AKfycbzAxC-4OYlp9iUSvqK86FAy7jNz18geJgXuvHL0-beHNnlbdb7X0SdnQqDXmJBPCyRM/exec')">
               <div class="home-menu-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
-              <div class="home-menu-label">Kiểm soát VT thép</div>
+              <div class="home-menu-label">KIỂM SOÁT VT THÉP</div>
             </div>
           </div>
         </div>
@@ -1316,8 +1319,11 @@
             <i class="fa-solid fa-magnifying-glass-chart"></i><span class="nav-label">Tra cứu</span>
           </button>
           <div class="sidebar-divider"></div>
-          <div class="sidebar-section-label nav-label">Loại đơn hàng</div>
-          <div id="sidebarCategoryButtons" class="sidebar-category-list"></div>
+          <button type="button" class="sidebar-nav-btn" id="sidebarCategoryToggleBtn" onclick="toggleSidebarCategoryList_()" style="justify-content:space-between; width:100%;">
+            <span style="display:flex; align-items:center; gap:10px;"><i class="fa-solid fa-layer-group"></i><span class="nav-label">Loại đơn hàng</span></span>
+            <i class="fa-solid fa-chevron-down nav-label" id="sidebarCategoryChevron" style="transition:transform 0.2s ease;"></i>
+          </button>
+          <div id="sidebarCategoryButtons" class="sidebar-category-list" style="display:none;"></div>
         </div>
 
         <div id="sidebarNhanSuGroup" style="display:none;">
@@ -1438,6 +1444,9 @@
               <button type="button" class="quick-btn" id="prioFilterBtn-gap" onclick="togglePriorityFilter_('gap')" style="border-color:#d62828; color:#d62828;">Gấp</button>
               <button type="button" class="quick-btn" id="prioFilterBtn-ut1" onclick="togglePriorityFilter_('ut1')" style="border-color:#ff8c00; color:#ff8c00;">&#431;T1</button>
               <button type="button" class="quick-btn" id="prioFilterBtn-ut2" onclick="togglePriorityFilter_('ut2')" style="border-color:#fbbc04; color:#a17d00;">&#431;T2</button>
+              <button type="button" class="quick-btn" id="prioFilterBtn-ut3" onclick="togglePriorityFilter_('ut3')" style="border-color:#6c5ce7; color:#6c5ce7;">&#431;T3</button>
+              <button type="button" class="quick-btn" id="prioFilterBtn-ut4" onclick="togglePriorityFilter_('ut4')" style="border-color:#00b894; color:#00b894;">&#431;T4</button>
+              <button type="button" class="quick-btn" id="prioFilterBtn-ut5" onclick="togglePriorityFilter_('ut5')" style="border-color:#0984e3; color:#0984e3;">&#431;T5</button>
             </div>
           </div>
           <div id="dashboardFilterInfo" style="padding:0 16px 6px 16px; font-size:13px;"></div>
@@ -1480,6 +1489,21 @@
             </div>
           </div>
 
+          <div style="display:flex; gap:16px; flex-wrap:wrap; padding:0 16px 16px 16px; align-items:flex-start;">
+            <div class="ns-panel" style="flex:1; min-width:320px;">
+              <div class="ns-panel-header"><i class="fa-solid fa-clock" style="color:#1a73e8;"></i>Tăng ca hôm nay</div>
+              <div class="ns-panel-body" style="max-height:340px; overflow:auto;">
+                <table id="nsTangCaTable"></table>
+              </div>
+            </div>
+            <div class="ns-panel" style="flex:1; min-width:320px;">
+              <div class="ns-panel-header"><i class="fa-solid fa-calendar-week" style="color:#8e44ad;"></i>Đăng ký đi làm Chủ nhật</div>
+              <div class="ns-panel-body" style="max-height:340px; overflow:auto;">
+                <table id="nsChuNhatTable"></table>
+              </div>
+            </div>
+          </div>
+
           <div class="ns-panels-row">
             <div class="ns-panel">
               <div class="ns-panel-header"><i class="fa-solid fa-chart-line" style="color:#00b894;"></i>Xu hướng vắng
@@ -1501,21 +1525,6 @@
               <div class="ns-panel-header"><i class="fa-solid fa-calendar" style="color:#1a73e8;"></i>Lịch mật độ vắng
                 <span id="nsPeriodLabel2" style="font-weight:400; color:#999; font-size:12px; margin-left:6px;"></span></div>
               <div class="ns-panel-body" id="nsHeatmapPanel" style="padding:14px;"></div>
-            </div>
-          </div>
-
-          <div style="display:flex; gap:16px; flex-wrap:wrap; padding:0 16px 16px 16px; align-items:flex-start;">
-            <div class="ns-panel" style="flex:1; min-width:320px;">
-              <div class="ns-panel-header"><i class="fa-solid fa-clock" style="color:#1a73e8;"></i>Tăng ca hôm nay</div>
-              <div class="ns-panel-body" style="max-height:340px; overflow:auto;">
-                <table id="nsTangCaTable"></table>
-              </div>
-            </div>
-            <div class="ns-panel" style="flex:1; min-width:320px;">
-              <div class="ns-panel-header"><i class="fa-solid fa-calendar-week" style="color:#8e44ad;"></i>Đăng ký đi làm Chủ nhật</div>
-              <div class="ns-panel-body" style="max-height:340px; overflow:auto;">
-                <table id="nsChuNhatTable"></table>
-              </div>
             </div>
           </div>
 
@@ -1826,6 +1835,7 @@
         // thông cho request Dashboard ở trên hoàn tất trước.
         setTimeout(function() {
           loadPriorityTagsFromServer_();
+          loadCustomPriorityTagsFromServer_(); // đồng bộ danh sách nhãn tự tạo cho mọi người dùng
           loadInitialAppData_();
           sendHeartbeat_();
           loadAllNotifications_();
@@ -1838,6 +1848,7 @@
         // (nguyên nhân từng gây treo lâu ở màn hình chờ do Apps Script giới hạn số lượt gọi đồng thời).
         setTimeout(function() {
           setInterval(pollPriorityTagsSilently_, PRIORITY_TAGS_POLL_MS);
+          setInterval(pollCustomPriorityTagsSilently_, CUSTOM_PRIORITY_TAGS_POLL_MS);
         }, 4000);
         setInterval(sendHeartbeat_, ONLINE_HEARTBEAT_MS);
         setInterval(pollNotifications_, NOTIF_POLL_MS);
@@ -2119,6 +2130,15 @@
         // Bản ngang cho mobile (sidebar bị ẩn hoàn toàn trên mobile - xem media query)
         document.getElementById('mobileCategoryButtons').innerHTML =
           CATEGORIES.map(function(cat) { return buildBtn(cat, false); }).join('');
+      }
+
+      function toggleSidebarCategoryList_() {
+        const list = document.getElementById('sidebarCategoryButtons');
+        const chevron = document.getElementById('sidebarCategoryChevron');
+        if (!list) return;
+        const isOpen = list.style.display !== 'none';
+        list.style.display = isOpen ? 'none' : 'flex';
+        if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
       }
 
       function searchByCategory(prefix, btnEl) {
@@ -3999,7 +4019,7 @@
       // phải TẢI LẠI TRANG mới thấy số liệu mới, dù đã có tự động làm mới mỗi 15 phút.
       // Bù lại: mỗi khi app được MỞ LẠI (quay lại foreground), nếu đã hơn 1 phút kể từ
       // lần tải gần nhất thì tải lại NGAY, không cần đợi đủ 15 phút hay F5.
-      const DASHBOARD_STALE_THRESHOLD_MS = 60 * 1000; // 1 phút
+      const DASHBOARD_STALE_THRESHOLD_MS = DASHBOARD_AUTO_REFRESH_MS; // đồng bộ đúng chu kỳ 15 phút, tránh gọi Supabase dày hơn mức cần
 
       document.addEventListener('visibilitychange', function() {
         if (document.visibilityState !== 'visible') return;
@@ -4180,13 +4200,20 @@ function pollPriorityTagsSilently_() {
       case 'ut1': return { label: '\u01AFT1', bg: '#ff8c00', color: '#fff', tint: '#fff1e0' };
       case 'ut2': return { label: '\u01AFT2', bg: '#fbbc04', color: '#3a2e00', tint: '#fff8e1' };
       case 'ut3': return { label: '\u01AFT3', bg: '#6c5ce7', color: '#fff', tint: '#f0edfd' };
-      default:    return { label: tag || '', bg: '#fff', color: '#c62828', tint: '' }; // nhãn tự đặt, trống
+      case 'ut4': return { label: '\u01AFT4', bg: '#00b894', color: '#fff', tint: '#e3faf3' };
+      case 'ut5': return { label: '\u01AFT5', bg: '#0984e3', color: '#fff', tint: '#e6f2fd' };
+      default: {
+        if (!tag) return { label: '', bg: '#fff', color: '#c62828', tint: '' };
+        const custom = getCustomPriorityTags_().find(function(c) { return c.value === tag; });
+        if (custom) return { label: custom.label, bg: custom.bg, color: custom.color, tint: hexToTint_(custom.bg) };
+        return { label: tag, bg: '#fff', color: '#c62828', tint: '' }; // nhãn cũ kiểu prompt() trước đây
+      }
     }
   }
 
   
   /** Thứ tự ưu tiên khi sắp xếp bảng Dashboard: Gấp -> ƯT1 -> ƯT2 -> ƯT3 -> nhãn tự đặt khác -> không có nhãn. */
-  const PRIORITY_RANK_MAP_ = { gap: 0, ut1: 1, ut2: 2, ut3: 3 };
+  const PRIORITY_RANK_MAP_ = { gap: 0, ut1: 1, ut2: 2, ut3: 3, ut4: 4, ut5: 5 };
   function priorityRank_(tag) {
     if (!tag) return 99; // không có nhãn -> xếp cuối cùng
     if (PRIORITY_RANK_MAP_.hasOwnProperty(tag)) return PRIORITY_RANK_MAP_[tag];
@@ -4215,19 +4242,160 @@ function pollPriorityTagsSilently_() {
     { value: 'gap', label: 'Gấp',     bg: '#d62828',  color: '#fff' },
     { value: 'ut1', label: '\u01AFT1', bg: '#ff8c00',  color: '#fff' },
     { value: 'ut2', label: '\u01AFT2', bg: '#fbbc04',  color: '#3a2e00' },
-    { value: 'ut3', label: '\u01AFT3', bg: '#6c5ce7',  color: '#fff' }
+    { value: 'ut3', label: '\u01AFT3', bg: '#6c5ce7',  color: '#fff' },
+    { value: 'ut4', label: '\u01AFT4', bg: '#00b894',  color: '#fff' },
+    { value: 'ut5', label: '\u01AFT5', bg: '#0984e3',  color: '#fff' }
   ];
 
+  /* ===== Nhãn ưu tiên TỰ TẠO - đồng bộ qua Supabase (bảng custom_priority_tags) =====
+     localStorage giờ chỉ dùng làm CACHE hiển thị tạm lúc chưa tải xong từ server,
+     dữ liệu thật nằm trên Supabase để MỌI người dùng đều thấy nhãn mới ngay. */
+  const CUSTOM_PRIORITY_TAGS_CACHE_KEY = 'gcck_custom_priority_tags_cache_v1';
+  let customPriorityTags_ = [];
+  try { customPriorityTags_ = JSON.parse(localStorage.getItem(CUSTOM_PRIORITY_TAGS_CACHE_KEY) || '[]'); } catch (e) { customPriorityTags_ = []; }
+
+  function getCustomPriorityTags_() {
+    return customPriorityTags_;
+  }
+
+  async function fetchCustomPriorityTagsDirect_() {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/custom_priority_tags?select=value,label,bg,color&order=created_at.asc';
+    const res = await fetch(url, { headers: supabaseHeaders_() });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  }
+
+  async function saveCustomPriorityTagDirect_(tag) {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/custom_priority_tags';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: Object.assign({
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal'
+      }, supabaseHeaders_()),
+      body: JSON.stringify([{ value: tag.value, label: tag.label, bg: tag.bg, color: tag.color }])
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
+  async function deleteCustomPriorityTagDirect_(value) {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/custom_priority_tags?value=eq.' + encodeURIComponent(value);
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: Object.assign({ Prefer: 'return=minimal' }, supabaseHeaders_())
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
+  function saveCustomPriorityTagsCache_() {
+    try { localStorage.setItem(CUSTOM_PRIORITY_TAGS_CACHE_KEY, JSON.stringify(customPriorityTags_)); } catch (e) {}
+  }
+
+  /** Gọi lúc đăng nhập - tải danh sách nhãn thật từ Supabase để khớp với mọi máy khác. */
+  function loadCustomPriorityTagsFromServer_() {
+    fetchCustomPriorityTagsDirect_()
+      .then(function(list) {
+        customPriorityTags_ = list || [];
+        saveCustomPriorityTagsCache_();
+        if (dashboardRenderedOnce_) renderDashboard_();
+      })
+      .catch(function() { /* mất mạng - tạm giữ cache cũ, không chặn app */ });
+  }
+
+  function customPriorityTagsAreEqual_(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i].value !== b[i].value || a[i].label !== b[i].label || a[i].bg !== b[i].bg) return false;
+    }
+    return true;
+  }
+
+  // Âm thầm hỏi server mỗi 30s xem có ai vừa thêm/xoá nhãn tự tạo không (kể cả từ máy khác).
+  const CUSTOM_PRIORITY_TAGS_POLL_MS = 30000;
+  function pollCustomPriorityTagsSilently_() {
+    fetchCustomPriorityTagsDirect_()
+      .then(function(list) {
+        list = list || [];
+        if (customPriorityTagsAreEqual_(list, customPriorityTags_)) return;
+        customPriorityTags_ = list;
+        saveCustomPriorityTagsCache_();
+      })
+      .catch(function() { /* im lặng, lần sau tự thử lại */ });
+  }
+  function pickTextColorForBg_(hex) {
+    try {
+      const h = hex.replace('#', '');
+      const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 150 ? '#222' : '#fff';
+    } catch (e) { return '#fff'; }
+  }
+  function hexToTint_(hex) {
+    try {
+      const h = hex.replace('#', '');
+      const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+      const mix = function(c) { return Math.round(c + (255 - c) * 0.85); };
+      return 'rgb(' + mix(r) + ',' + mix(g) + ',' + mix(b) + ')';
+    } catch (e) { return '#f5f5f5'; }
+  }
+  function addCustomPriorityTag_(label, bg) {
+    const value = 'custom_' + Date.now();
+    const tag = { value: value, label: label, bg: bg, color: pickTextColorForBg_(bg) };
+
+    // Cập nhật ngay trên máy hiện tại (lạc quan) để không phải đợi mạng
+    customPriorityTags_.push(tag);
+    saveCustomPriorityTagsCache_();
+
+    // Đẩy lên Supabase để MỌI người dùng khác cũng thấy nhãn này
+    saveCustomPriorityTagDirect_(tag).catch(function() {
+      showToast('Chưa đồng bộ được nhãn "' + label + '" lên máy chủ (mất mạng?), nhãn tạm chỉ hiện trên máy này.', 'info');
+    });
+
+    return value;
+  }
+  function removeCustomPriorityTag_(value) {
+    customPriorityTags_ = customPriorityTags_.filter(function(c) { return c.value !== value; });
+    saveCustomPriorityTagsCache_();
+
+    deleteCustomPriorityTagDirect_(value).catch(function() {
+      showToast('Chưa xoá được nhãn trên máy chủ (mất mạng?), sẽ còn hiện lại ở máy khác.', 'info');
+    });
+  }
+
   let priorityPopupLsx_ = null;
+
+  function renderPriorityPopupList_() {
+    const popup = document.getElementById('priorityPopup');
+    if (!popup) return;
+    const customTags = getCustomPriorityTags_();
+
+    let html = PRIORITY_POPUP_OPTIONS.map(function(o) {
+      return '<div class="priority-popup-option" style="background:' + o.bg + '; color:' + o.color +
+        (o.border ? '; border:' + o.border : '') + ';" onclick="pickPriority_(\'' + o.value + '\')">' + o.label + '</div>';
+    }).join('');
+
+    if (customTags.length > 0) {
+      html += '<div style="border-top:1px solid #eee; margin:4px 0 2px 0;"></div>';
+      html += customTags.map(function(c) {
+        const safeVal = c.value.replace(/'/g, "\\'");
+        return '<div class="priority-popup-option" style="background:' + c.bg + '; color:' + c.color +
+          '; display:flex; align-items:center; justify-content:space-between; gap:8px;">' +
+          '<span onclick="pickPriority_(\'' + safeVal + '\')" style="flex:1; cursor:pointer;">' + escapeHtml_(c.label) + '</span>' +
+          '<span onclick="event.stopPropagation(); deleteCustomPriorityTag_(\'' + safeVal + '\')" ' +
+          'style="cursor:pointer; font-weight:800; opacity:0.8;" title="Xóa nhãn này khỏi danh sách">&times;</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    html += '<div class="priority-popup-add" onclick="openCustomPriorityModal_()">+ Thêm nhãn khác...</div>';
+    popup.innerHTML = html;
+  }
 
   function openPriorityPopup_(e, lsx) {
     e.stopPropagation();
     priorityPopupLsx_ = lsx;
     const popup = document.getElementById('priorityPopup');
-    popup.innerHTML = PRIORITY_POPUP_OPTIONS.map(function(o) {
-      return '<div class="priority-popup-option" style="background:' + o.bg + '; color:' + o.color +
-        (o.border ? '; border:' + o.border : '') + ';" onclick="pickPriority_(\'' + o.value + '\')">' + o.label + '</div>';
-    }).join('') + '<div class="priority-popup-add" onclick="pickPriorityCustom_()">+ Thêm nhãn khác...</div>';
+    renderPriorityPopupList_();
 
     popup.style.display = 'block'; // hiện trước để đo được chiều cao thật (offsetHeight)
     const rect = e.target.getBoundingClientRect();
@@ -4235,11 +4403,9 @@ function pollPriorityTagsSilently_() {
     const popupWidth = popup.offsetWidth || 150;
 
     let top = rect.bottom + 4;
-    // Nếu popup mở xuống sẽ vượt đáy màn hình -> mở LÊN TRÊN ô bấm thay vào đó,
-    // để luôn thấy trọn popup kể cả khi ô nằm cuối bảng.
     if (top + popupHeight > window.innerHeight - 8) {
       top = rect.top - popupHeight - 4;
-      if (top < 8) top = 8; // phòng khi cả 2 phía đều không đủ chỗ
+      if (top < 8) top = 8;
     }
 
     let left = rect.left;
@@ -4254,6 +4420,12 @@ function pollPriorityTagsSilently_() {
     if (popup) popup.style.display = 'none';
     priorityPopupLsx_ = null;
   }
+  function deleteCustomPriorityTag_(value) {
+    removeCustomPriorityTag_(value);
+    renderPriorityPopupList_(); // giữ popup mở, chỉ vẽ lại danh sách
+    showToast('Đã xóa nhãn khỏi danh sách chọn.', 'info');
+    if (dashboardRenderedOnce_) renderDashboard_(); // các LSX đang gắn nhãn này đổi sang kiểu "nhãn cũ" (label giữ nguyên text)
+  }
       function pickPriority_(value) {
   if (!priorityPopupLsx_) return;
   const lsx = priorityPopupLsx_;
@@ -4264,19 +4436,46 @@ function pollPriorityTagsSilently_() {
 
   savePriorityTagWithRetry_(lsx, value);
 }
-  function pickPriorityCustom_() {
-  const lsx = priorityPopupLsx_;
-  closePriorityPopup_();
-  if (!lsx) return;
-  const custom = prompt('Nhập nhãn ưu tiên mới cho ' + lsx + ':');
-  if (!custom) return;
-  const tag = custom.trim();
-  priorityTags_[lsx] = tag;
-  try { localStorage.setItem(PRIORITY_TAGS_CACHE_KEY, JSON.stringify(priorityTags_)); } catch (e) {}
-  renderDashboard_();
+  const CUSTOM_PRIORITY_COLOR_CHOICES_ = ['#d62828','#ff8c00','#fbbc04','#6c5ce7','#00b894','#0984e3','#e17055','#00cec9','#576574','#e84393'];
+  let customPriorityChosenColor_ = CUSTOM_PRIORITY_COLOR_CHOICES_[0];
+  let customPriorityTargetLsx_ = null; // lưu riêng LSX đang thao tác vì openPriorityPopup_ sẽ bị đóng
 
-  savePriorityTagWithRetry_(lsx, tag);
-}
+  function openCustomPriorityModal_() {
+    customPriorityTargetLsx_ = priorityPopupLsx_;
+    closePriorityPopup_();
+
+    customPriorityChosenColor_ = CUSTOM_PRIORITY_COLOR_CHOICES_[0];
+    document.getElementById('customPriorityNameInput').value = '';
+    const swatchWrap = document.getElementById('customPriorityColorSwatches');
+    swatchWrap.innerHTML = CUSTOM_PRIORITY_COLOR_CHOICES_.map(function(c, i) {
+      return '<span class="custom-priority-swatch" data-color="' + c + '" onclick="selectCustomPriorityColor_(this, \'' + c + '\')" ' +
+        'style="width:26px; height:26px; border-radius:50%; background:' + c + '; cursor:pointer; display:inline-block; border:2px solid ' +
+        (i === 0 ? '#333' : 'transparent') + ';"></span>';
+    }).join('');
+    document.getElementById('customPriorityOverlay').style.display = 'flex';
+    setTimeout(function() { document.getElementById('customPriorityNameInput').focus(); }, 50);
+  }
+  function closeCustomPriorityModal_() {
+    document.getElementById('customPriorityOverlay').style.display = 'none';
+  }
+  function selectCustomPriorityColor_(el, color) {
+    customPriorityChosenColor_ = color;
+    document.querySelectorAll('.custom-priority-swatch').forEach(function(s) { s.style.border = '2px solid transparent'; });
+    el.style.border = '2px solid #333';
+  }
+  function saveCustomPriorityModal_() {
+    const name = document.getElementById('customPriorityNameInput').value.trim();
+    if (!name) { showToast('Vui lòng nhập tên nhãn.', 'error'); return; }
+    const value = addCustomPriorityTag_(name, customPriorityChosenColor_);
+    closeCustomPriorityModal_();
+    if (customPriorityTargetLsx_) {
+      priorityPopupLsx_ = customPriorityTargetLsx_;
+      pickPriority_(value);
+      customPriorityTargetLsx_ = null;
+    } else {
+      showToast('Đã lưu nhãn "' + name + '" vào danh sách, lần sau chọn lại được ngay.', 'success');
+    }
+  }
 
 /* ================= LƯU/ĐỌC NHÃN ƯU TIÊN GỌI THẲNG SUPABASE ================= */
 /* Không đi qua Apps Script nữa -> không còn bị chặn bởi quota "urlfetch" của Google.
@@ -4462,7 +4661,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
     if (priorityShowAllActive_) priorityFilterActive_.clear(); // bật "tất cả ưu tiên" thì bỏ lọc theo từng nhãn riêng
     const allBtn = document.getElementById('prioFilterBtnAll');
     if (allBtn) allBtn.classList.toggle('active', priorityShowAllActive_);
-    ['gap','ut1','ut2'].forEach(function(t) {
+    ['gap','ut1','ut2','ut3','ut4','ut5'].forEach(function(t) {
       const btn = document.getElementById('prioFilterBtn-' + t);
       if (btn) btn.classList.remove('active');
     });
@@ -4476,7 +4675,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
     if (priorityFilterActive_.has(tag)) priorityFilterActive_.delete(tag);
     else priorityFilterActive_.add(tag);
-    ['gap','ut1','ut2'].forEach(function(t) {
+    ['gap','ut1','ut2','ut3','ut4','ut5'].forEach(function(t) {
       const btn = document.getElementById('prioFilterBtn-' + t);
       if (btn) btn.classList.toggle('active', priorityFilterActive_.has(t));
     });
@@ -4513,6 +4712,15 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       function renderDashboard_() {
         dashboardRenderedOnce_ = true;
         const todayStr = getTodayStr_();
+
+        // Đánh dấu nút "Đơn hàng ưu tiên" đang bật khi đây là chế độ xem MẶC ĐỊNH
+        // (chưa lọc ngày, chưa bấm nút lọc khác) - để ai mở app cũng biết đang xem đúng danh sách ưu tiên.
+        const allBtn_ = document.getElementById('prioFilterBtnAll');
+        if (allBtn_) {
+          const isDefaultPriorityView_ = !dashDateFilter && dashCardFilter === 'priority_default' &&
+            !priorityShowAllActive_ && priorityFilterActive_.size === 0;
+          allBtn_.classList.toggle('active', priorityShowAllActive_ || isDefaultPriorityView_);
+        }
 
         // Gán trường "ảo" để lọc được theo Ưu tiên / Tiến độ / % Kho giao hàng
         // giống các cột khác (hệ thống lọc chỉ hoạt động trên field phẳng r[key]).
@@ -4934,19 +5142,14 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2 }).then(function(canvas) {
           document.body.removeChild(wrapper);
 
-          const link = document.createElement('a');
-          link.download = 'ChiTietChuaGiao_' + (currentLsxDetailLsx_ || 'export') + '.png';
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-
           canvas.toBlob(function(blob) {
             if (!blob) return;
             if (navigator.clipboard && window.ClipboardItem) {
               navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
                 .then(function() { showToast('Đã chụp ảnh và copy vào clipboard, dán (Ctrl+V) để gửi.', 'success'); })
-                .catch(function() { showToast('Đã tải ảnh, nhưng không copy được vào clipboard (trình duyệt chặn).', 'info'); });
+                .catch(function() { showToast('Không copy được vào clipboard (trình duyệt chặn).', 'error'); });
             } else {
-              showToast('Đã tải ảnh (trình duyệt không hỗ trợ copy ảnh vào clipboard).', 'info');
+              showToast('Trình duyệt không hỗ trợ copy ảnh vào clipboard.', 'error');
             }
           }, 'image/png');
         }).catch(function(err) {
@@ -5433,21 +5636,15 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         html2canvas(wrapper, { backgroundColor: '#ffffff', scale: 2 }).then(function(canvas) {
           document.body.removeChild(wrapper);
 
-          // Tải file PNG như cũ
-          const link = document.createElement('a');
-          link.download = 'BOM_' + (currentQuery || 'export') + '.png';
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-
-          // Đồng thời copy ảnh vào clipboard để dán (Ctrl+V) trực tiếp cho xưởng gia công
+          // Chỉ copy vào clipboard, không tự động tải file PNG về máy nữa
           canvas.toBlob(function(blob) {
             if (!blob) return;
             if (navigator.clipboard && window.ClipboardItem) {
               navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
                 .then(function() { showToast('Đã chụp ảnh và copy vào clipboard, dán (Ctrl+V) để gửi.', 'success'); })
-                .catch(function() { showToast('Đã tải ảnh, nhưng không copy được vào clipboard (trình duyệt chặn).', 'info'); });
+                .catch(function() { showToast('Không copy được vào clipboard (trình duyệt chặn).', 'error'); });
             } else {
-              showToast('Đã tải ảnh (trình duyệt không hỗ trợ copy ảnh vào clipboard).', 'info');
+              showToast('Trình duyệt không hỗ trợ copy ảnh vào clipboard.', 'error');
             }
           }, 'image/png');
         }).catch(function(err) {
@@ -6037,6 +6234,29 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
     <div id="toastStack"></div>
     <div id="priorityPopup" class="priority-popup" style="display:none;"></div>
+
+    <div id="customPriorityOverlay" class="colvis-overlay" style="display:none; z-index:350;">
+      <div class="colvis-modal" style="width:320px;">
+        <div class="colvis-header">
+          <h3>Thêm nhãn ưu tiên</h3>
+          <span class="upbom-close" onclick="closeCustomPriorityModal_()">&times;</span>
+        </div>
+        <div style="padding:16px; display:flex; flex-direction:column; gap:14px;">
+          <label style="font-size:13px; font-weight:600; color:#333;">Tên nhãn
+            <input type="text" id="customPriorityNameInput" maxlength="12" placeholder="VD: Khẩn"
+              style="width:100%; padding:8px 10px; box-sizing:border-box; margin-top:6px; border:1px solid #ddd; border-radius:6px; font-size:14px;" />
+          </label>
+          <div>
+            <div style="font-size:13px; font-weight:600; color:#333; margin-bottom:6px;">Chọn màu</div>
+            <div id="customPriorityColorSwatches" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+        </div>
+        <div class="upbom-footer">
+          <button type="button" class="upbom-cancel" onclick="closeCustomPriorityModal_()">Hủy</button>
+          <button type="button" class="upbom-save" onclick="saveCustomPriorityModal_()">Lưu nhãn</button>
+        </div>
+      </div>
+    </div>
 
     <div id="filterPopup" class="filter-popup" style="display:none;">
       <div class="filter-popup-search">
