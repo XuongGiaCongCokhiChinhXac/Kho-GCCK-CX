@@ -3795,7 +3795,8 @@
         { key: 'nguoi', label: 'Nguội' },
         { key: 'nhiet', label: 'Nhiệt' },
         { key: 'tiendo', label: 'Tiến độ' },
-        { key: 'khogh', label: '% Kho giao hàng' }
+        { key: 'khogh', label: '% GH' },
+        { key: 'ngayht', label: 'Ngày HT' }
       ];
       let dashboardRows = [];
       let dashboardVisibleRows_ = []; // dữ liệu ĐANG hiển thị trên bảng Dashboard (đã lọc + sắp xếp) - dùng khi chụp ảnh
@@ -5290,7 +5291,8 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           dashColHeader_('khgh', '<th class="dash-khgh-col">KHGH' + dashFilterIconHtml_('khgh') + '</th>') +
           chuyenHeaderHtml +
           dashColHeader_('tiendo', '<th class="dash-progress-col">Tiến độ' + dashFilterIconHtml_('tienDoBucket') + '</th>') +
-          dashColHeader_('khogh', '<th>% Kho giao hàng' + dashFilterIconHtml_('khoGiaoHangBucket') + '</th>') +
+          dashColHeader_('khogh', '<th>% GH' + dashFilterIconHtml_('khoGiaoHangBucket') + '</th>') +
+          dashColHeader_('ngayht', '<th class="dash-khgh-col">Ngày HT</th>') +
           '</tr>';
 
         const myToken = ++dashRenderToken_;
@@ -5298,7 +5300,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         const savedScrollTop = wrap.scrollTop; // giữ vị trí đang cuộn, không tự nhảy về đầu bảng
 
         if (rows.length === 0) {
-          const visibleFixedCount_ = ['dh', 'lsx', 'sanpham', 'uutien', 'khgh', 'tiendo', 'khogh']
+          const visibleFixedCount_ = ['dh', 'lsx', 'sanpham', 'uutien', 'khgh', 'tiendo', 'khogh', 'ngayht']
             .filter(function(k) { return isGenericColVisible_('dashboard', k); }).length;
           wrap.innerHTML = '<table>' + headerHtml +
             '<tr><td colspan="' + (visibleFixedCount_ + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr></table>';
@@ -5350,6 +5352,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
               '</div>' +
               '<span style="font-size:11px;">' + r.percent + '%</span>' +
             '</td>';
+          if (vis('ngayht')) html += '<td class="dash-khgh-cell"' + nextAttrs() + '>' + (r.ngayHoanThanhKhoGh ? formatDate(r.ngayHoanThanhKhoGh) : '-') + '</td>';
           html += '</tr>';
           return html;
         }
@@ -5397,7 +5400,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         let html = '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;"><tr>' +
           th_('ĐH') + th_('LSX') + th_('Sản phẩm') + th_('Ưu tiên') + th_('KHGH');
         CHUYEN_LABELS.forEach(function(c) { html += th_(c.label); });
-        html += th_('Tiến độ') + th_('% Kho giao hàng') + '</tr>';
+        html += th_('Tiến độ') + th_('% GH') + th_('Ngày HT') + '</tr>';
 
         dashboardVisibleRows_.forEach(function(r) {
           const tag = priorityTags_[r.lsx] || '';
@@ -5447,6 +5450,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
             '</div>' +
             '<span style="font-size:11px;">' + r.percent + '%</span>' +
           '</td>';
+          html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;">' + (r.ngayHoanThanhKhoGh ? formatDate(r.ngayHoanThanhKhoGh) : '-') + '</td>';
           html += '</tr>';
         });
 
