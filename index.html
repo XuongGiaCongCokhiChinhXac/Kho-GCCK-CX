@@ -932,6 +932,7 @@
       /* Vừa đủ dữ liệu, không chiếm hết bề ngang bảng như trước */
       .dash-lsx-col { width: 116px; min-width: 116px; max-width: 116px; }
       .dash-priority-col { width: 74px; min-width: 74px; max-width: 74px; }
+      .dash-dh-col { width: 84px; min-width: 84px; max-width: 84px; }
       .dash-khgh-col { width: 80px; min-width: 80px; max-width: 80px; }
       .dash-sanpham-col { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .chuyen-box.chuyen-done { background: #34a853; }
@@ -1431,7 +1432,7 @@
           </div>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:0 16px 10px 16px;">
             <div style="position:relative; flex:0 0 240px;">
-              <input type="text" id="dashLsxSearchInput" placeholder="Tìm theo LSX (Enter để tìm)..." autocomplete="off"
+              <input type="text" id="dashLsxSearchInput" placeholder="Tìm theo LSX" autocomplete="off"
                 style="width:100%; padding:8px 30px 8px 10px; box-sizing:border-box; font-size:13px; border:1px solid #ddd; border-radius:6px;" />
               <span id="dashLsxSearchClear" onclick="clearDashLsxSearch_()" style="display:none; position:absolute; right:8px; top:50%; transform:translateY(-50%); cursor:pointer; color:#999; font-size:16px;">&times;</span>
               <div id="dashLsxSuggestions" class="suggestions" style="top:100%;"></div>
@@ -1589,10 +1590,11 @@
       const lsxInput = document.getElementById('lsxInput');
 
           let currentUser_ = null; // { msnv, hoTen }
-      const ONLINE_HEARTBEAT_MS = 45000; // 45 giây - chỉ để hiện số người online, không cần quá dày
+      const ONLINE_HEARTBEAT_MS = 120000; // 2 phút - đủ để hiện số người online, giảm mạnh số lệnh gọi/ngày
 
       function sendHeartbeat_() {
         if (!currentUser_) return;
+        if (document.hidden) return; // tab đang ẩn/thu nhỏ -> không cần báo online, đỡ tốn quota
         google.script.run
           .withSuccessHandler(function(count) {
             const badge = document.getElementById('onlineBadge');
@@ -1780,8 +1782,9 @@
           .getNotifications(0);
       }
 
-      const NOTIF_POLL_MS = 45000; // 45 giây - thông báo không cần realtime tới mức 20s - vẫn đủ nhanh, giảm 1 nửa số lần gọi
+      const NOTIF_POLL_MS = 60000; // 60 giây - thông báo Gấp/Ưu tiên vẫn đủ nhanh, giảm thêm số lệnh gọi/ngày
       function pollNotifications_() {
+        if (document.hidden) return; // tab đang ẩn -> bỏ qua, khi mở lại visibilitychange đã tự lấy bù
         google.script.run
           .withSuccessHandler(function(rows) {
             if (!rows || rows.length === 0) { notifFirstLoad_ = false; return; }
@@ -1836,6 +1839,8 @@
         setTimeout(function() {
           loadPriorityTagsFromServer_();
           loadCustomPriorityTagsFromServer_(); // đồng bộ danh sách nhãn tự tạo cho mọi người dùng
+          loadDhTagsFromServer_();
+          loadCustomDhTagsFromServer_();
           loadInitialAppData_();
           sendHeartbeat_();
           loadAllNotifications_();
@@ -1849,6 +1854,8 @@
         setTimeout(function() {
           setInterval(pollPriorityTagsSilently_, PRIORITY_TAGS_POLL_MS);
           setInterval(pollCustomPriorityTagsSilently_, CUSTOM_PRIORITY_TAGS_POLL_MS);
+          setInterval(pollDhTagsSilently_, DH_TAGS_POLL_MS);
+          setInterval(pollCustomDhTagsSilently_, CUSTOM_DH_TAGS_POLL_MS);
         }, 4000);
         setInterval(sendHeartbeat_, ONLINE_HEARTBEAT_MS);
         setInterval(pollNotifications_, NOTIF_POLL_MS);
@@ -2028,7 +2035,7 @@
       let pollTimer = null;
       let searchRequestId = 0;       // dùng để bỏ qua kết quả trả về trễ/đã bị hủy
       const categoryCache = {};      // prefix -> rows, hiện ngay lập tức lần bấm sau (SWR)
-      const POLL_INTERVAL_MS = 90000; // tăng lên 90s - giảm 3 lần số lệnh gọi Supabase/ngày cho tra cứu
+      const POLL_INTERVAL_MS = 120000; // tăng lên 120s - giảm thêm số lệnh gọi Supabase/ngày cho tra cứu
 
       /* ================= CHỌN Ô KIỂU EXCEL (hỗ trợ Ctrl+Click / Shift+Click) ================= */
       let displayedRows = [];   // danh sách dòng đang hiển thị (sau lọc) theo đúng thứ tự trên bảng
@@ -3324,7 +3331,7 @@
 
       let activeTrackingTab_ = null; // 'nhanphoi' | 'giaohang' | null - tab đang mở, để biết polling cái gì
       let trackingPollTimer_ = null;
-      const TRACKING_POLL_INTERVAL_MS = 60000; // 60 giây - Nhận phôi/Giao hàng đã có cập nhật lạc quan ngay khi lưu, không cần poll dày - giảm tải, vẫn đủ nhanh cho Nhận phôi/Giao hàng
+      const TRACKING_POLL_INTERVAL_MS = 90000; // 90 giây - đã có cập nhật lạc quan ngay khi lưu, kéo dài thêm để giảm quota
 
       function switchTab(tabId) {
         document.querySelectorAll('.tab-pane').forEach(function(el) { el.classList.remove('active'); });
@@ -3364,6 +3371,7 @@
       // làm phiền - chỉ cập nhật bảng nếu có gì thay đổi so với dữ liệu đang hiển thị.
       function pollActiveTrackingTab_() {
         if (!activeTrackingTab_) return;
+        if (document.hidden) return; // tab đang ẩn -> bỏ qua, đỡ tốn quota
         if (activeTrackingTab_ === 'nhanphoi') {
           google.script.run
             .withSuccessHandler(function(rows) {
@@ -3997,6 +4005,7 @@
       // Tự làm mới Dashboard mỗi 15 phút - ÂM THẦM, không spinner/toast để không làm
       // phiền người đang xem, chỉ âm thầm cập nhật lại số liệu trên các ô/thẻ.
       function refreshDashboardSilently_() {
+        if (document.hidden) return; // tab đang ẩn -> bỏ qua, khi quay lại visibilitychange sẽ tự làm mới bù nếu đã quá hạn
         lastDashboardAutoRefreshTs_ = Date.now(); // đánh dấu mốc NGAY khi bắt đầu gọi, tránh gọi dồn dập
 
         google.script.run
@@ -4176,8 +4185,9 @@ function priorityTagsAreEqual_(a, b) {
 
 // Âm thầm hỏi server mỗi vài giây xem có ai vừa đổi nhãn ưu tiên không (kể cả từ máy khác).
 // Chỉ vẽ lại bảng khi thực sự có thay đổi, để không làm mất vị trí cuộn/giật hình khi không có gì mới.
-const PRIORITY_TAGS_POLL_MS = 30000; // 30 giây - nhãn ưu tiên không đổi liên tục, khỏi cần dày - gọi thẳng Supabase, không lo tốn quota Apps Script nữa
+const PRIORITY_TAGS_POLL_MS = 60000; // 60 giây - giảm thêm số lệnh gọi thẳng Supabase
 function pollPriorityTagsSilently_() {
+  if (document.hidden) return; // tab đang ẩn -> bỏ qua, đỡ tốn quota Supabase
   fetchPriorityTagsDirect_()
     .then(function(tags) {
       tags = tags || {};
@@ -4311,8 +4321,9 @@ function pollPriorityTagsSilently_() {
   }
 
   // Âm thầm hỏi server mỗi 30s xem có ai vừa thêm/xoá nhãn tự tạo không (kể cả từ máy khác).
-  const CUSTOM_PRIORITY_TAGS_POLL_MS = 30000;
+  const CUSTOM_PRIORITY_TAGS_POLL_MS = 60000; // giảm thêm số lệnh gọi thẳng Supabase
   function pollCustomPriorityTagsSilently_() {
+    if (document.hidden) return; // tab đang ẩn -> bỏ qua, đỡ tốn quota Supabase
     fetchCustomPriorityTagsDirect_()
       .then(function(list) {
         list = list || [];
@@ -4586,6 +4597,244 @@ window.addEventListener('online', tryFlushPriorityQueue_);
     if (!e.target.closest('#priorityPopup') && !e.target.closest('.priority-pill')) closePriorityPopup_();
   });
 
+  /* ================= CỘT "ĐH" (ghi chú/nhãn tự do cho từng đơn hàng) =================
+     Nhân bản y hệt cơ chế Ưu tiên nhưng dùng bảng Supabase riêng (order_tags /
+     custom_order_tags), để không đụng vào dữ liệu Gấp/ƯT1-5 đang dùng. */
+  const DH_TAGS_CACHE_KEY = 'gcck_dh_tags_cache_v1';
+  let dhTags_ = {};
+  try { dhTags_ = JSON.parse(localStorage.getItem(DH_TAGS_CACHE_KEY) || '{}'); } catch (e) { dhTags_ = {}; }
+
+  const CUSTOM_DH_TAGS_CACHE_KEY = 'gcck_custom_dh_tags_cache_v1';
+  let customDhTags_ = [];
+  try { customDhTags_ = JSON.parse(localStorage.getItem(CUSTOM_DH_TAGS_CACHE_KEY) || '[]'); } catch (e) { customDhTags_ = []; }
+
+  function getCustomDhTags_() { return customDhTags_; }
+
+  async function fetchDhTagsDirect_() {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/order_tags?select=lsx,tag';
+    const res = await fetch(url, { headers: supabaseHeaders_() });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    const map = {};
+    rows.forEach(function(r) { if (r.lsx && r.tag) map[r.lsx] = r.tag; });
+    return map;
+  }
+
+  async function saveDhTagDirect_(lsx, tag) {
+    if (!tag) {
+      const url = SUPABASE_URL_DIRECT_ + '/rest/v1/order_tags?lsx=eq.' + encodeURIComponent(lsx);
+      const res = await fetch(url, { method: 'DELETE', headers: Object.assign({ Prefer: 'return=minimal' }, supabaseHeaders_()) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return;
+    }
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/order_tags';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, supabaseHeaders_()),
+      body: JSON.stringify([{ lsx: lsx, tag: tag, updated_at: new Date().toISOString() }])
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
+  async function fetchCustomDhTagsDirect_() {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/custom_order_tags?select=value,label,bg,color&order=created_at.asc';
+    const res = await fetch(url, { headers: supabaseHeaders_() });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  }
+
+  async function saveCustomDhTagDirect_(tag) {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/custom_order_tags';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, supabaseHeaders_()),
+      body: JSON.stringify([{ value: tag.value, label: tag.label, bg: tag.bg, color: tag.color }])
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
+  async function deleteCustomDhTagDirect_(value) {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/custom_order_tags?value=eq.' + encodeURIComponent(value);
+    const res = await fetch(url, { method: 'DELETE', headers: Object.assign({ Prefer: 'return=minimal' }, supabaseHeaders_()) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
+  function saveDhTagsCache_() { try { localStorage.setItem(DH_TAGS_CACHE_KEY, JSON.stringify(dhTags_)); } catch (e) {} }
+  function saveCustomDhTagsCache_() { try { localStorage.setItem(CUSTOM_DH_TAGS_CACHE_KEY, JSON.stringify(customDhTags_)); } catch (e) {} }
+
+  function loadDhTagsFromServer_() {
+    fetchDhTagsDirect_()
+      .then(function(tags) { dhTags_ = tags || {}; saveDhTagsCache_(); renderDashboard_(); })
+      .catch(function() { /* mất mạng -> giữ cache cũ */ });
+  }
+
+  function loadCustomDhTagsFromServer_() {
+    fetchCustomDhTagsDirect_()
+      .then(function(list) { customDhTags_ = list || []; saveCustomDhTagsCache_(); if (dashboardRenderedOnce_) renderDashboard_(); })
+      .catch(function() { /* mất mạng -> giữ cache cũ */ });
+  }
+
+  function dhTagsAreEqual_(a, b) {
+    const ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (let i = 0; i < ka.length; i++) { if (a[ka[i]] !== b[ka[i]]) return false; }
+    return true;
+  }
+
+  const DH_TAGS_POLL_MS = 60000;
+  function pollDhTagsSilently_() {
+    if (document.hidden) return;
+    fetchDhTagsDirect_()
+      .then(function(tags) {
+        tags = tags || {};
+        if (dhTagsAreEqual_(tags, dhTags_)) return;
+        dhTags_ = tags; saveDhTagsCache_();
+        if (document.getElementById('tab-dashboard').classList.contains('active')) renderDashboard_();
+      })
+      .catch(function() {});
+  }
+
+  const CUSTOM_DH_TAGS_POLL_MS = 60000;
+  function pollCustomDhTagsSilently_() {
+    if (document.hidden) return;
+    fetchCustomDhTagsDirect_()
+      .then(function(list) {
+        list = list || [];
+        if (customPriorityTagsAreEqual_(list, customDhTags_)) return; // dùng chung hàm so sánh mảng {value,label,bg}
+        customDhTags_ = list; saveCustomDhTagsCache_();
+      })
+      .catch(function() {});
+  }
+
+  function dhMeta_(tag) {
+    if (!tag) return { label: '', bg: '#fff', color: '#666', tint: '' };
+    const custom = getCustomDhTags_().find(function(c) { return c.value === tag; });
+    if (custom) return { label: custom.label, bg: custom.bg, color: custom.color, tint: hexToTint_(custom.bg) };
+    return { label: tag, bg: '#eee', color: '#333', tint: '' };
+  }
+
+  function buildDhPill_(lsx, tag) {
+    const safeLsx = lsx.replace(/'/g, "\\'");
+    const meta = dhMeta_(tag);
+    const style = tag ? ('background:' + meta.bg + '; color:' + meta.color + ';') : '';
+    const cls = 'priority-pill' + (tag ? '' : ' priority-pill-empty');
+    return '<span class="' + cls + '" style="' + style + '" onclick="openDhPopup_(event, \'' + safeLsx + '\')">' +
+      (tag ? escapeHtml_(meta.label) : '') + '</span>';
+  }
+
+  let dhPopupLsx_ = null;
+
+  function renderDhPopupList_() {
+    const popup = document.getElementById('dhPopup');
+    if (!popup) return;
+    const customTags = getCustomDhTags_();
+    let html = '<div class="priority-popup-option" style="background:#fff; color:#666; border:1px solid #ddd;" onclick="pickDhTag_(\'\')">(Trống)</div>';
+    if (customTags.length > 0) {
+      html += customTags.map(function(c) {
+        const safeVal = c.value.replace(/'/g, "\\'");
+        return '<div class="priority-popup-option" style="background:' + c.bg + '; color:' + c.color +
+          '; display:flex; align-items:center; justify-content:space-between; gap:8px;">' +
+          '<span onclick="pickDhTag_(\'' + safeVal + '\')" style="flex:1; cursor:pointer;">' + escapeHtml_(c.label) + '</span>' +
+          '<span onclick="event.stopPropagation(); deleteCustomDhTag_(\'' + safeVal + '\')" ' +
+          'style="cursor:pointer; font-weight:800; opacity:0.8;" title="Xóa nhãn này khỏi danh sách">&times;</span>' +
+          '</div>';
+      }).join('');
+    }
+    html += '<div class="priority-popup-add" onclick="openCustomDhModal_()">+ Thêm nhãn khác...</div>';
+    popup.innerHTML = html;
+  }
+
+  function openDhPopup_(e, lsx) {
+    e.stopPropagation();
+    dhPopupLsx_ = lsx;
+    const popup = document.getElementById('dhPopup');
+    renderDhPopupList_();
+    popup.style.display = 'block';
+    const rect = e.target.getBoundingClientRect();
+    const popupHeight = popup.offsetHeight;
+    const popupWidth = popup.offsetWidth || 150;
+    let top = rect.bottom + 4;
+    if (top + popupHeight > window.innerHeight - 8) { top = rect.top - popupHeight - 4; if (top < 8) top = 8; }
+    let left = rect.left;
+    if (left + popupWidth > window.innerWidth) left = window.innerWidth - popupWidth - 8;
+    if (left < 8) left = 8;
+    popup.style.top = top + 'px';
+    popup.style.left = left + 'px';
+  }
+  function closeDhPopup_() {
+    const popup = document.getElementById('dhPopup');
+    if (popup) popup.style.display = 'none';
+    dhPopupLsx_ = null;
+  }
+  function deleteCustomDhTag_(value) {
+    customDhTags_ = customDhTags_.filter(function(c) { return c.value !== value; });
+    saveCustomDhTagsCache_();
+    deleteCustomDhTagDirect_(value).catch(function() {
+      showToast('Chưa xoá được nhãn ĐH trên máy chủ (mất mạng?), sẽ còn hiện lại ở máy khác.', 'info');
+    });
+    renderDhPopupList_();
+    showToast('Đã xóa nhãn khỏi danh sách chọn.', 'info');
+    if (dashboardRenderedOnce_) renderDashboard_();
+  }
+  function pickDhTag_(value) {
+    if (!dhPopupLsx_) return;
+    const lsx = dhPopupLsx_;
+    if (value) dhTags_[lsx] = value; else delete dhTags_[lsx];
+    saveDhTagsCache_();
+    closeDhPopup_();
+    renderDashboard_();
+    saveDhTagDirect_(lsx, value).catch(function() {
+      showToast('Chưa lưu được ghi chú ĐH cho "' + lsx + '" (mất mạng?), sẽ tự thử lại sau.', 'info');
+    });
+  }
+
+  let customDhChosenColor_ = CUSTOM_PRIORITY_COLOR_CHOICES_[0];
+  let customDhTargetLsx_ = null;
+
+  function openCustomDhModal_() {
+    customDhTargetLsx_ = dhPopupLsx_;
+    closeDhPopup_();
+    customDhChosenColor_ = CUSTOM_PRIORITY_COLOR_CHOICES_[0];
+    document.getElementById('customDhNameInput').value = '';
+    const swatchWrap = document.getElementById('customDhColorSwatches');
+    swatchWrap.innerHTML = CUSTOM_PRIORITY_COLOR_CHOICES_.map(function(c, i) {
+      return '<span class="custom-dh-swatch" data-color="' + c + '" onclick="selectCustomDhColor_(this, \'' + c + '\')" ' +
+        'style="width:26px; height:26px; border-radius:50%; background:' + c + '; cursor:pointer; display:inline-block; border:2px solid ' +
+        (i === 0 ? '#333' : 'transparent') + ';"></span>';
+    }).join('');
+    document.getElementById('customDhOverlay').style.display = 'flex';
+    setTimeout(function() { document.getElementById('customDhNameInput').focus(); }, 50);
+  }
+  function closeCustomDhModal_() { document.getElementById('customDhOverlay').style.display = 'none'; }
+  function selectCustomDhColor_(el, color) {
+    customDhChosenColor_ = color;
+    document.querySelectorAll('.custom-dh-swatch').forEach(function(s) { s.style.border = '2px solid transparent'; });
+    el.style.border = '2px solid #333';
+  }
+  function saveCustomDhModal_() {
+    const name = document.getElementById('customDhNameInput').value.trim();
+    if (!name) { showToast('Vui lòng nhập tên nhãn.', 'error'); return; }
+    const value = 'dh_' + Date.now();
+    const tag = { value: value, label: name, bg: customDhChosenColor_, color: pickTextColorForBg_(customDhChosenColor_) };
+    customDhTags_.push(tag);
+    saveCustomDhTagsCache_();
+    saveCustomDhTagDirect_(tag).catch(function() {
+      showToast('Chưa đồng bộ được nhãn "' + name + '" lên máy chủ (mất mạng?), nhãn tạm chỉ hiện trên máy này.', 'info');
+    });
+    closeCustomDhModal_();
+    if (customDhTargetLsx_) {
+      dhPopupLsx_ = customDhTargetLsx_;
+      pickDhTag_(value);
+      customDhTargetLsx_ = null;
+    } else {
+      showToast('Đã lưu nhãn "' + name + '" vào danh sách, lần sau chọn lại được ngay.', 'success');
+    }
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#dhPopup') && !e.target.closest('.priority-pill')) closeDhPopup_();
+  });
+
   let dashSuggestTimer_ = null;
   let dashActiveSuggestions_ = [];
   let dashSuggestRequestId_ = 0;
@@ -4646,6 +4895,21 @@ window.addEventListener('online', tryFlushPriorityQueue_);
     const raw = document.getElementById('dashLsxSearchInput').value;
     dashLsxSearch_ = raw.split(/[,;\s]+/).map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s.length > 0; });
     document.getElementById('dashLsxSearchClear').style.display = raw ? 'block' : 'none';
+
+    // Khi có từ khóa tìm kiếm -> luôn tìm trên TOÀN BỘ đơn hàng, bỏ qua mọi bộ lọc nhanh
+    // (Ưu tiên/Gấp/ƯT.../Trễ KHGH/theo ngày...) đang bật. Trước đây tìm kiếm bị "lồng" vào
+    // trong bộ lọc đang chọn, nên dán LSX không thuộc nhóm đang lọc sẽ luôn ra 0 kết quả.
+    if (dashLsxSearch_.length > 0) {
+      dashCardFilter = 'all';
+      dashDateFilter = '';
+      const dateEl = document.getElementById('dashFilterDate');
+      if (dateEl) dateEl.value = '';
+      const dateLbl = document.getElementById('dashDateBtnLabel');
+      if (dateLbl) dateLbl.textContent = 'Chọn ngày';
+      priorityShowAllActive_ = false;
+      priorityFilterActive_.clear();
+    }
+
     renderDashboard_();
   }
 
@@ -4726,6 +4990,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         // giống các cột khác (hệ thống lọc chỉ hoạt động trên field phẳng r[key]).
         dashboardRows.forEach(function(r) {
           r.uuTien = priorityMeta_(priorityTags_[r.lsx] || '').label || '(Trống)';
+          r.dhTag = dhMeta_(dhTags_[r.lsx] || '').label || '(Trống)';
           r.tienDoBucket = bucketPercent_(r.tienDoPercent);
           r.khoGiaoHangBucket = bucketPercent_(r.percent);
         });
@@ -4794,6 +5059,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         const chuyenHeaderHtml = CHUYEN_LABELS.map(function(c) { return '<th>' + c.label + '</th>'; }).join('');
 
         const headerHtml = '<tr>' +
+          '<th class="dash-dh-col">ĐH' + dashFilterIconHtml_('dhTag') + '</th>' +
           '<th class="dash-lsx-col">LSX' + dashFilterIconHtml_('lsx') + '</th>' +
           '<th>Sản phẩm' + dashFilterIconHtml_('sanPham') + '</th>' +
           '<th class="dash-priority-col">&#431;u ti&#234;n' + dashFilterIconHtml_('uuTien') + '</th>' +
@@ -4806,7 +5072,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
         if (rows.length === 0) {
           wrap.innerHTML = '<table>' + headerHtml +
-            '<tr><td colspan="' + (6 + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr></table>';
+            '<tr><td colspan="' + (7 + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr></table>';
           return;
         }
 
@@ -4835,7 +5101,9 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           const rowClass = tag ? ' class="dash-row-priority"' : '';
           const safeLsxAttr = escapeHtml_(r.lsx).replace(/'/g, "\\'");
           const dataLsxAttr = ' data-lsx="' + escapeHtml_(r.lsx).replace(/"/g, '&quot;') + '"';
+          const dhTag = dhTags_[r.lsx] || '';
           return '<tr' + rowClass + dataLsxAttr + ' style="' + rowStyle + '">' +
+            '<td' + nextAttrs() + ' style="text-align:center; font-weight:800;">' + buildDhPill_(r.lsx, dhTag) + '</td>' +
             '<td class="dash-lsx-cell"' + nextAttrs() + '>' +
               '<span class="dash-lsx-text">' + escapeHtml_(r.lsx) + '</span>' +
               '<i class="fa-solid fa-eye dash-lsx-eye" title="Xem chi tiết chưa giao hàng" ' +
@@ -4896,7 +5164,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         };
 
         let html = '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;"><tr>' +
-          th_('LSX') + th_('Sản phẩm') + th_('Ưu tiên') + th_('KHGH');
+          th_('ĐH') + th_('LSX') + th_('Sản phẩm') + th_('Ưu tiên') + th_('KHGH');
         CHUYEN_LABELS.forEach(function(c) { html += th_(c.label); });
         html += th_('Tiến độ') + th_('% Kho giao hàng') + '</tr>';
 
@@ -4906,9 +5174,15 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           const tagHtml = tag
             ? '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;background:' + meta.bg + ';color:' + meta.color + ';">' + meta.label + '</span>'
             : '';
+          const dhTagVal = dhTags_[r.lsx] || '';
+          const dhMetaVal = dhMeta_(dhTagVal);
+          const dhTagHtml = dhTagVal
+            ? '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;background:' + dhMetaVal.bg + ';color:' + dhMetaVal.color + ';">' + escapeHtml_(dhMetaVal.label) + '</span>'
+            : '';
           const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ff8a3d');
 
           html += '<tr>';
+          html += '<td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">' + dhTagHtml + '</td>';
           html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;font-weight:800;color:#003DA5;">' + escapeHtml_(r.lsx) + '</td>';
           html += '<td style="border:1px solid #ddd;padding:6px 8px;white-space:nowrap;text-align:center;">' + escapeHtml_(r.sanPham || '') + '</td>';
           html += '<td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">' + tagHtml + '</td>';
@@ -6133,7 +6407,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       const hoTenInput = document.getElementById('loginHoTenInput');
       const hoTenLabel = document.getElementById('loginHoTenLabel');
       clearTimeout(msnvCheckTimer_);
-      if (!msnv) { hoTenInput.style.display = 'none'; hoTenLabel.style.display = 'none'; return; }
+      if (!msnv || msnv.length < 3) { hoTenInput.style.display = 'none'; hoTenLabel.style.display = 'none'; return; }
 
       msnvCheckTimer_ = setTimeout(function() {
         google.script.run
@@ -6234,6 +6508,30 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
     <div id="toastStack"></div>
     <div id="priorityPopup" class="priority-popup" style="display:none;"></div>
+    <div id="dhPopup" class="priority-popup" style="display:none;"></div>
+
+    <div id="customDhOverlay" class="colvis-overlay" style="display:none; z-index:350;">
+      <div class="colvis-modal" style="width:320px;">
+        <div class="colvis-header">
+          <h3>Thêm nhãn ĐH</h3>
+          <span class="upbom-close" onclick="closeCustomDhModal_()">&times;</span>
+        </div>
+        <div style="padding:16px; display:flex; flex-direction:column; gap:14px;">
+          <label style="font-size:13px; font-weight:600; color:#333;">Tên nhãn / ghi chú
+            <input type="text" id="customDhNameInput" maxlength="16" placeholder="VD: Chờ vật tư"
+              style="width:100%; padding:8px 10px; box-sizing:border-box; margin-top:6px; border:1px solid #ddd; border-radius:6px; font-size:14px;" />
+          </label>
+          <div>
+            <div style="font-size:13px; font-weight:600; color:#333; margin-bottom:6px;">Chọn màu</div>
+            <div id="customDhColorSwatches" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+        </div>
+        <div class="upbom-footer">
+          <button type="button" class="upbom-cancel" onclick="closeCustomDhModal_()">Hủy</button>
+          <button type="button" class="upbom-save" onclick="saveCustomDhModal_()">Lưu nhãn</button>
+        </div>
+      </div>
+    </div>
 
     <div id="customPriorityOverlay" class="colvis-overlay" style="display:none; z-index:350;">
       <div class="colvis-modal" style="width:320px;">
