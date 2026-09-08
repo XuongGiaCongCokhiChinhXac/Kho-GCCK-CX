@@ -1453,6 +1453,9 @@
           <div id="dashboardFilterInfo" style="padding:0 16px 6px 16px; font-size:13px;"></div>
           <div id="dashboardSummary" style="padding:0 16px 10px 16px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px;"></div>
           <div style="display:flex; justify-content:flex-end; gap:8px; padding:0 16px 8px 16px;">
+            <button id="dashColVisBtn" class="icon-btn" title="Chọn cột hiển thị" onclick="openGenericColVisModal_('dashboard')">
+              <i class="fa-solid fa-table-columns"></i>
+            </button>
             <button id="captureDashboardBtn" class="icon-btn" title="Chụp ảnh bảng đang xem" onclick="captureDashboardTable_()">
               <i class="fa-solid fa-camera"></i>
             </button>
@@ -1552,6 +1555,9 @@
             <div class="title-row">
               <h2>Danh sách Nhân sự</h2>
               <div class="title-row-actions">
+                <button id="nsColVisBtn" class="icon-btn" title="Chọn cột hiển thị" onclick="openGenericColVisModal_('nhansu')">
+                  <i class="fa-solid fa-table-columns"></i>
+                </button>
                 <button id="nsRefreshBtn" class="icon-btn" title="Làm mới dữ liệu" onclick="loadNhanSuList_(true)">
                   <i class="fa-solid fa-arrows-rotate"></i>
                 </button>
@@ -2484,6 +2490,91 @@
         saveColumnVisibility_();
         openColumnVisibilityModal(); // vẽ lại danh sách checkbox theo trạng thái mới
         refreshTableAfterColumnChange_();
+      }
+
+      /* ================= CHỌN CỘT HIỂN THỊ - DÙNG CHUNG CHO NHIỀU BẢNG =================
+        Cơ chế giống hệt "Hiển thị" của bảng Tra cứu ở trên, nhưng tổng quát hoá để dùng
+        cho Dashboard, Nhân sự, modal Chi tiết LSX... mỗi bảng có bộ cột + key lưu localStorage riêng. */
+      const COLVIS_REGISTRY_ = {}; // tableKey -> { columns, storageKey, onChange, visibility }
+
+      function registerColvisTable_(tableKey, columns, storageKey, onChange) {
+        let visibility = {};
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (raw) visibility = JSON.parse(raw);
+        } catch (e) {}
+        COLVIS_REGISTRY_[tableKey] = { columns: columns, storageKey: storageKey, onChange: onChange, visibility: visibility };
+      }
+
+      function isGenericColVisible_(tableKey, key) {
+        const entry = COLVIS_REGISTRY_[tableKey];
+        if (!entry) return true; // chưa đăng ký (chưa mở modal lần nào) -> mặc định hiện hết
+        return entry.visibility[key] !== false;
+      }
+
+      // Danh sách cột cho từng bảng - khai báo LƯỜI (bên trong hàm) để tránh lỗi thứ tự khai
+      // báo const trong file (DASHBOARD_COLVIS_COLUMNS_, NHANSU_COLVIS_COLUMNS_, LSX_DETAIL_COLUMNS
+      // đều được định nghĩa ở các đoạn sau trong file, nhưng chỉ thực sự được đọc khi người
+      // dùng bấm nút - lúc đó toàn bộ script đã chạy xong nên không còn vấn đề gì).
+      const COLVIS_TABLE_DEFS_ = {
+        dashboard: function() {
+          return { columns: DASHBOARD_COLVIS_COLUMNS_, storageKey: 'gcck_colvis_dashboard_v1', onChange: function() { renderDashboard_(); } };
+        },
+        nhansu: function() {
+          return { columns: NHANSU_COLVIS_COLUMNS_, storageKey: 'gcck_colvis_nhansu_v1', onChange: function() { renderNhanSuTable_(); } };
+        },
+        lsxdetail: function() {
+          return {
+            columns: LSX_DETAIL_COLUMNS.map(function(c) { return { key: c.key, label: c.label }; }),
+            storageKey: 'gcck_colvis_lsxdetail_v1',
+            onChange: function() { renderLsxDetailTable_(applyDetailFilters_(lsxDetailRawRows)); }
+          };
+        }
+      };
+
+      function ensureColvisRegistered_(tableKey) {
+        if (COLVIS_REGISTRY_[tableKey]) return;
+        const defFn = COLVIS_TABLE_DEFS_[tableKey];
+        if (!defFn) return;
+        const def = defFn();
+        registerColvisTable_(tableKey, def.columns, def.storageKey, def.onChange);
+      }
+
+      let currentColvisTableKey_ = null;
+
+      function openGenericColVisModal_(tableKey) {
+        ensureColvisRegistered_(tableKey);
+        currentColvisTableKey_ = tableKey;
+        const entry = COLVIS_REGISTRY_[tableKey];
+        if (!entry) return;
+        const list = document.getElementById('genericColVisList');
+        list.innerHTML = entry.columns.map(function(col) {
+          const checked = isGenericColVisible_(tableKey, col.key) ? 'checked' : '';
+          return '<label class="colvis-option"><input type="checkbox" ' + checked +
+            ' onchange="toggleGenericColumnVisibility_(\'' + col.key + '\', this.checked)" /> ' + col.label + '</label>';
+        }).join('');
+        document.getElementById('genericColVisOverlay').style.display = 'flex';
+      }
+
+      function closeGenericColVisModal_() {
+        document.getElementById('genericColVisOverlay').style.display = 'none';
+      }
+
+      function toggleGenericColumnVisibility_(key, checked) {
+        const entry = COLVIS_REGISTRY_[currentColvisTableKey_];
+        if (!entry) return;
+        entry.visibility[key] = checked;
+        try { localStorage.setItem(entry.storageKey, JSON.stringify(entry.visibility)); } catch (e) {}
+        if (entry.onChange) entry.onChange();
+      }
+
+      function setAllGenericColumnsVisible_(visible) {
+        const entry = COLVIS_REGISTRY_[currentColvisTableKey_];
+        if (!entry) return;
+        entry.columns.forEach(function(col) { entry.visibility[col.key] = visible; });
+        try { localStorage.setItem(entry.storageKey, JSON.stringify(entry.visibility)); } catch (e) {}
+        openGenericColVisModal_(currentColvisTableKey_); // vẽ lại danh sách checkbox theo trạng thái mới
+        if (entry.onChange) entry.onChange();
       }
 
       function toggleSort(key) {
@@ -3691,6 +3782,21 @@
   }
 
       /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
+      const DASHBOARD_COLVIS_COLUMNS_ = [
+        { key: 'dh', label: 'ĐH' },
+        { key: 'lsx', label: 'LSX' },
+        { key: 'sanpham', label: 'Sản phẩm' },
+        { key: 'uutien', label: 'Ưu tiên' },
+        { key: 'khgh', label: 'KHGH' },
+        { key: 'ducnhom', label: 'Đúc nhôm' },
+        { key: 'cuavong', label: 'Cửa vòng' },
+        { key: 'tien', label: 'Tiện' },
+        { key: 'phay', label: 'Phay' },
+        { key: 'nguoi', label: 'Nguội' },
+        { key: 'nhiet', label: 'Nhiệt' },
+        { key: 'tiendo', label: 'Tiến độ' },
+        { key: 'khogh', label: '% Kho giao hàng' }
+      ];
       let dashboardRows = [];
       let dashboardVisibleRows_ = []; // dữ liệu ĐANG hiển thị trên bảng Dashboard (đã lọc + sắp xếp) - dùng khi chụp ảnh
       let dashboardTypeFilter = null; // loại đơn đang được lọc trên bảng, null = không lọc
@@ -4297,6 +4403,16 @@ function pollPriorityTagsSilently_() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
   }
 
+  async function updateCustomPriorityTagDirect_(tag) {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/custom_priority_tags?value=eq.' + encodeURIComponent(tag.value);
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: Object.assign({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }, supabaseHeaders_()),
+      body: JSON.stringify({ label: tag.label, bg: tag.bg, color: tag.color })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
   function saveCustomPriorityTagsCache_() {
     try { localStorage.setItem(CUSTOM_PRIORITY_TAGS_CACHE_KEY, JSON.stringify(customPriorityTags_)); } catch (e) {}
   }
@@ -4374,6 +4490,7 @@ function pollPriorityTagsSilently_() {
   }
 
   let priorityPopupLsx_ = null;
+  let editingCustomPriorityValue_ = null; // value đang được sửa trong customPriorityOverlay, null = đang thêm mới
 
   function renderPriorityPopupList_() {
     const popup = document.getElementById('priorityPopup');
@@ -4390,8 +4507,10 @@ function pollPriorityTagsSilently_() {
       html += customTags.map(function(c) {
         const safeVal = c.value.replace(/'/g, "\\'");
         return '<div class="priority-popup-option" style="background:' + c.bg + '; color:' + c.color +
-          '; display:flex; align-items:center; justify-content:space-between; gap:8px;">' +
+          '; display:flex; align-items:center; justify-content:space-between; gap:6px;">' +
           '<span onclick="pickPriority_(\'' + safeVal + '\')" style="flex:1; cursor:pointer;">' + escapeHtml_(c.label) + '</span>' +
+          '<i class="fa-solid fa-pen" onclick="event.stopPropagation(); editCustomPriorityTag_(\'' + safeVal + '\')" ' +
+          'style="cursor:pointer; font-size:11px; opacity:0.8;" title="Sửa nhãn này"></i>' +
           '<span onclick="event.stopPropagation(); deleteCustomPriorityTag_(\'' + safeVal + '\')" ' +
           'style="cursor:pointer; font-weight:800; opacity:0.8;" title="Xóa nhãn này khỏi danh sách">&times;</span>' +
           '</div>';
@@ -4400,6 +4519,27 @@ function pollPriorityTagsSilently_() {
 
     html += '<div class="priority-popup-add" onclick="openCustomPriorityModal_()">+ Thêm nhãn khác...</div>';
     popup.innerHTML = html;
+  }
+
+  /** Mở lại modal "Thêm nhãn" nhưng ở chế độ SỬA - điền sẵn tên + màu hiện tại của nhãn. */
+  function editCustomPriorityTag_(value) {
+    const tag = getCustomPriorityTags_().find(function(c) { return c.value === value; });
+    if (!tag) return;
+    editingCustomPriorityValue_ = value;
+    customPriorityTargetLsx_ = null; // sửa nhãn không gắn nó cho LSX nào
+    closePriorityPopup_();
+
+    customPriorityChosenColor_ = tag.bg;
+    document.getElementById('customPriorityNameInput').value = tag.label;
+    const swatchWrap = document.getElementById('customPriorityColorSwatches');
+    swatchWrap.innerHTML = CUSTOM_PRIORITY_COLOR_CHOICES_.map(function(c) {
+      const isSelected = c.toLowerCase() === String(tag.bg).toLowerCase();
+      return '<span class="custom-priority-swatch" data-color="' + c + '" onclick="selectCustomPriorityColor_(this, \'' + c + '\')" ' +
+        'style="width:26px; height:26px; border-radius:50%; background:' + c + '; cursor:pointer; display:inline-block; border:2px solid ' +
+        (isSelected ? '#333' : 'transparent') + ';"></span>';
+    }).join('');
+    document.getElementById('customPriorityOverlay').style.display = 'flex';
+    setTimeout(function() { document.getElementById('customPriorityNameInput').focus(); }, 50);
   }
 
   function openPriorityPopup_(e, lsx) {
@@ -4452,6 +4592,7 @@ function pollPriorityTagsSilently_() {
   let customPriorityTargetLsx_ = null; // lưu riêng LSX đang thao tác vì openPriorityPopup_ sẽ bị đóng
 
   function openCustomPriorityModal_() {
+    editingCustomPriorityValue_ = null;
     customPriorityTargetLsx_ = priorityPopupLsx_;
     closePriorityPopup_();
 
@@ -4477,6 +4618,26 @@ function pollPriorityTagsSilently_() {
   function saveCustomPriorityModal_() {
     const name = document.getElementById('customPriorityNameInput').value.trim();
     if (!name) { showToast('Vui lòng nhập tên nhãn.', 'error'); return; }
+
+    if (editingCustomPriorityValue_) {
+      const value = editingCustomPriorityValue_;
+      const tag = customPriorityTags_.find(function(c) { return c.value === value; });
+      if (tag) {
+        tag.label = name;
+        tag.bg = customPriorityChosenColor_;
+        tag.color = pickTextColorForBg_(customPriorityChosenColor_);
+        saveCustomPriorityTagsCache_();
+        updateCustomPriorityTagDirect_(tag).catch(function() {
+          showToast('Chưa đồng bộ được thay đổi nhãn "' + name + '" lên máy chủ (mất mạng?).', 'info');
+        });
+        if (dashboardRenderedOnce_) renderDashboard_(); // các LSX đang gắn nhãn này đổi tên/màu ngay
+      }
+      editingCustomPriorityValue_ = null;
+      closeCustomPriorityModal_();
+      showToast('Đã cập nhật nhãn "' + name + '".', 'success');
+      return;
+    }
+
     const value = addCustomPriorityTag_(name, customPriorityChosenColor_);
     closeCustomPriorityModal_();
     if (customPriorityTargetLsx_) {
@@ -4659,6 +4820,16 @@ window.addEventListener('online', tryFlushPriorityQueue_);
     if (!res.ok) throw new Error('HTTP ' + res.status);
   }
 
+  async function updateCustomDhTagDirect_(tag) {
+    const url = SUPABASE_URL_DIRECT_ + '/rest/v1/custom_order_tags?value=eq.' + encodeURIComponent(tag.value);
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: Object.assign({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }, supabaseHeaders_()),
+      body: JSON.stringify({ label: tag.label, bg: tag.bg, color: tag.color })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
   function saveDhTagsCache_() { try { localStorage.setItem(DH_TAGS_CACHE_KEY, JSON.stringify(dhTags_)); } catch (e) {} }
   function saveCustomDhTagsCache_() { try { localStorage.setItem(CUSTOM_DH_TAGS_CACHE_KEY, JSON.stringify(customDhTags_)); } catch (e) {} }
 
@@ -4723,6 +4894,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
   }
 
   let dhPopupLsx_ = null;
+  let editingCustomDhValue_ = null; // value đang được sửa trong customDhOverlay, null = đang thêm mới
 
   function renderDhPopupList_() {
     const popup = document.getElementById('dhPopup');
@@ -4733,8 +4905,10 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       html += customTags.map(function(c) {
         const safeVal = c.value.replace(/'/g, "\\'");
         return '<div class="priority-popup-option" style="background:' + c.bg + '; color:' + c.color +
-          '; display:flex; align-items:center; justify-content:space-between; gap:8px;">' +
+          '; display:flex; align-items:center; justify-content:space-between; gap:6px;">' +
           '<span onclick="pickDhTag_(\'' + safeVal + '\')" style="flex:1; cursor:pointer;">' + escapeHtml_(c.label) + '</span>' +
+          '<i class="fa-solid fa-pen" onclick="event.stopPropagation(); editCustomDhTag_(\'' + safeVal + '\')" ' +
+          'style="cursor:pointer; font-size:11px; opacity:0.8;" title="Sửa nhãn này"></i>' +
           '<span onclick="event.stopPropagation(); deleteCustomDhTag_(\'' + safeVal + '\')" ' +
           'style="cursor:pointer; font-weight:800; opacity:0.8;" title="Xóa nhãn này khỏi danh sách">&times;</span>' +
           '</div>';
@@ -4742,6 +4916,27 @@ window.addEventListener('online', tryFlushPriorityQueue_);
     }
     html += '<div class="priority-popup-add" onclick="openCustomDhModal_()">+ Thêm nhãn khác...</div>';
     popup.innerHTML = html;
+  }
+
+  /** Mở lại modal "Thêm nhãn ĐH" nhưng ở chế độ SỬA - điền sẵn tên + màu hiện tại của nhãn. */
+  function editCustomDhTag_(value) {
+    const tag = getCustomDhTags_().find(function(c) { return c.value === value; });
+    if (!tag) return;
+    editingCustomDhValue_ = value;
+    customDhTargetLsx_ = null;
+    closeDhPopup_();
+
+    customDhChosenColor_ = tag.bg;
+    document.getElementById('customDhNameInput').value = tag.label;
+    const swatchWrap = document.getElementById('customDhColorSwatches');
+    swatchWrap.innerHTML = CUSTOM_PRIORITY_COLOR_CHOICES_.map(function(c) {
+      const isSelected = c.toLowerCase() === String(tag.bg).toLowerCase();
+      return '<span class="custom-dh-swatch" data-color="' + c + '" onclick="selectCustomDhColor_(this, \'' + c + '\')" ' +
+        'style="width:26px; height:26px; border-radius:50%; background:' + c + '; cursor:pointer; display:inline-block; border:2px solid ' +
+        (isSelected ? '#333' : 'transparent') + ';"></span>';
+    }).join('');
+    document.getElementById('customDhOverlay').style.display = 'flex';
+    setTimeout(function() { document.getElementById('customDhNameInput').focus(); }, 50);
   }
 
   function openDhPopup_(e, lsx) {
@@ -4792,6 +4987,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
   let customDhTargetLsx_ = null;
 
   function openCustomDhModal_() {
+    editingCustomDhValue_ = null;
     customDhTargetLsx_ = dhPopupLsx_;
     closeDhPopup_();
     customDhChosenColor_ = CUSTOM_PRIORITY_COLOR_CHOICES_[0];
@@ -4814,6 +5010,26 @@ window.addEventListener('online', tryFlushPriorityQueue_);
   function saveCustomDhModal_() {
     const name = document.getElementById('customDhNameInput').value.trim();
     if (!name) { showToast('Vui lòng nhập tên nhãn.', 'error'); return; }
+
+    if (editingCustomDhValue_) {
+      const value = editingCustomDhValue_;
+      const tag = customDhTags_.find(function(c) { return c.value === value; });
+      if (tag) {
+        tag.label = name;
+        tag.bg = customDhChosenColor_;
+        tag.color = pickTextColorForBg_(customDhChosenColor_);
+        saveCustomDhTagsCache_();
+        updateCustomDhTagDirect_(tag).catch(function() {
+          showToast('Chưa đồng bộ được thay đổi nhãn "' + name + '" lên máy chủ (mất mạng?).', 'info');
+        });
+        if (dashboardRenderedOnce_) renderDashboard_();
+      }
+      editingCustomDhValue_ = null;
+      closeCustomDhModal_();
+      showToast('Đã cập nhật nhãn "' + name + '".', 'success');
+      return;
+    }
+
     const value = 'dh_' + Date.now();
     const tag = { value: value, label: name, bg: customDhChosenColor_, color: pickTextColorForBg_(customDhChosenColor_) };
     customDhTags_.push(tag);
@@ -5051,28 +5267,41 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         dashboardVisibleRows_ = rows; // lưu lại đúng dữ liệu đang hiển thị (sau lọc+sắp xếp) để dùng khi chụp ảnh
         const wrap = document.getElementById('dashboardResult');
 
-        const CHUYEN_LABELS = [
-          { key: 'ducNhom', label: 'Đúc nhôm' }, { key: 'cuaVong', label: 'Cửa vòng' },
-          { key: 'tien', label: 'Tiện' }, { key: 'phay', label: 'Phay' },
-          { key: 'nguoi', label: 'Nguội' }, { key: 'nhiet', label: 'Nhiệt' }
+        const DASHBOARD_CHUYEN_ALL_ = [
+          { key: 'ducnhom', dataKey: 'ducNhom', label: 'Đúc nhôm' },
+          { key: 'cuavong', dataKey: 'cuaVong', label: 'Cửa vòng' },
+          { key: 'tien', dataKey: 'tien', label: 'Tiện' },
+          { key: 'phay', dataKey: 'phay', label: 'Phay' },
+          { key: 'nguoi', dataKey: 'nguoi', label: 'Nguội' },
+          { key: 'nhiet', dataKey: 'nhiet', label: 'Nhiệt' }
         ];
+        const CHUYEN_LABELS = DASHBOARD_CHUYEN_ALL_
+          .filter(function(c) { return isGenericColVisible_('dashboard', c.key); })
+          .map(function(c) { return { key: c.dataKey, label: c.label }; });
         const chuyenHeaderHtml = CHUYEN_LABELS.map(function(c) { return '<th>' + c.label + '</th>'; }).join('');
 
+        function dashColHeader_(key, html) { return isGenericColVisible_('dashboard', key) ? html : ''; }
+
         const headerHtml = '<tr>' +
-          '<th class="dash-dh-col">ĐH' + dashFilterIconHtml_('dhTag') + '</th>' +
-          '<th class="dash-lsx-col">LSX' + dashFilterIconHtml_('lsx') + '</th>' +
-          '<th>Sản phẩm' + dashFilterIconHtml_('sanPham') + '</th>' +
-          '<th class="dash-priority-col">&#431;u ti&#234;n' + dashFilterIconHtml_('uuTien') + '</th>' +
-          '<th class="dash-khgh-col">KHGH' + dashFilterIconHtml_('khgh') + '</th>' +
-          chuyenHeaderHtml + '<th class="dash-progress-col">Tiến độ' + dashFilterIconHtml_('tienDoBucket') + '</th><th>% Kho giao hàng' + dashFilterIconHtml_('khoGiaoHangBucket') + '</th></tr>';
+          dashColHeader_('dh', '<th class="dash-dh-col">ĐH' + dashFilterIconHtml_('dhTag') + '</th>') +
+          dashColHeader_('lsx', '<th class="dash-lsx-col">LSX' + dashFilterIconHtml_('lsx') + '</th>') +
+          dashColHeader_('sanpham', '<th>Sản phẩm' + dashFilterIconHtml_('sanPham') + '</th>') +
+          dashColHeader_('uutien', '<th class="dash-priority-col">&#431;u ti&#234;n' + dashFilterIconHtml_('uuTien') + '</th>') +
+          dashColHeader_('khgh', '<th class="dash-khgh-col">KHGH' + dashFilterIconHtml_('khgh') + '</th>') +
+          chuyenHeaderHtml +
+          dashColHeader_('tiendo', '<th class="dash-progress-col">Tiến độ' + dashFilterIconHtml_('tienDoBucket') + '</th>') +
+          dashColHeader_('khogh', '<th>% Kho giao hàng' + dashFilterIconHtml_('khoGiaoHangBucket') + '</th>') +
+          '</tr>';
 
         const myToken = ++dashRenderToken_;
         dashClearSelection_();
         const savedScrollTop = wrap.scrollTop; // giữ vị trí đang cuộn, không tự nhảy về đầu bảng
 
         if (rows.length === 0) {
+          const visibleFixedCount_ = ['dh', 'lsx', 'sanpham', 'uutien', 'khgh', 'tiendo', 'khogh']
+            .filter(function(k) { return isGenericColVisible_('dashboard', k); }).length;
           wrap.innerHTML = '<table>' + headerHtml +
-            '<tr><td colspan="' + (7 + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr></table>';
+            '<tr><td colspan="' + (visibleFixedCount_ + CHUYEN_LABELS.length) + '" class="empty-state-cell">Không có dữ liệu.</td></tr></table>';
           return;
         }
 
@@ -5089,10 +5318,10 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           const barColor = r.percent >= 100 ? '#34a853' : (r.percent >= 50 ? '#fbbc04' : '#ff8a3d');
           let colIdx = 0;
           function nextAttrs() { return ' data-r="' + rIdx + '" data-c="' + (colIdx++) + '"'; }
+          function vis(key) { return isGenericColVisible_('dashboard', key); }
 
           let chuyenCells = '';
           CHUYEN_LABELS.forEach(function(c) {
-            // buildChuyenCell_ tự vẽ trọn thẻ <td>, chèn thêm data-r/data-c để chọn ô được luôn.
             chuyenCells += buildChuyenCell_(r.chuyen && r.chuyen[c.key]).replace('<td class="chuyen-cell">', '<td class="chuyen-cell"' + nextAttrs() + '>');
           });
 
@@ -5102,25 +5331,27 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           const safeLsxAttr = escapeHtml_(r.lsx).replace(/'/g, "\\'");
           const dataLsxAttr = ' data-lsx="' + escapeHtml_(r.lsx).replace(/"/g, '&quot;') + '"';
           const dhTag = dhTags_[r.lsx] || '';
-          return '<tr' + rowClass + dataLsxAttr + ' style="' + rowStyle + '">' +
-            '<td' + nextAttrs() + ' style="text-align:center; font-weight:800;">' + buildDhPill_(r.lsx, dhTag) + '</td>' +
-            '<td class="dash-lsx-cell"' + nextAttrs() + '>' +
+
+          let html = '<tr' + rowClass + dataLsxAttr + ' style="' + rowStyle + '">';
+          if (vis('dh')) html += '<td' + nextAttrs() + ' style="text-align:center; font-weight:800;">' + buildDhPill_(r.lsx, dhTag) + '</td>';
+          if (vis('lsx')) html += '<td class="dash-lsx-cell"' + nextAttrs() + '>' +
               '<span class="dash-lsx-text">' + escapeHtml_(r.lsx) + '</span>' +
               '<i class="fa-solid fa-eye dash-lsx-eye" title="Xem chi tiết chưa giao hàng" ' +
                 'onclick="event.stopPropagation(); openLsxDetailModal_(\'' + safeLsxAttr + '\')"></i>' +
-            '</td>' +
-            '<td class="dash-sanpham-col"' + nextAttrs() + '>' + escapeHtml_(r.sanPham || '') + '</td>' +
-            '<td' + nextAttrs() + '>' + buildPriorityDropdown_(r.lsx, tag) + '</td>' +
-            '<td class="dash-khgh-cell"' + nextAttrs() + '>' + formatDate(r.khgh) + '</td>' +
-            chuyenCells +
-            '<td class="dash-progress-col"' + nextAttrs() + '>' + percentBadge_(r.tienDoDonHang) + '</td>' +
-            '<td style="min-width:120px;"' + nextAttrs() + '>' +
+            '</td>';
+          if (vis('sanpham')) html += '<td class="dash-sanpham-col"' + nextAttrs() + '>' + escapeHtml_(r.sanPham || '') + '</td>';
+          if (vis('uutien')) html += '<td' + nextAttrs() + '>' + buildPriorityDropdown_(r.lsx, tag) + '</td>';
+          if (vis('khgh')) html += '<td class="dash-khgh-cell"' + nextAttrs() + '>' + formatDate(r.khgh) + '</td>';
+          html += chuyenCells;
+          if (vis('tiendo')) html += '<td class="dash-progress-col"' + nextAttrs() + '>' + percentBadge_(r.tienDoDonHang) + '</td>';
+          if (vis('khogh')) html += '<td style="min-width:120px;"' + nextAttrs() + '>' +
               '<div style="background:#eee; border-radius:4px; overflow:hidden; height:14px;">' +
                 '<div style="width:' + r.percent + '%; background:' + barColor + '; height:100%;"></div>' +
               '</div>' +
               '<span style="font-size:11px;">' + r.percent + '%</span>' +
-            '</td>' +
-          '</tr>';
+            '</td>';
+          html += '</tr>';
+          return html;
         }
 
         function renderChunk() {
@@ -5325,10 +5556,15 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         document.getElementById('lsxDetailOverlay').style.display = 'none';
       }
 
+      function getVisibleLsxDetailColumns_() {
+        return LSX_DETAIL_COLUMNS.filter(function(c) { return isGenericColVisible_('lsxdetail', c.key); });
+      }
+
       function renderLsxDetailTable_(rows) {
         const table = document.getElementById('lsxDetailTable');
+        const cols = getVisibleLsxDetailColumns_();
         let html = '<thead><tr>';
-        LSX_DETAIL_COLUMNS.forEach(function(c) {
+        cols.forEach(function(c) {
           const boldStyle = c.key === 'lsx' ? 'font-weight:800;' : '';
           const activeCls = lsxDetailFilters[c.key] ? ' active' : '';
           html += '<th style="background:#003DA5; color:#fff; padding:6px 8px; border:1px solid #ddd; white-space:normal; position:sticky; top:0;' + boldStyle + '">' +
@@ -5339,11 +5575,11 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         html += '</tr></thead><tbody>';
 
         if (rows.length === 0) {
-          html += '<tr><td colspan="' + LSX_DETAIL_COLUMNS.length + '" style="padding:20px; text-align:center; color:#999;">Đơn hàng đã giao đủ, không còn món nào chưa giao.</td></tr>';
+          html += '<tr><td colspan="' + cols.length + '" style="padding:20px; text-align:center; color:#999;">Đơn hàng đã giao đủ, không còn món nào chưa giao.</td></tr>';
         } else {
           rows.forEach(function(r) {
             html += '<tr>';
-            LSX_DETAIL_COLUMNS.forEach(function(c) {
+            cols.forEach(function(c) {
               let val;
               if (c.bool) {
                 val = '<span class="chk' + (r[c.key] ? ' checked' : '') + '">' + (r[c.key] ? '&#10003;' : '') + '</span>';
@@ -5386,17 +5622,18 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
         // Lấy nguyên HTML của tiêu đề (đã có sẵn các badge Tổng/Đã giao/Giao hàng/Nhận VT
         // do renderLsxDetailSummary_ dựng), để chụp ảnh giống hệt trên màn hình.
+        const cols = getVisibleLsxDetailColumns_();
         let html = '<div style="font-family:Arial,sans-serif; margin-bottom:6px;">' + titleEl.innerHTML + '</div>';
         html += '<div style="font-family:Arial,sans-serif; font-size:13px; color:#888; margin-bottom:10px;">Chưa giao hàng</div>';
         html += '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;"><tr>';
-        LSX_DETAIL_COLUMNS.forEach(function(c) {
+        cols.forEach(function(c) {
           html += '<th style="background:#003DA5;color:#fff;border:1px solid #ddd;padding:6px 8px;white-space:nowrap;">' + c.label + '</th>';
         });
         html += '</tr>';
 
         rows.forEach(function(r) {
           html += '<tr>';
-          LSX_DETAIL_COLUMNS.forEach(function(c) {
+          cols.forEach(function(c) {
             let val;
             if (c.bool) {
               val = r[c.key]
@@ -6314,6 +6551,19 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           .getNhanSuData(!!forceRefresh);
       }
 
+      const NHANSU_COLVIS_COLUMNS_ = [
+        { key: 'stt', label: 'STT' },
+        { key: 'msnv', label: 'MSNV' },
+        { key: 'hoten', label: 'Họ và tên' },
+        { key: 'dilam', label: 'Đi làm/Nghỉ' },
+        { key: 'lydo', label: 'Lý do vắng' },
+        { key: 'bophan', label: 'Bộ phận' },
+        { key: 'chucdanh', label: 'Chức danh' },
+        { key: 'gioitinh', label: 'Giới tính' },
+        { key: 'thanhphan', label: 'Thành phần' },
+        { key: 'cadem', label: 'Ca đêm' }
+      ];
+
       function renderNhanSuTable_() {
         const kwEl = document.getElementById('nsSearchInput');
         const kw = kwEl ? kwEl.value.trim().toLowerCase() : '';
@@ -6322,16 +6572,34 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           return (r.msnv + r.hoTen + r.boPhan).toLowerCase().indexOf(kw) !== -1;
         });
 
-        let html = '<tr><th>STT</th><th>MSNV</th><th>Họ và tên</th><th>Đi làm/Nghỉ</th><th>Lý do vắng</th>' +
-          '<th>Bộ phận</th><th>Chức danh</th><th>Giới tính</th><th>Thành phần</th><th>Ca đêm</th></tr>';
+        function v(key) { return isGenericColVisible_('nhansu', key); }
+
+        let headerCells = '';
+        if (v('stt')) headerCells += '<th>STT</th>';
+        if (v('msnv')) headerCells += '<th>MSNV</th>';
+        if (v('hoten')) headerCells += '<th>Họ và tên</th>';
+        if (v('dilam')) headerCells += '<th>Đi làm/Nghỉ</th>';
+        if (v('lydo')) headerCells += '<th>Lý do vắng</th>';
+        if (v('bophan')) headerCells += '<th>Bộ phận</th>';
+        if (v('chucdanh')) headerCells += '<th>Chức danh</th>';
+        if (v('gioitinh')) headerCells += '<th>Giới tính</th>';
+        if (v('thanhphan')) headerCells += '<th>Thành phần</th>';
+        if (v('cadem')) headerCells += '<th>Ca đêm</th>';
+        let html = '<tr>' + headerCells + '</tr>';
 
         rows.forEach(function(r, i) {
-          html += '<tr>' +
-            '<td>' + (i + 1) + '</td><td>' + escapeHtml_(r.msnv) + '</td><td>' + escapeHtml_(r.hoTen) + '</td>' +
-            '<td><span class="badge ' + (r.diLam ? 'badge-on' : 'badge-off') + '">' + (r.diLam ? 'Đi làm' : 'Nghỉ') + '</span></td>' +
-            '<td>' + escapeHtml_(r.lyDoVang || '') + '</td><td>' + escapeHtml_(r.boPhan) + '</td><td>' + escapeHtml_(r.chucDanh) + '</td>' +
-            '<td>' + escapeHtml_(r.gioiTinh) + '</td><td>' + escapeHtml_(r.thanhPhan) + '</td>' +
-            '<td>' + (r.caDem ? '✔' : '') + '</td></tr>';
+          let rowCells = '';
+          if (v('stt')) rowCells += '<td>' + (i + 1) + '</td>';
+          if (v('msnv')) rowCells += '<td>' + escapeHtml_(r.msnv) + '</td>';
+          if (v('hoten')) rowCells += '<td>' + escapeHtml_(r.hoTen) + '</td>';
+          if (v('dilam')) rowCells += '<td><span class="badge ' + (r.diLam ? 'badge-on' : 'badge-off') + '">' + (r.diLam ? 'Đi làm' : 'Nghỉ') + '</span></td>';
+          if (v('lydo')) rowCells += '<td>' + escapeHtml_(r.lyDoVang || '') + '</td>';
+          if (v('bophan')) rowCells += '<td>' + escapeHtml_(r.boPhan) + '</td>';
+          if (v('chucdanh')) rowCells += '<td>' + escapeHtml_(r.chucDanh) + '</td>';
+          if (v('gioitinh')) rowCells += '<td>' + escapeHtml_(r.gioiTinh) + '</td>';
+          if (v('thanhphan')) rowCells += '<td>' + escapeHtml_(r.thanhPhan) + '</td>';
+          if (v('cadem')) rowCells += '<td>' + (r.caDem ? '✔' : '') + '</td>';
+          html += '<tr>' + rowCells + '</tr>';
         });
 
         document.getElementById('nsListTable').innerHTML = html || '<tr><td class="empty-state-cell">Không có dữ liệu.</td></tr>';
@@ -6586,6 +6854,23 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       </div>
     </div>
 
+    <div id="genericColVisOverlay" class="colvis-overlay" style="display:none;">
+      <div class="colvis-modal">
+        <div class="colvis-header">
+          <h3>Chọn cột hiển thị</h3>
+          <span class="upbom-close" onclick="closeGenericColVisModal_()">&times;</span>
+        </div>
+        <div class="colvis-actions">
+          <button type="button" class="colvis-select-all" onclick="setAllGenericColumnsVisible_(true)">Chọn tất cả</button>
+          <button type="button" class="colvis-select-none" onclick="setAllGenericColumnsVisible_(false)">Bỏ chọn tất cả</button>
+        </div>
+        <div id="genericColVisList" class="colvis-list"></div>
+        <div class="colvis-footer">
+          <button type="button" onclick="closeGenericColVisModal_()">Đóng</button>
+        </div>
+      </div>
+    </div>
+
     <div id="notifOverlay" class="notif-dropdown" style="display:none;">
       <div class="colvis-header">
         <h3><i class="fa-regular fa-bell" style="margin-right:8px;"></i>Thông báo</h3>
@@ -6607,6 +6892,9 @@ window.addEventListener('online', tryFlushPriorityQueue_);
     <div class="colvis-modal" style="width:min(96vw, 1400px); height:auto; max-width:96vw; max-height:92vh; min-width:520px; min-height:auto; resize:both; overflow:auto;">
         <div class="colvis-header" style="flex-wrap:wrap; align-items:flex-start;">
           <h3 id="lsxDetailTitle" style="font-size:14px; font-weight:normal; flex:1; min-width:260px; margin-right:10px; line-height:1.6;">Chi tiết chưa giao hàng</h3>
+          <button type="button" class="icon-btn" title="Chọn cột hiển thị" onclick="openGenericColVisModal_('lsxdetail')" style="margin-right:8px;">
+            <i class="fa-solid fa-table-columns"></i>
+          </button>
           <button type="button" class="icon-btn" title="Chụp ảnh dữ liệu đang xem" onclick="captureLsxDetailModal_()" style="margin-right:8px;">
             <i class="fa-solid fa-camera"></i>
           </button>
