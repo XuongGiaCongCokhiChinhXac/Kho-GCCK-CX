@@ -1224,10 +1224,16 @@
             <span id="notifBadgeCount" style="display:none; position:absolute; top:-3px; right:-3px; background:#d62828; color:#fff; border-radius:50%; font-size:10px; font-weight:bold; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 3px;"></span>
           </button>
         </div>
-        <span id="onlineBadge" style="display:none; align-items:center; gap:6px; font-size:12px; color:#e8f0ff; margin-right:2px;">
-          <span style="width:8px; height:8px; border-radius:50%; background:#4ade80; display:inline-block; animation: syncBlink 1.4s ease-in-out infinite; box-shadow:0 0 6px #4ade80;"></span>
-          <span id="onlineCountText">0 đang online</span>
-        </span>
+        <div id="onlineBadgeWrap" style="position:relative;" onmouseenter="openOnlineUsersPopover_()" onmouseleave="scheduleCloseOnlineUsersPopover_()">
+          <span id="onlineBadge" style="display:none; align-items:center; gap:6px; font-size:12px; color:#e8f0ff; margin-right:2px; cursor:default;">
+            <span style="width:8px; height:8px; border-radius:50%; background:#4ade80; display:inline-block; animation: syncBlink 1.4s ease-in-out infinite; box-shadow:0 0 6px #4ade80;"></span>
+            <span id="onlineCountText">0 đang online</span>
+          </span>
+          <div id="onlineUsersPopover" class="zoom-popover" style="display:none; top:44px; right:0; left:auto; width:230px; padding:10px;">
+            <div style="font-size:12px; font-weight:bold; color:#333; margin-bottom:6px;">Đang truy cập</div>
+            <div id="onlineUsersPopoverList" style="max-height:220px; overflow-y:auto; font-size:13px; color:#333;"></div>
+          </div>
+        </div>
         <div class="topbar-user" id="topbarUserMenu">
           <button class="topbar-user-btn" onclick="toggleUserMenu_()">
             <i class="fa-regular fa-circle-user"></i>
@@ -1598,9 +1604,8 @@
           let currentUser_ = null; // { msnv, hoTen }
       const ONLINE_HEARTBEAT_MS = 120000; // 2 phút - đủ để hiện số người online, giảm mạnh số lệnh gọi/ngày
 
-      function sendHeartbeat_() {
+           function sendHeartbeat_() {
         if (!currentUser_) return;
-        if (document.hidden) return; // tab đang ẩn/thu nhỏ -> không cần báo online, đỡ tốn quota
         google.script.run
           .withSuccessHandler(function(count) {
             const badge = document.getElementById('onlineBadge');
@@ -1610,7 +1615,58 @@
             badge.style.display = 'inline-flex';
           })
           .withFailureHandler(function() { /* im lặng, lần sau tự thử lại */ })
-          .heartbeatOnline(currentUser_.msnv);
+          .heartbeatOnline(currentUser_.msnv, currentUser_.hoTen);
+      }
+
+      /* ================= DANH SÁCH NGƯỜI ĐANG ONLINE (hover để xem) ================= */
+      let onlineUsersPopoverCloseTimer_ = null;
+      let onlineUsersListCache_ = null;
+      let onlineUsersListCacheTs_ = 0;
+      const ONLINE_USERS_LIST_CACHE_MS = 8000; // 8 giây - đủ để không gọi lại liên tục khi rê chuột ra vào
+
+      function openOnlineUsersPopover_() {
+        if (onlineUsersPopoverCloseTimer_) { clearTimeout(onlineUsersPopoverCloseTimer_); onlineUsersPopoverCloseTimer_ = null; }
+        const pop = document.getElementById('onlineUsersPopover');
+        if (!pop) return;
+        pop.style.display = 'block';
+
+        const now = Date.now();
+        if (onlineUsersListCache_ && (now - onlineUsersListCacheTs_) < ONLINE_USERS_LIST_CACHE_MS) {
+          renderOnlineUsersPopover_(onlineUsersListCache_);
+          return;
+        }
+
+        document.getElementById('onlineUsersPopoverList').innerHTML = '<div style="color:#999; padding:6px 0;">Đang tải...</div>';
+        google.script.run
+          .withSuccessHandler(function(list) {
+            onlineUsersListCache_ = list || [];
+            onlineUsersListCacheTs_ = Date.now();
+            renderOnlineUsersPopover_(onlineUsersListCache_);
+          })
+          .withFailureHandler(function() {
+            document.getElementById('onlineUsersPopoverList').innerHTML = '<div style="color:#c62828; padding:6px 0;">Lỗi tải danh sách.</div>';
+          })
+          .getOnlineUsersList();
+      }
+
+      function scheduleCloseOnlineUsersPopover_() {
+        onlineUsersPopoverCloseTimer_ = setTimeout(function() {
+          const pop = document.getElementById('onlineUsersPopover');
+          if (pop) pop.style.display = 'none';
+        }, 200);
+      }
+
+      function renderOnlineUsersPopover_(list) {
+        const el = document.getElementById('onlineUsersPopoverList');
+        if (!el) return;
+        if (!list || list.length === 0) {
+          el.innerHTML = '<div style="color:#999; padding:6px 0;">Không có ai đang online.</div>';
+          return;
+        }
+        el.innerHTML = list.map(function(u) {
+          const label = (u.msnv || '') + (u.hoTen ? ('-' + u.hoTen) : '');
+          return '<div style="padding:5px 0; border-bottom:1px solid #f0f0f0;">' + escapeHtml_(label) + '</div>';
+        }).join('');
       }
 
       /* ================= THÔNG BÁO ĐƠN GẤP/ƯU TIÊN ================= */
@@ -5292,7 +5348,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           chuyenHeaderHtml +
           dashColHeader_('tiendo', '<th class="dash-progress-col">Tiến độ' + dashFilterIconHtml_('tienDoBucket') + '</th>') +
           dashColHeader_('khogh', '<th>% GH' + dashFilterIconHtml_('khoGiaoHangBucket') + '</th>') +
-          dashColHeader_('ngayht', '<th class="dash-khgh-col">Ngày HT</th>') +
+          dashColHeader_('ngayht', '<th class="dash-khgh-col">Ngày HT' + dashFilterIconHtml_('ngayHoanThanhKhoGh') + '</th>') +
           '</tr>';
 
         const myToken = ++dashRenderToken_;
