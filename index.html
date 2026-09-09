@@ -1325,6 +1325,12 @@
           <button class="sidebar-nav-btn" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
             <i class="fa-solid fa-magnifying-glass-chart"></i><span class="nav-label">Tra cứu</span>
           </button>
+          <button class="sidebar-nav-btn" data-tab="tab-nhanvattu" onclick="switchTab('tab-nhanvattu')">
+            <i class="fa-solid fa-dolly"></i><span class="nav-label">Nhận Vật Tư</span>
+          </button>
+          <button class="sidebar-nav-btn" data-tab="tab-giaohang2" onclick="switchTab('tab-giaohang2')">
+            <i class="fa-solid fa-truck-fast"></i><span class="nav-label">Giao Hàng</span>
+          </button>
           <div class="sidebar-divider"></div>
           <button type="button" class="sidebar-nav-btn" id="sidebarCategoryToggleBtn" onclick="toggleSidebarCategoryList_()" style="justify-content:space-between; width:100%;">
             <span style="display:flex; align-items:center; gap:10px;"><i class="fa-solid fa-layer-group"></i><span class="nav-label">Loại đơn hàng</span></span>
@@ -1354,6 +1360,12 @@
         </button>
         <button class="mobile-nav-btn mobile-nav-tiendo" data-tab="tab-checkdon" onclick="switchTab('tab-checkdon')">
           <i class="fa-solid fa-magnifying-glass-chart"></i><span>Tra cứu</span>
+        </button>
+        <button class="mobile-nav-btn mobile-nav-tiendo" data-tab="tab-nhanvattu" onclick="switchTab('tab-nhanvattu')">
+          <i class="fa-solid fa-dolly"></i><span>Nhận VT</span>
+        </button>
+        <button class="mobile-nav-btn mobile-nav-tiendo" data-tab="tab-giaohang2" onclick="switchTab('tab-giaohang2')">
+          <i class="fa-solid fa-truck-fast"></i><span>Giao hàng</span>
         </button>
         <button class="mobile-nav-btn mobile-nav-nhansu" data-tab="tab-nhansu-dashboard" style="display:none;" onclick="switchTab('tab-nhansu-dashboard')">
           <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
@@ -1416,6 +1428,26 @@
     </div>
 
         </div><!-- /tab-checkdon -->
+
+                <div id="tab-nhanvattu" class="tab-pane">
+          <div class="tracking-toolbar">
+            <h2>Nhận Vật Tư</h2>
+            <button class="btn-primary-blue" onclick="openVtGhModal_('nhanvattu')">
+              <i class="fa-solid fa-plus"></i> Thêm nhận vật tư
+            </button>
+          </div>
+          <div class="tracking-table-wrap" id="vtResultWrap"></div>
+        </div>
+
+        <div id="tab-giaohang2" class="tab-pane">
+          <div class="tracking-toolbar">
+            <h2>Giao Hàng</h2>
+            <button class="btn-primary-blue" onclick="openVtGhModal_('giaohang2')">
+              <i class="fa-solid fa-plus"></i> Thêm giao hàng
+            </button>
+          </div>
+          <div class="tracking-table-wrap" id="ghResultWrap"></div>
+        </div>
 
         <div id="tab-dashboard" class="tab-pane active">
           <div class="tracking-toolbar" style="flex-wrap:wrap;">
@@ -1910,7 +1942,7 @@
         }, 800);
 
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
-        setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
+        scheduleAlignedAutoRefresh_(); // mọi máy cùng làm mới vào 1 mốc chung (:00/:15/:30/:45)
         // Hoãn 4 giây, tránh gọi cùng lúc với các lệnh tải quan trọng lúc mới đăng nhập
         // (nguyên nhân từng gây treo lâu ở màn hình chờ do Apps Script giới hạn số lượt gọi đồng thời).
         setTimeout(function() {
@@ -2563,10 +2595,11 @@
       }
 
       function isGenericColVisible_(tableKey, key) {
-        const entry = COLVIS_REGISTRY_[tableKey];
-        if (!entry) return true; // chưa đăng ký (chưa mở modal lần nào) -> mặc định hiện hết
-        return entry.visibility[key] !== false;
-      }
+  ensureColvisRegistered_(tableKey); // đọc localStorage NGAY LẦN ĐẦU, không đợi mở modal
+  const entry = COLVIS_REGISTRY_[tableKey];
+  if (!entry) return true;
+  return entry.visibility[key] !== false;
+}
 
       // Danh sách cột cho từng bảng - khai báo LƯỜI (bên trong hàm) để tránh lỗi thứ tự khai
       // báo const trong file (DASHBOARD_COLVIS_COLUMNS_, NHANSU_COLVIS_COLUMNS_, LSX_DETAIL_COLUMNS
@@ -3494,6 +3527,12 @@
           // chuyển qua lại tab Dashboard đều build lại hàng ngàn dòng gây giật, khựng.
           if (dashboardRows.length === 0) refreshDashboard_();
           else if (!dashboardRenderedOnce_) renderDashboard_();
+        } else if (tabId === 'tab-nhanvattu') {
+          activeTrackingTab_ = null;
+          loadVtData_();
+        } else if (tabId === 'tab-giaohang2') {
+          activeTrackingTab_ = null;
+          loadGhData2_();
         } else if (tabId === 'tab-nhansu-dashboard') {
           activeTrackingTab_ = null;
           loadNhanSuDashboard_();
@@ -3507,6 +3546,207 @@
 
         startTrackingPolling_();
       }
+
+      /* ================= NHẬN VẬT TƯ / GIAO HÀNG (v2) - ghi thẳng Sheet, không qua Supabase ================= */
+let vtRows_ = [];
+let ghRows2_ = [];
+let vtGhPendingList_ = [];
+let vtGhMode_ = 'nhanvattu'; // 'nhanvattu' | 'giaohang2'
+let vtGhQrScanner_ = null;
+let vtGhAutoFillReqId_ = 0;
+
+function vtGhColumns_() {
+  return [
+    { key: 'lsx_stt', label: 'LSX-STT' }, { key: 'lsx', label: 'LSX' }, { key: 'stt', label: 'STT' },
+    { key: 'msct', label: 'MSCT' }, { key: 'ten_chi_tiet', label: 'Tên chi tiết' }, { key: 'sl_dh', label: 'SL/ĐH' },
+    { key: 'so_luong', label: 'SL' }, { key: 'nguoi', label: 'Người' }, { key: 'ngay', label: 'Ngày' }
+  ];
+}
+
+function renderVtGhTable_(containerId, rows) {
+  const cols = vtGhColumns_();
+  const el = document.getElementById(containerId);
+  let html = '<table><tr>' + cols.map(function(c) { return '<th>' + c.label + '</th>'; }).join('') + '</tr>';
+  if (!rows || rows.length === 0) {
+    html += '<tr><td colspan="' + cols.length + '" class="empty-state-cell">Chưa có dữ liệu.</td></tr>';
+  } else {
+    rows.forEach(function(r) {
+      html += '<tr>' + cols.map(function(c) { return '<td>' + (r[c.key] === null || r[c.key] === undefined ? '' : escapeHtml_(String(r[c.key]))) + '</td>'; }).join('') + '</tr>';
+    });
+  }
+  html += '</table>';
+  el.innerHTML = html;
+}
+
+function loadVtData_() {
+  google.script.run
+    .withSuccessHandler(function(rows) { vtRows_ = rows || []; renderVtGhTable_('vtResultWrap', vtRows_); })
+    .withFailureHandler(function(err) { showToast('Lỗi tải Nhận Vật Tư: ' + err.message, 'error'); })
+    .getNhanVatTuData_v2();
+}
+function loadGhData2_() {
+  google.script.run
+    .withSuccessHandler(function(rows) { ghRows2_ = rows || []; renderVtGhTable_('ghResultWrap', ghRows2_); })
+    .withFailureHandler(function(err) { showToast('Lỗi tải Giao Hàng: ' + err.message, 'error'); })
+    .getGiaoHangData_v2();
+}
+
+function openVtGhModal_(mode) {
+  vtGhMode_ = mode;
+  vtGhPendingList_ = [];
+  document.getElementById('vtGhModalTitle').textContent = mode === 'nhanvattu' ? 'Nhận Vật Tư' : 'Giao Hàng';
+  document.getElementById('vtGhLsxInput').value = '';
+  document.getElementById('vtGhSttInput').value = '';
+  document.getElementById('vtGhMsctInput').value = '';
+  document.getElementById('vtGhTenCtInput').value = '';
+  document.getElementById('vtGhSlDhInput').value = '';
+  document.getElementById('vtGhQtyInput').value = '';
+  const defaultNguoi = currentUser_ ? currentUser_.hoTen : '';
+  document.getElementById('vtGhNguoiInput').value = defaultNguoi;
+  renderVtGhPendingList_();
+  document.getElementById('vtGhOverlay').style.display = 'flex';
+}
+function closeVtGhModal_() {
+  stopVtGhQrScan_();
+  document.getElementById('vtGhOverlay').style.display = 'none';
+}
+
+function vtGhAutoFillDetail_() {
+  const lsx = document.getElementById('vtGhLsxInput').value.trim();
+  const stt = document.getElementById('vtGhSttInput').value.trim();
+  if (!lsx || !stt) return;
+  const myId = ++vtGhAutoFillReqId_;
+  google.script.run
+    .withSuccessHandler(function(detail) {
+      if (myId !== vtGhAutoFillReqId_ || !detail) return;
+      if (detail.msct) document.getElementById('vtGhMsctInput').value = detail.msct;
+      if (detail.ten_chi_tiet) document.getElementById('vtGhTenCtInput').value = detail.ten_chi_tiet;
+      if (detail.sl_dh) document.getElementById('vtGhSlDhInput').value = detail.sl_dh;
+    })
+    .withFailureHandler(function() {})
+    .lookupVatTuDetail_v2(lsx, stt);
+}
+
+function renderVtGhPendingList_() {
+  const wrap = document.getElementById('vtGhPendingWrap');
+  const body = document.getElementById('vtGhPendingBody');
+  const saveBtn = document.getElementById('vtGhSaveBtn');
+  if (vtGhPendingList_.length === 0) { wrap.style.display = 'none'; saveBtn.textContent = 'Lưu'; return; }
+  wrap.style.display = 'block';
+  saveBtn.textContent = 'Lưu tất cả (' + vtGhPendingList_.length + ')';
+  body.innerHTML = vtGhPendingList_.map(function(item, i) {
+    return '<tr>' +
+      '<td style="border:1px solid #ddd; padding:4px;">' + item.lsx + '</td>' +
+      '<td style="border:1px solid #ddd; padding:4px;">' + item.stt + '</td>' +
+      '<td style="border:1px solid #ddd; padding:4px;">' + (item.tenChiTiet || '') + '</td>' +
+      '<td style="border:1px solid #ddd; padding:4px;">' + item.soLuong + '</td>' +
+      '<td style="border:1px solid #ddd; padding:4px; color:#c62828; cursor:pointer;" onclick="removeVtGhPending_(' + i + ')">&times;</td>' +
+      '</tr>';
+  }).join('');
+}
+function removeVtGhPending_(idx) { vtGhPendingList_.splice(idx, 1); renderVtGhPendingList_(); }
+
+function addToVtGhPending_() {
+  const lsx = document.getElementById('vtGhLsxInput').value.trim();
+  const stt = document.getElementById('vtGhSttInput').value.trim();
+  const msct = document.getElementById('vtGhMsctInput').value.trim();
+  const tenChiTiet = document.getElementById('vtGhTenCtInput').value.trim();
+  const slDh = document.getElementById('vtGhSlDhInput').value.trim();
+  const sl = Number(document.getElementById('vtGhQtyInput').value.trim());
+  const nguoi = document.getElementById('vtGhNguoiInput').value.trim();
+
+  if (!lsx || !stt || !sl || sl <= 0) { showToast('Vui lòng nhập đủ LSX, STT và số lượng hợp lệ.', 'error'); return; }
+  if (!nguoi) { showToast('Vui lòng nhập người thực hiện.', 'error'); return; }
+
+  const existing = vtGhPendingList_.find(function(it) { return it.lsx === lsx && it.stt === stt; });
+  if (existing) { existing.soLuong += sl; existing.nguoi = nguoi; }
+  else vtGhPendingList_.push({ lsx: lsx, stt: stt, msct: msct, tenChiTiet: tenChiTiet, slDh: slDh, soLuong: sl, nguoi: nguoi });
+
+  document.getElementById('vtGhLsxInput').value = '';
+  document.getElementById('vtGhSttInput').value = '';
+  document.getElementById('vtGhMsctInput').value = '';
+  document.getElementById('vtGhTenCtInput').value = '';
+  document.getElementById('vtGhSlDhInput').value = '';
+  document.getElementById('vtGhQtyInput').value = '';
+  if (document.activeElement) document.activeElement.blur();
+  renderVtGhPendingList_();
+}
+
+function saveVtGhBatch_() {
+  if (document.activeElement) document.activeElement.blur();
+  const lsx = document.getElementById('vtGhLsxInput').value.trim();
+  const stt = document.getElementById('vtGhSttInput').value.trim();
+  const slRaw = document.getElementById('vtGhQtyInput').value.trim();
+  if (lsx && stt && slRaw) addToVtGhPending_();
+
+  if (vtGhPendingList_.length === 0) { showToast('Chưa có dữ liệu để lưu.', 'error'); return; }
+
+  const mode = vtGhMode_;
+  const items = vtGhPendingList_.slice();
+  const rowsArr = mode === 'nhanvattu' ? vtRows_ : ghRows2_;
+  const containerId = mode === 'nhanvattu' ? 'vtResultWrap' : 'ghResultWrap';
+  const nowStr = todayDisplayStr_();
+
+  // 1) Hiện NGAY lên bảng (lạc quan) trước khi lưu xong xuống Sheet
+  items.forEach(function(item) {
+    const lsxStt = item.lsx + '-' + item.stt;
+    let existing = rowsArr.find(function(r) { return r.lsx_stt === lsxStt; });
+    if (existing) {
+      existing.so_luong = (Number(existing.so_luong) || 0) + item.soLuong;
+      existing.nguoi = item.nguoi; existing.ngay = nowStr;
+    } else {
+      rowsArr.unshift({
+        lsx_stt: lsxStt, lsx: item.lsx, stt: item.stt, msct: item.msct || '',
+        ten_chi_tiet: item.tenChiTiet || '', sl_dh: item.slDh || '',
+        so_luong: item.soLuong, nguoi: item.nguoi, ngay: nowStr
+      });
+    }
+  });
+  renderVtGhTable_(containerId, rowsArr);
+  closeVtGhModal_();
+  showToast('Đang lưu ' + items.length + ' món xuống Sheet...', 'info');
+
+  // 2) Ghi ngầm xuống Sheet
+  const fnName = mode === 'nhanvattu' ? 'recordNhanVatTuBatch_v2' : 'recordGiaoHangBatch_v2';
+  google.script.run
+    .withSuccessHandler(function() {
+      showToast('Đã lưu ' + items.length + ' món.', 'success');
+      if (mode === 'nhanvattu') loadVtData_(); else loadGhData2_();
+    })
+    .withFailureHandler(function(err) { showToast('Lỗi lưu: ' + err.message, 'error'); })
+    [fnName](items);
+}
+
+function startVtGhQrScan_() {
+  document.getElementById('vtGhQrReaderWrap').style.display = 'block';
+  document.getElementById('vtGhQrScanBtn').style.display = 'none';
+  vtGhQrScanner_ = new Html5Qrcode('vtGhQrReader');
+  vtGhQrScanner_.start({ facingMode: 'environment' }, { fps: 10, qrbox: 220 }, onVtGhQrScanSuccess_, function() {})
+    .catch(function(err) { showToast('Không mở được camera: ' + err, 'error'); stopVtGhQrScan_(); });
+}
+function stopVtGhQrScan_() {
+  document.getElementById('vtGhQrReaderWrap').style.display = 'none';
+  document.getElementById('vtGhQrScanBtn').style.display = 'block';
+  if (vtGhQrScanner_) { vtGhQrScanner_.stop().then(function() { vtGhQrScanner_.clear(); }).catch(function() {}); vtGhQrScanner_ = null; }
+}
+// QR dạng: LSX|STT|MSCT|Tên chi tiết|SL/ĐH
+function onVtGhQrScanSuccess_(decodedText) {
+  const parts = decodedText.split('|').map(function(s) { return s.trim(); });
+  if (!parts[0] || !parts[1]) { showToast('Mã QR không đúng định dạng (thiếu LSX/STT).', 'error'); return; }
+  document.getElementById('vtGhLsxInput').value = parts[0];
+  document.getElementById('vtGhSttInput').value = parts[1];
+  if (parts[2]) document.getElementById('vtGhMsctInput').value = parts[2];
+  if (parts[3]) document.getElementById('vtGhTenCtInput').value = parts[3];
+  if (parts[4]) { document.getElementById('vtGhSlDhInput').value = parts[4]; document.getElementById('vtGhQtyInput').value = parts[4]; }
+  stopVtGhQrScan_();
+  try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
+  if (document.getElementById('vtGhQtyInput').value && document.getElementById('vtGhNguoiInput').value.trim()) {
+    addToVtGhPending_();
+    showToast('Đã quét QR và thêm vào danh sách.', 'success');
+  } else {
+    showToast('Đã đọc mã QR, kiểm tra lại thông tin trước khi thêm.', 'info');
+  }
+}
 
       function startTrackingPolling_() {
         if (trackingPollTimer_) { clearInterval(trackingPollTimer_); trackingPollTimer_ = null; }
@@ -4165,8 +4405,18 @@
           .getLastSyncTimeTienDo();
       }
 
-      // Tự làm mới Dashboard mỗi 15 phút - ÂM THẦM, không spinner/toast để không làm
-      // phiền người đang xem, chỉ âm thầm cập nhật lại số liệu trên các ô/thẻ.
+    
+      function scheduleAlignedAutoRefresh_() {
+        const now = new Date();
+        const msToNextQuarter = (15 - (now.getMinutes() % 15)) * 60000
+          - now.getSeconds() * 1000 - now.getMilliseconds();
+        setTimeout(function() {
+          refreshDashboardSilently_();
+          setInterval(refreshDashboardSilently_, DASHBOARD_AUTO_REFRESH_MS);
+        }, Math.max(msToNextQuarter, 5000));
+      }
+
+      
       function refreshDashboardSilently_() {
         if (document.hidden) return; // tab đang ẩn -> bỏ qua, khi quay lại visibilitychange sẽ tự làm mới bù nếu đã quá hạn
         lastDashboardAutoRefreshTs_ = Date.now(); // đánh dấu mốc NGAY khi bắt đầu gọi, tránh gọi dồn dập
@@ -7029,6 +7279,65 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       <div class="upbom-footer">
         <button type="button" class="upbom-cancel" onclick="closeTrackingModal()">Hủy</button>
         <button type="button" id="trackSaveBtn" class="upbom-save" onclick="saveTrackingBatch_()">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+    <div id="vtGhOverlay" class="colvis-overlay" style="display:none;">
+    <div class="colvis-modal" style="width:420px; max-height:90vh;">
+      <div class="colvis-header">
+        <h3 id="vtGhModalTitle">Nhận Vật Tư</h3>
+        <span class="upbom-close" onclick="closeVtGhModal_()">&times;</span>
+      </div>
+      <div style="padding:16px; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
+        <div id="vtGhQrReaderWrap" style="display:none;">
+          <div id="vtGhQrReader" style="width:100%;"></div>
+          <button type="button" onclick="stopVtGhQrScan_()" style="margin-top:8px; background:#c62828; color:#fff; border:none; border-radius:4px; padding:8px; width:100%;">Dừng quét</button>
+        </div>
+        <button type="button" id="vtGhQrScanBtn" onclick="startVtGhQrScan_()" style="background:#003DA5; color:#fff; font-weight:bold; border:none; border-radius:4px; padding:10px; cursor:pointer;">
+          <i class="fa-solid fa-qrcode"></i> Quét mã QR
+        </button>
+        <label>Lệnh sản xuất (LSX)
+          <input type="text" id="vtGhLsxInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px;" onblur="vtGhAutoFillDetail_()" />
+        </label>
+        <label>STT
+          <input type="text" id="vtGhSttInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px;" onblur="vtGhAutoFillDetail_()" />
+        </label>
+        <label>MSCT
+          <input type="text" id="vtGhMsctInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
+        </label>
+        <label>Tên chi tiết
+          <input type="text" id="vtGhTenCtInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px; background:#f5f5f5;" />
+        </label>
+        <label>SL/ĐH
+          <input type="text" id="vtGhSlDhInput" readonly style="width:100%; padding:8px; box-sizing:border-box; font-size:15px; background:#f5f5f5;" />
+        </label>
+        <label>Số lượng nhận/giao
+          <input type="number" id="vtGhQtyInput" min="1" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px;" />
+        </label>
+        <label>Người thực hiện
+          <input type="text" id="vtGhNguoiInput" style="width:100%; padding:8px; box-sizing:border-box; font-size:16px;" />
+        </label>
+        <button type="button" onclick="addToVtGhPending_()" style="background:#00b894; color:#fff; font-weight:bold; border:none; border-radius:4px; padding:10px; cursor:pointer;">
+          <i class="fa-solid fa-plus"></i> Thêm vào danh sách
+        </button>
+        <div id="vtGhPendingWrap" style="display:none;">
+          <div style="font-weight:bold; font-size:13px; margin:6px 0;">Danh sách chờ lưu:</div>
+          <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead><tr style="background:#f0f0f0;">
+              <th style="border:1px solid #ddd; padding:4px;">LSX</th>
+              <th style="border:1px solid #ddd; padding:4px;">STT</th>
+              <th style="border:1px solid #ddd; padding:4px;">Tên chi tiết</th>
+              <th style="border:1px solid #ddd; padding:4px;">SL</th>
+              <th style="border:1px solid #ddd; padding:4px;"></th>
+            </tr></thead>
+            <tbody id="vtGhPendingBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="upbom-footer">
+        <button type="button" class="upbom-cancel" onclick="closeVtGhModal_()">Hủy</button>
+        <button type="button" id="vtGhSaveBtn" class="upbom-save" onclick="saveVtGhBatch_()">Lưu</button>
       </div>
     </div>
   </div>
