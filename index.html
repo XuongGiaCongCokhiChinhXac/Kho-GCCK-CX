@@ -572,6 +572,8 @@
   .mobile-nav-btn i { font-size: 17px; }
   .mobile-nav-btn.active { color: #fff; font-weight: bold; }
   .sidebar-toggle { background: transparent; border: none; color: #fff; font-size: 18px; padding: 14px; cursor: pointer; text-align: left; }
+  .sidebar-toggle-bottom { margin-top: auto; width: 100%; text-align: center; border-top: 1px solid rgba(255,255,255,0.15); padding: 12px 0; }
+  .sidebar-toggle-bottom:hover { background: rgba(255,255,255,0.1); }
   .sidebar-nav-btn {
     background: transparent; border: none; color: #cfe0ff; text-align: left;
     padding: 12px 16px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; white-space: nowrap;
@@ -739,6 +741,7 @@
       body.dark-mode .chuyen-value { color: #eceef0; }
 
       body.dark-mode .quick-btn { background: #23262d; border-color: #3a3f4a; color: #d8dadf; }
+     .dash-subtab-option:hover { background: #f2f6fd; }
       /* Trước đây rule này nằm sau .quick-btn.active nên "đè" mất hiệu ứng chọn ở dark mode.
         Ép rõ ràng để nút đang chọn luôn nổi bật, không phụ thuộc thứ tự khai báo. */
       body.dark-mode .quick-btn.active {
@@ -1360,6 +1363,10 @@
             <i class="fa-solid fa-address-card"></i><span class="nav-label">Nhân sự</span>
           </button>
         </div>
+
+        <button type="button" class="sidebar-toggle sidebar-toggle-bottom" onclick="toggleSidebar()" title="Thu gọn/Mở rộng">
+          <i class="fa-solid fa-angles-left" id="sidebarBottomToggleIcon"></i>
+        </button>
       </nav>
 
       <!-- Thanh điều hướng dưới cùng - CHỈ hiện trên mobile (xem media query 768px),
@@ -1453,8 +1460,19 @@
           <div class="tracking-table-wrap" id="vtResultWrap"></div>
         </div>
 
-        <div id="tab-khbus" class="tab-pane">
-          <div class="header-area"><h2>KH BUS</h2></div>
+        <div id="tab-khbus" class="tab-pane" style="flex-direction:row; overflow:hidden;">
+          <div id="khbusSlideList" style="width:170px; flex-shrink:0; background:#f4f6f9; border-right:1px solid #e3e6ea; overflow-y:auto; padding:12px 10px; display:flex; flex-direction:column; gap:10px;"></div>
+          <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid #eee; gap:8px; flex-wrap:wrap;">
+              <div style="font-size:13px; color:#888;">Bấm vào ô để chỉnh sửa - tự động lưu.</div>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="icon-btn" title="Thêm dòng" onclick="khbusAddRow_()"><i class="fa-solid fa-plus"></i></button>
+                <button type="button" class="icon-btn" title="Nhân bản slide" onclick="khbusDuplicateSlide_()"><i class="fa-solid fa-copy"></i></button>
+                <button type="button" class="icon-btn" title="Xóa slide" onclick="khbusDeleteSlide_()" style="color:#c62828;"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+            <div id="khbusSlideCanvas" style="flex:1; overflow:auto; padding:20px; background:#eef1f5;"></div>
+          </div>
         </div>
 
         <div id="tab-giaohang2" class="tab-pane">
@@ -1465,13 +1483,26 @@
           <div class="tracking-table-wrap" id="ghResultWrap"></div>
         </div>
 
-        <div id="tab-dashboard" class="tab-pane active">
+        <div id="tab-dashboard" class="tab-pane active" style="flex-direction:column;">
           <div class="tracking-toolbar" style="flex-wrap:wrap;">
-            <h2 style="margin:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-              Dashboard tiến độ đơn hàng
+            <h2 style="margin:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap; position:relative;">
+              <span id="dashSubTabDropdownBtn" onclick="toggleDashSubTabMenu_()" style="cursor:pointer; display:flex; align-items:center; gap:8px; user-select:none;">
+                <span id="dashSubTabLabel">Tiến độ</span>
+                <i class="fa-solid fa-chevron-down" style="font-size:13px; color:#888;"></i>
+              </span>
+              <div id="dashSubTabMenu" style="display:none; position:absolute; top:100%; left:0; margin-top:6px; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.18); z-index:60; min-width:210px; overflow:hidden;">
+                <div class="dash-subtab-option" onclick="switchDashSubTab_('tiendo')" style="padding:10px 16px; cursor:pointer; font-size:14px; font-weight:600; color:#333;">
+                  <i class="fa-solid fa-chart-pie" style="width:18px; color:#1a73e8;"></i>&nbsp; Tiến độ
+                </div>
+                <div class="dash-subtab-option" onclick="switchDashSubTab_('thoigian')" style="padding:10px 16px; cursor:pointer; font-size:14px; font-weight:600; color:#333; border-top:1px solid #eee;">
+                  <i class="fa-solid fa-briefcase-clock" style="width:18px; color:#8e44ad;"></i>&nbsp; Thời gian gia công
+                </div>
+              </div>
               <span id="progressSyncStatus" class="sync-status" style="font-weight:bold; font-size:13px;"></span>
             </h2>
           </div>
+
+          <div id="dashSubTab-tiendo" class="dash-subtab-pane" style="display:flex; flex-direction:column; flex:1; min-height:0;">
           <div id="dashboardStats" class="dash-stats-row">
             <div class="dash-date-card" style="position:relative;">
               <div class="dash-stat-label">Lọc theo ngày KHGH</div>
@@ -1518,6 +1549,12 @@
             </button>
           </div>
           <div id="dashboardResult" class="tracking-table-wrap"></div>
+          </div><!-- /dashSubTab-tiendo -->
+
+          <div id="dashSubTab-thoigian" class="dash-subtab-pane" style="display:none; flex-direction:column; flex:1; min-height:0; align-items:center; justify-content:center; color:#999; font-size:14px; gap:10px;">
+            <i class="fa-solid fa-briefcase-clock" style="font-size:40px; opacity:0.4;"></i>
+            Tab "Thời gian gia công" đang chờ thiết kế thêm.
+          </div>
         </div>
 
         <div id="tab-nhansu-dashboard" class="tab-pane" style="flex-direction:column; overflow:auto;">
@@ -1652,13 +1689,26 @@
                 let currentUser_ = null; // { msnv, hoTen }
 
       // ====== PHÂN QUYỀN NGƯỜI DÙNG THEO TAB ======
-      const PERM_TAB_LABELS_ = [
-        { key: 'dashboard', label: 'Dashboard' },
-        { key: 'tracuu', label: 'Tra cứu' },
-        { key: 'nhanvattu', label: 'Nhận Vật Tư' },
-        { key: 'giaohang', label: 'Giao Hàng' },
-        { key: 'nhansu', label: 'Nhân sự' }
-      ];
+      let PERM_TAB_LABELS_ = []; // nạp động từ server, xem loadPermTabs_()
+
+      function loadPermTabs_(callback) {
+        google.script.run
+          .withSuccessHandler(function(list) { PERM_TAB_LABELS_ = list || []; if (callback) callback(); })
+          .withFailureHandler(function(err) { showToast('Lỗi tải mục phân quyền: ' + err.message, 'error'); })
+          .getPermTabs();
+      }
+
+      function addPermTab_() {
+        const label = prompt('Tên mục phân quyền mới (VD: Kho vật tư):');
+        if (!label || !label.trim()) return;
+        google.script.run
+          .withSuccessHandler(function() {
+            showToast('Đã thêm mục phân quyền "' + label + '".', 'success');
+            loadPermTabs_(function() { loadPermUsers_(true); });
+          })
+          .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+          .addPermTab(label.trim());
+      }
       const PERM_ADMIN_ROLES_ = ['Quản lý']; // chỉ chức vụ này được thấy/sửa bảng phân quyền
       let isPermAdmin_ = false;
       let permUsersCache_ = null;
@@ -2092,7 +2142,7 @@
         document.getElementById('changePassError').textContent = '';
         document.getElementById('changePassOverlay').style.display = 'flex';
         closeUserMenu_();
-        if (isPermAdmin_) loadPermUsers_(false); // dùng cache trước, âm thầm tải bản mới phía sau
+        if (isPermAdmin_) loadPermTabs_(function() { loadPermUsers_(false); });
       }
 
       function closeChangePasswordModal_() {
@@ -3666,6 +3716,7 @@
           loadGhData2_();
         } else if (tabId === 'tab-khbus') {
           activeTrackingTab_ = null;
+          if (!khbusLoaded_) loadKhBusSlides_();
         } else if (tabId === 'tab-nhansu-dashboard') {
           activeTrackingTab_ = null;
           loadNhanSuDashboard_();
@@ -3936,7 +3987,9 @@ function onVtGhQrScanSuccess_(decodedText) {
       }
 
       function toggleSidebar() {
-        document.getElementById('mainSidebar').classList.toggle('collapsed');
+        const collapsed = document.getElementById('mainSidebar').classList.toggle('collapsed');
+        const icon = document.getElementById('sidebarBottomToggleIcon');
+        if (icon) icon.className = collapsed ? 'fa-solid fa-angles-right' : 'fa-solid fa-angles-left';
       }
 
       /* ================= MÀN HÌNH MENU CHỌN PHẦN MỀM ================= */
@@ -4235,6 +4288,217 @@ function onVtGhQrScanSuccess_(decodedText) {
       })
       .getGiaoHangData();
   }
+          function toggleDashSubTabMenu_() {
+        const menu = document.getElementById('dashSubTabMenu');
+        menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+      }
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#dashSubTabDropdownBtn') && !e.target.closest('#dashSubTabMenu')) {
+          const menu = document.getElementById('dashSubTabMenu');
+          if (menu) menu.style.display = 'none';
+        }
+      });
+      function switchDashSubTab_(key) {
+        document.getElementById('dashSubTabMenu').style.display = 'none';
+        document.getElementById('dashSubTabLabel').textContent = key === 'thoigian' ? 'Thời gian gia công' : 'Tiến độ';
+        document.getElementById('dashSubTab-tiendo').style.display = (key === 'tiendo') ? 'flex' : 'none';
+        document.getElementById('dashSubTab-thoigian').style.display = (key === 'thoigian') ? 'flex' : 'none';
+      }
+
+            /* ================= KH BUS - SLIDE XÁC NHẬN GIAO HÀNG ================= */
+      const KHBUS_GROUPS_ = ['CHASSIS', 'KHUNG XƯƠNG', 'ĐỒNG', 'CỐP NHÔM', 'TRIM CO2', 'TRIM THÀNH PHẨM'];
+      let khbusSlides_ = [];
+      let khbusCurrentIndex_ = 0;
+      let khbusLoaded_ = false;
+      let khbusSaveTimer_ = null;
+
+      function khbusEmptyRow_() {
+        const row = { loaiXe: '', slDatHang: '' };
+        KHBUS_GROUPS_.forEach(function(g) { row[g] = { khNhan: '', lsx: '', xacNhan: '' }; });
+        return row;
+      }
+      function khbusEmptySlide_() {
+        const now = new Date();
+        return {
+          id: null,
+          title: 'XÁC NHẬN GIAO HÀNG LINH KIỆN XE BUS THÁNG ' +
+            String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear(),
+          subtitle: 'CÔNG TY TỔ HỢP CƠ KHÍ',
+          rows: [khbusEmptyRow_(), khbusEmptyRow_(), khbusEmptyRow_()]
+        };
+      }
+
+      function loadKhBusSlides_() {
+        document.getElementById('khbusSlideCanvas').innerHTML =
+          '<div style="text-align:center; color:#999; padding:40px;">Đang tải...</div>';
+        google.script.run
+          .withSuccessHandler(function(slides) {
+            khbusLoaded_ = true;
+            khbusSlides_ = (slides && slides.length) ? slides : [khbusEmptySlide_()];
+            khbusCurrentIndex_ = 0;
+            khbusRenderSlideList_();
+            khbusRenderCanvas_();
+          })
+          .withFailureHandler(function(err) {
+            showToast('Lỗi tải KH BUS: ' + err.message, 'error');
+            khbusSlides_ = [khbusEmptySlide_()];
+            khbusLoaded_ = true;
+            khbusRenderSlideList_();
+            khbusRenderCanvas_();
+          })
+          .getKhBusSlides();
+      }
+
+      function khbusRenderSlideList_() {
+        const wrap = document.getElementById('khbusSlideList');
+        wrap.innerHTML = khbusSlides_.map(function(s, i) {
+          const active = i === khbusCurrentIndex_;
+          return '<div onclick="khbusSelectSlide_(' + i + ')" style="cursor:pointer; border:2px solid ' + (active ? '#1a73e8' : '#ddd') +
+            '; border-radius:6px; background:#fff; padding:6px; font-size:10px; color:#666; box-shadow:0 1px 3px rgba(0,0,0,0.08);">' +
+            '<div style="font-weight:800; color:#003DA5; margin-bottom:4px;">Slide ' + (i + 1) + '</div>' +
+            '<div style="height:70px; background:#f8f9fa; border-radius:3px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:4px; text-align:center; line-height:1.2;">' +
+              escapeHtml_((s.title || '').slice(0, 40)) +
+            '</div></div>';
+        }).join('') +
+        '<button type="button" onclick="khbusAddSlide_()" style="border:2px dashed #bbb; background:none; border-radius:6px; padding:10px; color:#888; cursor:pointer; font-size:12px;">' +
+          '<i class="fa-solid fa-plus"></i> Thêm slide</button>';
+      }
+
+      function khbusSelectSlide_(i) {
+        khbusCurrentIndex_ = i;
+        khbusRenderSlideList_();
+        khbusRenderCanvas_();
+      }
+
+      function khbusAddSlide_() {
+        khbusSlides_.push(khbusEmptySlide_());
+        khbusCurrentIndex_ = khbusSlides_.length - 1;
+        khbusRenderSlideList_();
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+      }
+
+      function khbusDuplicateSlide_() {
+        const cur = khbusSlides_[khbusCurrentIndex_];
+        if (!cur) return;
+        const copy = JSON.parse(JSON.stringify(cur));
+        copy.id = null;
+        khbusSlides_.splice(khbusCurrentIndex_ + 1, 0, copy);
+        khbusCurrentIndex_++;
+        khbusRenderSlideList_();
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+      }
+
+      function khbusDeleteSlide_() {
+        if (khbusSlides_.length <= 1) { showToast('Phải còn ít nhất 1 slide.', 'error'); return; }
+        const cur = khbusSlides_[khbusCurrentIndex_];
+        if (!confirm('Xóa slide này?')) return;
+        khbusSlides_.splice(khbusCurrentIndex_, 1);
+        if (cur.id) {
+          google.script.run.withFailureHandler(function(err) { showToast('Lỗi xóa slide: ' + err.message, 'error'); }).deleteKhBusSlide(cur.id);
+        }
+        khbusCurrentIndex_ = Math.max(0, khbusCurrentIndex_ - 1);
+        khbusRenderSlideList_();
+        khbusRenderCanvas_();
+      }
+
+      function khbusAddRow_() {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s) return;
+        s.rows.push(khbusEmptyRow_());
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+      }
+
+      function khbusDeleteRow_(rIdx) {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s || s.rows.length <= 1) { showToast('Phải còn ít nhất 1 dòng.', 'error'); return; }
+        s.rows.splice(rIdx, 1);
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+      }
+
+      function khbusUpdateField_(path, value) {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s) return;
+        const parts = path.split('.');
+        let obj = s;
+        for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+        obj[parts[parts.length - 1]] = value;
+        khbusScheduleSave_();
+      }
+
+      function khbusScheduleSave_() {
+        clearTimeout(khbusSaveTimer_);
+        khbusSaveTimer_ = setTimeout(khbusSaveCurrentSlide_, 800);
+      }
+
+      function khbusSaveCurrentSlide_() {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s) return;
+        google.script.run
+          .withSuccessHandler(function(saved) {
+            if (saved && saved.id) s.id = saved.id;
+            khbusRenderSlideList_();
+          })
+          .withFailureHandler(function(err) { showToast('Lỗi lưu KH BUS: ' + err.message, 'error'); })
+          .saveKhBusSlide(s);
+      }
+
+      function khbusEditableCell_(value, path, extraStyle) {
+        const safeVal = escapeHtml_(value || '');
+        return '<div contenteditable="true" data-path="' + path + '" onblur="khbusUpdateField_(this.dataset.path, this.innerText)" ' +
+          'style="min-height:20px; outline:none; padding:2px;' + (extraStyle || '') + '">' + safeVal + '</div>';
+      }
+
+      function khbusRenderCanvas_() {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        const canvas = document.getElementById('khbusSlideCanvas');
+        if (!s) { canvas.innerHTML = ''; return; }
+
+        let html = '<div style="background:#fff; max-width:1700px; margin:0 auto; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,0.1); font-family:Arial, sans-serif;">';
+
+        html += '<div style="display:flex; align-items:center; gap:16px; background:#fffde7; border:2px solid #003DA5; padding:10px 16px; margin-bottom:14px;">';
+        html += '<div style="background:#003DA5; color:#fff; font-weight:900; font-style:italic; padding:10px 18px; border-radius:4px; white-space:nowrap;">THACO<br><span style="font-size:11px; font-weight:400;">INDUSTRIES</span></div>';
+        html += '<div style="flex:1; text-align:center;">' +
+          khbusEditableCell_(s.title, 'title', 'font-size:20px; font-weight:800; color:#c00; text-align:center;') +
+          khbusEditableCell_(s.subtitle, 'subtitle', 'font-size:16px; font-weight:700; color:#003DA5; text-align:center;') +
+        '</div></div>';
+
+        html += '<table style="width:100%; border-collapse:collapse; font-size:12px; text-align:center;">';
+        html += '<tr>' +
+          '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">LOẠI XE</th>' +
+          '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">SL đặt hàng</th>' +
+          KHBUS_GROUPS_.map(function(g) {
+            return '<th colspan="3" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">' + g + '</th>';
+          }).join('') +
+          '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px; width:34px;"></th>' +
+        '</tr><tr>' +
+          KHBUS_GROUPS_.map(function() {
+            return '<th style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:4px; font-size:11px;">KH nhận</th>' +
+                   '<th style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:4px; font-size:11px;">LSX</th>' +
+                   '<th style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:4px; font-size:11px;">XÁC NHẬN</th>';
+          }).join('') +
+        '</tr>';
+
+        s.rows.forEach(function(row, rIdx) {
+          html += '<tr>';
+          html += '<td style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(row.loaiXe, 'rows.' + rIdx + '.loaiXe') + '</td>';
+          html += '<td style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(row.slDatHang, 'rows.' + rIdx + '.slDatHang') + '</td>';
+          KHBUS_GROUPS_.forEach(function(g) {
+            const cell = row[g] || { khNhan: '', lsx: '', xacNhan: '' };
+            html += '<td style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(cell.khNhan, 'rows.' + rIdx + '.' + g + '.khNhan') + '</td>';
+            html += '<td style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx') + '</td>';
+            html += '<td style="border:1px solid #ccc; padding:2px; background:#fff9c4;">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan') + '</td>';
+          });
+          html += '<td style="border:1px solid #ccc; padding:2px; color:#c62828; cursor:pointer;" onclick="khbusDeleteRow_(' + rIdx + ')" title="Xóa dòng">&times;</td>';
+          html += '</tr>';
+        });
+
+        html += '</table></div>';
+        canvas.innerHTML = html;
+      }
 
       /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
       const DASHBOARD_COLVIS_COLUMNS_ = [
@@ -7537,11 +7801,16 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
         <div id="permSectionWrap" style="display:none; margin-top:6px;">
           <div style="height:1px; background:#eee; margin-bottom:16px;"></div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
             <h3 style="margin:0; font-size:15px; color:#003DA5;"><i class="fa-solid fa-user-shield" style="margin-right:8px;"></i>Phân quyền người dùng</h3>
-            <button type="button" onclick="addPermUser_()" style="background:#00b894; color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;">
-              <i class="fa-solid fa-plus"></i> Thêm người
-            </button>
+            <div style="display:flex; gap:8px;">
+              <button type="button" onclick="addPermTab_()" style="background:#1a73e8; color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;">
+                <i class="fa-solid fa-table-columns"></i> Thêm mục phân quyền
+              </button>
+              <button type="button" onclick="addPermUser_()" style="background:#00b894; color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;">
+                <i class="fa-solid fa-plus"></i> Thêm người
+              </button>
+            </div>
           </div>
           <div id="permTableWrap" style="overflow:auto; max-height:340px; border:1px solid #eee; border-radius:8px;"></div>
         </div>
