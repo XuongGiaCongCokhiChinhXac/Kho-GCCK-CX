@@ -50,6 +50,13 @@
       .colvis-footer { padding: 10px 16px; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; }
       .colvis-footer button { padding: 7px 18px; border-radius: 4px; border: none; font-size: 13px; cursor: pointer; background: #003DA5; color: #fff; }
 
+      .acc-info-grid, .acc-pass-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      @media (max-width: 640px) { .acc-info-grid, .acc-pass-grid { grid-template-columns: 1fr; } }
+      .perm-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+      .perm-table th, .perm-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
+      .perm-table th { background: #003DA5; color: #fff; position: sticky; top: 0; }
+      body.dark-mode .perm-table td { background: #1c1f26; color: #d8dadf; border-color: #2c313c; }
+
       .cell-info-bar {
         font-size: 13px; color: #333; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px;
         padding: 6px 10px; margin-bottom: 8px; min-height: 14px; font-family: Arial, sans-serif; font-weight: bold;
@@ -1316,7 +1323,10 @@
 
     <div class="app-layout" id="appLayout" style="display:none;">
       <nav class="sidebar collapsed" id="mainSidebar">
-        <button class="sidebar-toggle" onclick="showHomeMenu_()" title="Về màn hình chọn phần mềm"><i class="fa-solid fa-bars"></i></button>
+        <div style="display:flex;">
+          <button class="sidebar-toggle" onclick="showHomeMenu_()" title="Về màn hình chọn phần mềm"><i class="fa-solid fa-house"></i></button>
+          <button class="sidebar-toggle" onclick="toggleSidebar()" title="Thu gọn/Mở rộng"><i class="fa-solid fa-angles-left"></i></button>
+        </div>
 
         <div id="sidebarTienDoGroup">
           <button class="sidebar-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
@@ -1330,6 +1340,9 @@
           </button>
           <button class="sidebar-nav-btn" data-tab="tab-giaohang2" onclick="switchTab('tab-giaohang2')">
             <i class="fa-solid fa-truck-fast"></i><span class="nav-label">Giao Hàng</span>
+          </button>
+          <button class="sidebar-nav-btn" data-tab="tab-khbus" onclick="switchTab('tab-khbus')">
+            <i class="fa-solid fa-table"></i><span class="nav-label">KH BUS</span>
           </button>
           <div class="sidebar-divider"></div>
           <button type="button" class="sidebar-nav-btn" id="sidebarCategoryToggleBtn" onclick="toggleSidebarCategoryList_()" style="justify-content:space-between; width:100%;">
@@ -1366,6 +1379,9 @@
         </button>
         <button class="mobile-nav-btn mobile-nav-tiendo" data-tab="tab-giaohang2" onclick="switchTab('tab-giaohang2')">
           <i class="fa-solid fa-truck-fast"></i><span>Giao hàng</span>
+        </button>
+        <button class="mobile-nav-btn mobile-nav-tiendo" data-tab="tab-khbus" onclick="switchTab('tab-khbus')">
+          <i class="fa-solid fa-table"></i><span>KH BUS</span>
         </button>
         <button class="mobile-nav-btn mobile-nav-nhansu" data-tab="tab-nhansu-dashboard" style="display:none;" onclick="switchTab('tab-nhansu-dashboard')">
           <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
@@ -1432,19 +1448,19 @@
                 <div id="tab-nhanvattu" class="tab-pane">
           <div class="tracking-toolbar">
             <h2>Nhận Vật Tư</h2>
-            <button class="btn-primary-blue" onclick="openVtGhModal_('nhanvattu')">
-              <i class="fa-solid fa-plus"></i> Thêm nhận vật tư
-            </button>
+            <button id="vtRefreshBtn" class="icon-btn" title="Làm mới" onclick="loadVtData_()"><i class="fa-solid fa-arrows-rotate"></i></button>
           </div>
           <div class="tracking-table-wrap" id="vtResultWrap"></div>
+        </div>
+
+        <div id="tab-khbus" class="tab-pane">
+          <div class="header-area"><h2>KH BUS</h2></div>
         </div>
 
         <div id="tab-giaohang2" class="tab-pane">
           <div class="tracking-toolbar">
             <h2>Giao Hàng</h2>
-            <button class="btn-primary-blue" onclick="openVtGhModal_('giaohang2')">
-              <i class="fa-solid fa-plus"></i> Thêm giao hàng
-            </button>
+            <button id="ghRefreshBtn" class="icon-btn" title="Làm mới" onclick="loadGhData2_()"><i class="fa-solid fa-arrows-rotate"></i></button>
           </div>
           <div class="tracking-table-wrap" id="ghResultWrap"></div>
         </div>
@@ -1633,12 +1649,121 @@
 
       const lsxInput = document.getElementById('lsxInput');
 
-          let currentUser_ = null; // { msnv, hoTen }
+                let currentUser_ = null; // { msnv, hoTen }
+
+      // ====== PHÂN QUYỀN NGƯỜI DÙNG THEO TAB ======
+      const PERM_TAB_LABELS_ = [
+        { key: 'dashboard', label: 'Dashboard' },
+        { key: 'tracuu', label: 'Tra cứu' },
+        { key: 'nhanvattu', label: 'Nhận Vật Tư' },
+        { key: 'giaohang', label: 'Giao Hàng' },
+        { key: 'nhansu', label: 'Nhân sự' }
+      ];
+      const PERM_ADMIN_ROLES_ = ['Quản lý']; // chỉ chức vụ này được thấy/sửa bảng phân quyền
+      let isPermAdmin_ = false;
+      let permUsersCache_ = null;
+      const PERM_LIST_CACHE_KEY_ = 'gcck_perm_users_cache_v1';
+
+      function hasPerm_(tab, type) {
+        if (!currentUser_ || !currentUser_.perms || !currentUser_.perms[tab]) return true;
+        return !!currentUser_.perms[tab][type];
+      }
+
+      function applyPermissionsToUI_() {
+        isPermAdmin_ = !!(currentUser_ && PERM_ADMIN_ROLES_.indexOf(currentUser_.chucVu) !== -1);
+        const permWrap = document.getElementById('permSectionWrap');
+        if (permWrap) permWrap.style.display = isPermAdmin_ ? 'block' : 'none';
+
+        const tabVisibility = {
+          'tab-dashboard': hasPerm_('dashboard', 'view'),
+          'tab-checkdon': hasPerm_('tracuu', 'view'),
+          'tab-nhanvattu': hasPerm_('nhanvattu', 'view'),
+          'tab-giaohang2': hasPerm_('giaohang', 'view')
+        };
+        Object.keys(tabVisibility).forEach(function(tabId) {
+          document.querySelectorAll('[data-tab="' + tabId + '"]').forEach(function(btn) {
+            btn.style.display = tabVisibility[tabId] ? '' : 'none';
+          });
+        });
+      }
+
+      function loadPermUsers_(forceRefresh) {
+        if (!forceRefresh) {
+          try {
+            const cached = JSON.parse(localStorage.getItem(PERM_LIST_CACHE_KEY_) || 'null');
+            if (cached) { permUsersCache_ = cached; renderPermTable_(); }
+          } catch (e) {}
+        }
+        google.script.run
+          .withSuccessHandler(function(list) {
+            permUsersCache_ = list;
+            try { localStorage.setItem(PERM_LIST_CACHE_KEY_, JSON.stringify(list)); } catch (e) {}
+            renderPermTable_();
+          })
+          .withFailureHandler(function(err) { showToast('Lỗi tải danh sách phân quyền: ' + err.message, 'error'); })
+          .getAllUsersWithPerms();
+      }
+
+      function renderPermTable_() {
+        const wrap = document.getElementById('permTableWrap');
+        if (!wrap || !permUsersCache_) return;
+        let html = '<table class="perm-table"><tr><th rowspan="2">MSNV</th><th rowspan="2">Họ và tên</th><th rowspan="2">Chức vụ</th>';
+        PERM_TAB_LABELS_.forEach(function(l) { html += '<th colspan="2">' + l.label + '</th>'; });
+        html += '<th rowspan="2"></th></tr><tr>';
+        PERM_TAB_LABELS_.forEach(function() { html += '<th>Xem</th><th>Sửa</th>'; });
+        html += '</tr>';
+
+        permUsersCache_.forEach(function(u) {
+          html += '<tr><td>' + escapeHtml_(u.msnv) + '</td><td>' + escapeHtml_(u.hoTen) + '</td><td>' + escapeHtml_(u.chucVu || '') + '</td>';
+          PERM_TAB_LABELS_.forEach(function(l) {
+            const p = u.perms[l.key] || {};
+            html += '<td><input type="checkbox" ' + (p.view ? 'checked' : '') +
+              ' onchange="togglePerm_(\'' + u.msnv + '\',\'' + l.key + '\',\'view\',this.checked)"></td>';
+            html += '<td><input type="checkbox" ' + (p.edit ? 'checked' : '') +
+              ' onchange="togglePerm_(\'' + u.msnv + '\',\'' + l.key + '\',\'edit\',this.checked)"></td>';
+          });
+          html += '<td><span style="color:#c62828; cursor:pointer; font-weight:800;" onclick="deletePermUser_(\'' + u.msnv + '\')">&times;</span></td></tr>';
+        });
+        html += '</table>';
+        wrap.innerHTML = html;
+      }
+
+      function togglePerm_(msnv, tab, type, checked) {
+        if (permUsersCache_) {
+          const u = permUsersCache_.find(function(x) { return x.msnv === msnv; });
+          if (u) { u.perms[tab] = u.perms[tab] || {}; u.perms[tab][type] = checked; }
+          try { localStorage.setItem(PERM_LIST_CACHE_KEY_, JSON.stringify(permUsersCache_)); } catch (e) {}
+        }
+        google.script.run
+          .withFailureHandler(function(err) { showToast('Lỗi lưu quyền: ' + err.message, 'error'); })
+          .savePermission(msnv, tab, type, checked);
+      }
+
+      function addPermUser_() {
+        const msnv = prompt('Nhập MSNV nhân viên mới:');
+        if (!msnv) return;
+        const hoTen = prompt('Họ và tên:');
+        if (!hoTen) return;
+        google.script.run
+          .withSuccessHandler(function() { loadPermUsers_(true); showToast('Đã thêm tài khoản.', 'success'); })
+          .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+          .addUserAccount(msnv, hoTen, 'Công nhân');
+      }
+
+      function deletePermUser_(msnv) {
+        if (!confirm('Xóa tài khoản ' + msnv + '?')) return;
+        google.script.run
+          .withSuccessHandler(function() { loadPermUsers_(true); showToast('Đã xóa tài khoản.', 'success'); })
+          .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+          .deleteUserAccount(msnv);
+      }
+      // ====== HẾT PHẦN PHÂN QUYỀN ======
+
       const ONLINE_HEARTBEAT_MS = 120000; // 2 phút - đủ để hiện số người online, giảm mạnh số lệnh gọi/ngày
 
            function sendHeartbeat_() {
-        if (!currentUser_) return;
-        google.script.run
+          if (!currentUser_) return;
+          google.script.run
           .withSuccessHandler(function(count) {
             const badge = document.getElementById('onlineBadge');
             const text = document.getElementById('onlineCountText');
@@ -1916,6 +2041,7 @@
         } catch (e) {}
 
         document.getElementById('topbarUserName').textContent = user.hoTen;
+        applyPermissionsToUI_();
         showHomeMenu_(); // Đăng nhập xong -> hiện màn hình chọn phần mềm, chưa vào thẳng Dashboard
 
         // Màn hình chờ đã mở sẵn từ lúc bấm nút Đăng nhập (xem submitLogin_) - ở đây chỉ cần
@@ -1966,6 +2092,7 @@
         document.getElementById('changePassError').textContent = '';
         document.getElementById('changePassOverlay').style.display = 'flex';
         closeUserMenu_();
+        if (isPermAdmin_) loadPermUsers_(false); // dùng cache trước, âm thầm tải bản mới phía sau
       }
 
       function closeChangePasswordModal_() {
@@ -2459,6 +2586,10 @@
           renderDashboard_();
         } else if (activeFilterTarget === 'lsxdetail') {
           renderLsxDetailTable_(applyDetailFilters_(lsxDetailRawRows));
+        } else if (activeFilterTarget === 'vt') {
+          renderVtGhTable_('vtResultWrap', vtRows_, 'nhanvattu');
+        } else if (activeFilterTarget === 'gh') {
+          renderVtGhTable_('ghResultWrap', ghRows2_, 'giaohang');
         } else {
           render(applyFilters(lastRows));
         }
@@ -3533,6 +3664,8 @@
         } else if (tabId === 'tab-giaohang2') {
           activeTrackingTab_ = null;
           loadGhData2_();
+        } else if (tabId === 'tab-khbus') {
+          activeTrackingTab_ = null;
         } else if (tabId === 'tab-nhansu-dashboard') {
           activeTrackingTab_ = null;
           loadNhanSuDashboard_();
@@ -3563,14 +3696,38 @@ function vtGhColumns_() {
   ];
 }
 
-function renderVtGhTable_(containerId, rows) {
+const vtGhFilters_ = { nhanvattu: {}, giaohang: {} };
+
+function applyVtGhFilters_(rows, target) {
+  const filtersObj = vtGhFilters_[target];
+  return rows.filter(function(r) {
+    for (const key in filtersObj) {
+      const allowed = filtersObj[key];
+      if (!allowed) continue;
+      if (!allowed.has(normalizeValue(key, r[key]))) return false;
+    }
+    return true;
+  });
+}
+
+function renderVtGhTable_(containerId, rows, target) {
   const cols = vtGhColumns_();
   const el = document.getElementById(containerId);
-  let html = '<table><tr>' + cols.map(function(c) { return '<th>' + c.label + '</th>'; }).join('') + '</tr>';
-  if (!rows || rows.length === 0) {
-    html += '<tr><td colspan="' + cols.length + '" class="empty-state-cell">Chưa có dữ liệu.</td></tr>';
+  const filtersObj = vtGhFilters_[target] || {};
+  const popupTarget = target === 'nhanvattu' ? 'vt' : 'gh';
+
+  let html = '<table><tr>' + cols.map(function(c) {
+    const activeCls = filtersObj[c.key] ? ' active' : '';
+    return '<th>' + c.label +
+      '<span class="filter-icon' + activeCls + '" onclick="openFilterPopup(\'' + c.key + '\', this, \'' + popupTarget + '\')">&#9662;</span>' +
+      '</th>';
+  }).join('') + '</tr>';
+
+  const filtered = applyVtGhFilters_(rows, target);
+  if (!filtered || filtered.length === 0) {
+    html += '<tr><td colspan="' + cols.length + '" class="empty-state-cell">Không có dữ liệu.</td></tr>';
   } else {
-    rows.forEach(function(r) {
+    filtered.forEach(function(r) {
       html += '<tr>' + cols.map(function(c) { return '<td>' + (r[c.key] === null || r[c.key] === undefined ? '' : escapeHtml_(String(r[c.key]))) + '</td>'; }).join('') + '</tr>';
     });
   }
@@ -3580,13 +3737,13 @@ function renderVtGhTable_(containerId, rows) {
 
 function loadVtData_() {
   google.script.run
-    .withSuccessHandler(function(rows) { vtRows_ = rows || []; renderVtGhTable_('vtResultWrap', vtRows_); })
+    .withSuccessHandler(function(rows) { vtRows_ = rows || []; renderVtGhTable_('vtResultWrap', vtRows_, 'nhanvattu'); })
     .withFailureHandler(function(err) { showToast('Lỗi tải Nhận Vật Tư: ' + err.message, 'error'); })
     .getNhanVatTuData_v2();
 }
 function loadGhData2_() {
   google.script.run
-    .withSuccessHandler(function(rows) { ghRows2_ = rows || []; renderVtGhTable_('ghResultWrap', ghRows2_); })
+    .withSuccessHandler(function(rows) { ghRows2_ = rows || []; renderVtGhTable_('ghResultWrap', ghRows2_, 'giaohang'); })
     .withFailureHandler(function(err) { showToast('Lỗi tải Giao Hàng: ' + err.message, 'error'); })
     .getGiaoHangData_v2();
 }
@@ -3951,6 +4108,8 @@ function onVtGhQrScanSuccess_(decodedText) {
         if (activeFilterTarget === 'giaohang') return { rows: giaoHangRows, filters: trackingFilters.giaohang };
         if (activeFilterTarget === 'dashboard') return { rows: dashboardRows, filters: dashboardFilters };
         if (activeFilterTarget === 'lsxdetail') return { rows: lsxDetailRawRows, filters: lsxDetailFilters };
+        if (activeFilterTarget === 'vt') return { rows: vtRows_, filters: vtGhFilters_.nhanvattu };
+        if (activeFilterTarget === 'gh') return { rows: ghRows2_, filters: vtGhFilters_.giaohang };
         return { rows: lastRows, filters: filters };
       }
 
@@ -4851,6 +5010,7 @@ function pollPriorityTagsSilently_() {
 
   function openPriorityPopup_(e, lsx) {
     e.stopPropagation();
+    if (!hasPerm_('dashboard', 'edit')) { showToast('Bạn chỉ có quyền xem, không thể đổi nhãn ưu tiên.', 'info'); return; }
     priorityPopupLsx_ = lsx;
     const popup = document.getElementById('priorityPopup');
     renderPriorityPopupList_();
@@ -5248,6 +5408,7 @@ window.addEventListener('online', tryFlushPriorityQueue_);
 
   function openDhPopup_(e, lsx) {
     e.stopPropagation();
+    if (!hasPerm_('dashboard', 'edit')) { showToast('Bạn chỉ có quyền xem, không thể đổi nhãn ĐH.', 'info'); return; }
     dhPopupLsx_ = lsx;
     const popup = document.getElementById('dhPopup');
     renderDhPopupList_();
@@ -7343,43 +7504,48 @@ window.addEventListener('online', tryFlushPriorityQueue_);
   </div>
 
   <div id="changePassOverlay" class="colvis-overlay" style="display:none;">
-    <div class="colvis-modal" style="width:360px; border-radius:16px; overflow:hidden;">
+    <div class="colvis-modal" style="width:min(94vw, 820px); max-height:90vh; border-radius:16px; overflow:hidden; display:flex; flex-direction:column;">
       <div class="colvis-header" style="border-radius:0;">
         <h3>Tài khoản</h3>
         <span class="upbom-close" onclick="closeChangePasswordModal_()">&times;</span>
       </div>
-      <div style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+      <div style="padding:20px; display:flex; flex-direction:column; gap:16px; overflow-y:auto;">
 
-        <div style="background:#f2f6fd; border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; justify-content:space-between; font-size:13px;">
-            <span style="color:#888;">Tên</span>
-            <span id="accInfoHoTen" style="font-weight:700; color:#222;"></span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:13px;">
-            <span style="color:#888;">MSNV</span>
-            <span id="accInfoMsnv" style="font-weight:700; color:#222;"></span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:13px;">
-            <span style="color:#888;">Phòng ban</span>
-            <span id="accInfoPhongBan" style="font-weight:700; color:#222; text-align:right;">Xưởng Gia Công Cơ Khí Chính Xác</span>
-          </div>
+        <div class="acc-info-grid" style="background:#f2f6fd; border-radius:10px; padding:14px 16px;">
+          <div><div style="font-size:11px; color:#888;">Tên</div><div id="accInfoHoTen" style="font-weight:700; color:#222; font-size:14px;"></div></div>
+          <div><div style="font-size:11px; color:#888;">MSNV</div><div id="accInfoMsnv" style="font-weight:700; color:#222; font-size:14px;"></div></div>
+          <div><div style="font-size:11px; color:#888;">Phòng ban</div><div id="accInfoPhongBan" style="font-weight:700; color:#222; font-size:14px;">Xưởng Gia Công Cơ Khí Chính Xác</div></div>
         </div>
 
         <div style="height:1px; background:#eee;"></div>
 
-        <label style="font-size:13px; font-weight:600; color:#333;">Mật khẩu cũ
-          <input type="password" id="oldPassInput"
-            style="width:100%; padding:10px 12px; box-sizing:border-box; margin-top:6px; border:1px solid #ddd; border-radius:8px; font-size:14px;" />
-        </label>
-        <label style="font-size:13px; font-weight:600; color:#333;">Mật khẩu mới
-          <input type="password" id="newPassInput"
-            style="width:100%; padding:10px 12px; box-sizing:border-box; margin-top:6px; border:1px solid #ddd; border-radius:8px; font-size:14px;" />
-        </label>
-        <label style="font-size:13px; font-weight:600; color:#333;">Xác nhận mật khẩu mới
-          <input type="password" id="confirmPassInput"
-            style="width:100%; padding:10px 12px; box-sizing:border-box; margin-top:6px; border:1px solid #ddd; border-radius:8px; font-size:14px;" />
-        </label>
+        <div class="acc-pass-grid">
+          <label style="font-size:13px; font-weight:600; color:#333;">Mật khẩu cũ
+            <input type="password" id="oldPassInput"
+              style="width:100%; padding:10px 12px; box-sizing:border-box; margin-top:6px; border:1px solid #ddd; border-radius:8px; font-size:14px;" />
+          </label>
+          <label style="font-size:13px; font-weight:600; color:#333;">Mật khẩu mới
+            <input type="password" id="newPassInput"
+              style="width:100%; padding:10px 12px; box-sizing:border-box; margin-top:6px; border:1px solid #ddd; border-radius:8px; font-size:14px;" />
+          </label>
+          <label style="font-size:13px; font-weight:600; color:#333;">Xác nhận mật khẩu mới
+            <input type="password" id="confirmPassInput"
+              style="width:100%; padding:10px 12px; box-sizing:border-box; margin-top:6px; border:1px solid #ddd; border-radius:8px; font-size:14px;" />
+          </label>
+        </div>
         <div id="changePassError" style="color:#c62828; font-size:13px; min-height:16px;"></div>
+
+        <div id="permSectionWrap" style="display:none; margin-top:6px;">
+          <div style="height:1px; background:#eee; margin-bottom:16px;"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 style="margin:0; font-size:15px; color:#003DA5;"><i class="fa-solid fa-user-shield" style="margin-right:8px;"></i>Phân quyền người dùng</h3>
+            <button type="button" onclick="addPermUser_()" style="background:#00b894; color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;">
+              <i class="fa-solid fa-plus"></i> Thêm người
+            </button>
+          </div>
+          <div id="permTableWrap" style="overflow:auto; max-height:340px; border:1px solid #eee; border-radius:8px;"></div>
+        </div>
+
       </div>
       <div class="upbom-footer" style="border-radius:0 0 16px 16px;">
         <button type="button" class="upbom-cancel" onclick="closeChangePasswordModal_()"
