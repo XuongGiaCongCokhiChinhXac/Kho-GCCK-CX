@@ -1684,6 +1684,23 @@
         }, 3200);
       }
 
+      let confirmModalCallback_ = null;
+function openConfirmModal_(title, desc, onConfirm) {
+  document.getElementById('confirmModalTitle').textContent = title;
+  document.getElementById('confirmModalDesc').textContent = desc || '';
+  confirmModalCallback_ = onConfirm;
+  document.getElementById('confirmModalOverlay').style.display = 'flex';
+}
+function closeConfirmModal_() {
+  document.getElementById('confirmModalOverlay').style.display = 'none';
+  confirmModalCallback_ = null;
+}
+function confirmModalYes_() {
+  const cb = confirmModalCallback_;
+  closeConfirmModal_();
+  if (cb) cb();
+}
+
       const lsxInput = document.getElementById('lsxInput');
 
                 let currentUser_ = null; // { msnv, hoTen }
@@ -4392,15 +4409,17 @@ function onVtGhQrScanSuccess_(decodedText) {
 
       function khbusDeleteSlide_() {
         if (khbusSlides_.length <= 1) { showToast('Phải còn ít nhất 1 slide.', 'error'); return; }
-        const cur = khbusSlides_[khbusCurrentIndex_];
-        if (!confirm('Xóa slide này?')) return;
-        khbusSlides_.splice(khbusCurrentIndex_, 1);
-        if (cur.id) {
-          google.script.run.withFailureHandler(function(err) { showToast('Lỗi xóa slide: ' + err.message, 'error'); }).deleteKhBusSlide(cur.id);
-        }
-        khbusCurrentIndex_ = Math.max(0, khbusCurrentIndex_ - 1);
-        khbusRenderSlideList_();
-        khbusRenderCanvas_();
+        openConfirmModal_('Xóa slide này?', 'Slide đã xóa sẽ không thể khôi phục.', function() {
+          const cur = khbusSlides_[khbusCurrentIndex_];
+          khbusSlides_.splice(khbusCurrentIndex_, 1);
+          if (cur.id) {
+            google.script.run.withFailureHandler(function(err) { showToast('Lỗi xóa slide: ' + err.message, 'error'); }).deleteKhBusSlide(cur.id);
+          }
+          khbusCurrentIndex_ = Math.max(0, khbusCurrentIndex_ - 1);
+          khbusRenderSlideList_();
+          khbusRenderCanvas_();
+          showToast('Đã xóa slide.', 'success');
+        });
       }
 
       function khbusAddRow_() {
@@ -4447,29 +4466,28 @@ function onVtGhQrScanSuccess_(decodedText) {
       }
 
       function khbusEditableCell_(value, path, extraStyle) {
-        const safeVal = escapeHtml_(value || '');
-        return '<div contenteditable="true" data-path="' + path + '" onblur="khbusUpdateField_(this.dataset.path, this.innerText)" ' +
-          'style="min-height:20px; outline:none; padding:2px;' + (extraStyle || '') + '">' + safeVal + '</div>';
-      }
+  const safeVal = escapeHtml_(value || '');
+  return '<div contenteditable="true" spellcheck="false" data-path="' + path + '" onblur="khbusUpdateField_(this.dataset.path, this.innerText)" ' +
+    'style="min-height:20px; outline:none; padding:2px; font-family:Arial, sans-serif;' + (extraStyle || '') + '">' + safeVal + '</div>';
+}
 
       function khbusRenderCanvas_() {
+        khbusClearSelection_();
         const s = khbusSlides_[khbusCurrentIndex_];
         const canvas = document.getElementById('khbusSlideCanvas');
         if (!s) { canvas.innerHTML = ''; return; }
 
         let html = '<div style="background:#fff; max-width:1700px; margin:0 auto; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,0.1); font-family:Arial, sans-serif;">';
 
-        html += '<div style="display:flex; align-items:center; gap:16px; background:#fffde7; border:2px solid #003DA5; padding:10px 16px; margin-bottom:14px;">';
-        html += '<div style="background:#003DA5; color:#fff; font-weight:900; font-style:italic; padding:10px 18px; border-radius:4px; white-space:nowrap;">THACO<br><span style="font-size:11px; font-weight:400;">INDUSTRIES</span></div>';
-        html += '<div style="flex:1; text-align:center;">' +
+        html += '<div style="background:#fffde7; border:2px solid #003DA5; padding:10px 16px; margin-bottom:14px; text-align:center;">' +
           khbusEditableCell_(s.title, 'title', 'font-size:20px; font-weight:800; color:#c00; text-align:center;') +
           khbusEditableCell_(s.subtitle, 'subtitle', 'font-size:16px; font-weight:700; color:#003DA5; text-align:center;') +
-        '</div></div>';
+        '</div>';
 
         html += '<table style="width:100%; border-collapse:collapse; font-size:12px; text-align:center;">';
         html += '<tr>' +
           '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">LOẠI XE</th>' +
-          '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">SL đặt hàng</th>' +
+          '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">SL ĐH</th>' +
           KHBUS_GROUPS_.map(function(g) {
             return '<th colspan="3" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">' + g + '</th>';
           }).join('') +
@@ -4482,15 +4500,16 @@ function onVtGhQrScanSuccess_(decodedText) {
           }).join('') +
         '</tr>';
 
-        s.rows.forEach(function(row, rIdx) {
+               s.rows.forEach(function(row, rIdx) {
+          let colIdx = 0;
           html += '<tr>';
-          html += '<td style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(row.loaiXe, 'rows.' + rIdx + '.loaiXe') + '</td>';
-          html += '<td style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(row.slDatHang, 'rows.' + rIdx + '.slDatHang') + '</td>';
+          html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(row.loaiXe, 'rows.' + rIdx + '.loaiXe') + '</td>';
+          html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(row.slDatHang, 'rows.' + rIdx + '.slDatHang') + '</td>';
           KHBUS_GROUPS_.forEach(function(g) {
             const cell = row[g] || { khNhan: '', lsx: '', xacNhan: '' };
-            html += '<td style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(cell.khNhan, 'rows.' + rIdx + '.' + g + '.khNhan') + '</td>';
-            html += '<td style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx') + '</td>';
-            html += '<td style="border:1px solid #ccc; padding:2px; background:#fff9c4;">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan') + '</td>';
+            html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(cell.khNhan, 'rows.' + rIdx + '.' + g + '.khNhan') + '</td>';
+            html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx', 'font-weight:800; color:#c00;') + '</td>';
+            html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px; background:#fff9c4;">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan') + '</td>';
           });
           html += '<td style="border:1px solid #ccc; padding:2px; color:#c62828; cursor:pointer;" onclick="khbusDeleteRow_(' + rIdx + ')" title="Xóa dòng">&times;</td>';
           html += '</tr>';
@@ -4499,6 +4518,90 @@ function onVtGhQrScanSuccess_(decodedText) {
         html += '</table></div>';
         canvas.innerHTML = html;
       }
+
+            /* ================= CHỌN Ô KIỂU EXCEL CHO BẢNG KH BUS ================= */
+      let khbusSelRegions = [];
+      let khbusSelAnchorR = -1, khbusSelAnchorC = -1, khbusActiveR = -1, khbusActiveC = -1;
+      let khbusIsSelecting = false;
+
+      function khbusIsCellSelected_(r, c) {
+        return khbusSelRegions.some(function(reg) { return r >= reg.r1 && r <= reg.r2 && c >= reg.c1 && c <= reg.c2; });
+      }
+      function khbusClearSelection_() {
+        khbusSelRegions = [];
+        khbusSelAnchorR = khbusSelAnchorC = khbusActiveR = khbusActiveC = -1;
+        document.querySelectorAll('#khbusSlideCanvas td.cell-selected, #khbusSlideCanvas td.cell-active')
+          .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
+      }
+      function khbusSelectSingle_(r, c) {
+        khbusSelRegions = [{ r1: r, r2: r, c1: c, c2: c }];
+        khbusSelAnchorR = r; khbusSelAnchorC = c; khbusActiveR = r; khbusActiveC = c;
+        khbusPaintSelection_();
+      }
+      function khbusExtendSelection_(r, c) {
+        if (khbusSelAnchorR < 0) { khbusSelectSingle_(r, c); return; }
+        const rect = { r1: Math.min(khbusSelAnchorR, r), r2: Math.max(khbusSelAnchorR, r), c1: Math.min(khbusSelAnchorC, c), c2: Math.max(khbusSelAnchorC, c) };
+        if (khbusSelRegions.length === 0) khbusSelRegions.push(rect); else khbusSelRegions[khbusSelRegions.length - 1] = rect;
+        khbusActiveR = r; khbusActiveC = c;
+        khbusPaintSelection_();
+      }
+      function khbusToggleCellRegion_(r, c) {
+        const idx = khbusSelRegions.findIndex(function(reg) { return reg.r1 === r && reg.r2 === r && reg.c1 === c && reg.c2 === c; });
+        if (idx !== -1) khbusSelRegions.splice(idx, 1); else khbusSelRegions.push({ r1: r, r2: r, c1: c, c2: c });
+        khbusSelAnchorR = r; khbusSelAnchorC = c; khbusActiveR = r; khbusActiveC = c;
+        khbusPaintSelection_();
+      }
+      function khbusPaintSelection_() {
+        document.querySelectorAll('#khbusSlideCanvas td.cell-selected, #khbusSlideCanvas td.cell-active')
+          .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
+        document.querySelectorAll('#khbusSlideCanvas td[data-r]').forEach(function(td) {
+          const r = Number(td.getAttribute('data-r')), c = Number(td.getAttribute('data-c'));
+          if (khbusIsCellSelected_(r, c)) td.classList.add('cell-selected');
+        });
+        const activeTd = document.querySelector('#khbusSlideCanvas td[data-r="' + khbusActiveR + '"][data-c="' + khbusActiveC + '"]');
+        if (activeTd) activeTd.classList.add('cell-active');
+      }
+      function khbusCopySelection_() {
+        if (khbusSelRegions.length === 0) return;
+        let r1 = Infinity, r2 = -Infinity, c1 = Infinity, c2 = -Infinity;
+        khbusSelRegions.forEach(function(reg) { r1 = Math.min(r1, reg.r1); r2 = Math.max(r2, reg.r2); c1 = Math.min(c1, reg.c1); c2 = Math.max(c2, reg.c2); });
+        const lines = [];
+        for (let r = r1; r <= r2; r++) {
+          const vals = [];
+          for (let c = c1; c <= c2; c++) {
+            const td = document.querySelector('#khbusSlideCanvas td[data-r="' + r + '"][data-c="' + c + '"]');
+            vals.push(khbusIsCellSelected_(r, c) && td ? td.innerText.trim() : '');
+          }
+          lines.push(vals.join('\t'));
+        }
+        writeToRealClipboard_(lines.join('\n'));
+        showToast('Đã copy ' + ((r2 - r1 + 1) * (c2 - c1 + 1)) + ' ô.', 'success');
+      }
+
+      document.getElementById('khbusSlideCanvas').addEventListener('mousedown', function(e) {
+        const td = e.target.closest('td[data-r]');
+        if (!td) return;
+        const r = Number(td.getAttribute('data-r')), c = Number(td.getAttribute('data-c'));
+        if (e.shiftKey) { khbusExtendSelection_(r, c); khbusIsSelecting = false; }
+        else if (e.ctrlKey || e.metaKey) { khbusToggleCellRegion_(r, c); khbusIsSelecting = false; }
+        else { khbusIsSelecting = true; khbusSelectSingle_(r, c); }
+        // Không preventDefault để vẫn bấm vào ô sửa được nội dung (contenteditable)
+      });
+      document.getElementById('khbusSlideCanvas').addEventListener('mouseover', function(e) {
+        if (!khbusIsSelecting) return;
+        const td = e.target.closest('td[data-r]');
+        if (!td) return;
+        khbusExtendSelection_(Number(td.getAttribute('data-r')), Number(td.getAttribute('data-c')));
+      });
+      document.addEventListener('mouseup', function() { khbusIsSelecting = false; });
+      document.addEventListener('keydown', function(e) {
+        const khbusTab = document.getElementById('tab-khbus');
+        if (!khbusTab || !khbusTab.classList.contains('active')) return;
+        // Đang gõ trong ô (contenteditable) -> để trình duyệt tự copy/paste text bình thường
+        if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { khbusCopySelection_(); }
+        else if (e.key === 'Escape') { khbusClearSelection_(); }
+      });
 
       /* ================= DASHBOARD TIẾN ĐỘ ĐƠN HÀNG (CHO QUẢN LÝ) ================= */
       const DASHBOARD_COLVIS_COLUMNS_ = [
@@ -7644,6 +7747,22 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         </div>
       </div>
     </div>
+
+    <div id="confirmModalOverlay" class="colvis-overlay" style="display:none; z-index:500;">
+  <div class="colvis-modal" style="width:360px; border-radius:14px; text-align:center; padding:0;">
+    <div style="padding:28px 24px 20px 24px;">
+      <div style="width:52px; height:52px; border-radius:50%; background:#fdecea; color:#c62828; font-size:22px; display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto;">
+        <i class="fa-solid fa-trash"></i>
+      </div>
+      <div id="confirmModalTitle" style="font-size:16px; font-weight:800; color:#222; margin-bottom:6px;"></div>
+      <div id="confirmModalDesc" style="font-size:13px; color:#888; line-height:1.5;"></div>
+    </div>
+    <div class="upbom-footer" style="justify-content:center;">
+      <button type="button" class="upbom-cancel" onclick="closeConfirmModal_()">Hủy</button>
+      <button type="button" onclick="confirmModalYes_()" style="background:#c62828; color:#fff; font-weight:bold; border:none; border-radius:4px; padding:8px 22px; cursor:pointer;">Xóa</button>
+    </div>
+  </div>
+</div>
 
     <div id="trackingOverlay" class="colvis-overlay" style="display:none;">
     <div class="colvis-modal" style="width:420px; max-height:90vh;">
