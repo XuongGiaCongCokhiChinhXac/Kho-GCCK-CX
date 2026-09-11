@@ -45,6 +45,9 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 2px 16px;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
       }
       .colvis-option { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; cursor: pointer; }
       .colvis-footer { padding: 10px 16px; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; }
@@ -323,6 +326,18 @@
       body.dark-mode .ns-stat-value, body.dark-mode .ns-dept-name, body.dark-mode .ns-absent-name { color: #eceef0; }
       body.dark-mode .ns-panel-header { border-color: #2c313c; }
       body.dark-mode .ns-absent-item, body.dark-mode .ns-dept-item { border-color: #2c313c; }
+            /* ===== Chế độ tối cho tab KH BUS ===== */
+      body.dark-mode #khbusSlideList { background: #14171c; border-color: #2c313c; }
+      body.dark-mode #khbusSlideCanvas { background: #14171c; }
+      body.dark-mode .khbus-ribbon { background: #1c1f26; border: 1px solid #2c313c; }
+      body.dark-mode .khbus-ribbon-btn { color: #d8dadf; }
+      body.dark-mode .khbus-ribbon-btn i { color: #8fc1ff; }
+      body.dark-mode .khbus-ribbon-btn.danger i { color: #ff6b6b; }
+      body.dark-mode .khbus-ribbon-btn:hover { background: #23293a; }
+      body.dark-mode .khbus-ribbon-sep { background: #2c313c; }
+      body.dark-mode #khbusColorPopup { background: #1c1f26; border-color: #3a3f4a; color: #d8dadf; }
+      body.dark-mode #khbusSlideCanvas table th { border-color: #0c2f6e !important; }
+      body.dark-mode #khbusSlideCanvas table td { border-color: #2c313c !important; }
       /* 2 nhóm nút điều hướng (Tiến độ / Nhân sự) thay phiên nhau hiện trong sidebar -
         phải tự làm flex-column + flex:1 y hệt .sidebar gốc, nếu không các phần tử con
         dùng flex:1 (VD .sidebar-category-list) sẽ mất khả năng co giãn đúng chiều cao. */
@@ -1549,18 +1564,14 @@
 
         <div id="tab-dashboard" class="tab-pane active" style="flex-direction:column;">
           <div class="tracking-toolbar" style="flex-wrap:wrap;">
-            <h2 style="margin:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap; position:relative;">
-              <span id="dashSubTabDropdownBtn" onclick="toggleDashSubTabMenu_()" style="cursor:pointer; display:flex; align-items:center; gap:8px; user-select:none;">
-                <span id="dashSubTabLabel">Tiến độ</span>
-                <i class="fa-solid fa-chevron-down" style="font-size:13px; color:#888;"></i>
-              </span>
-              <div id="dashSubTabMenu" style="display:none; position:absolute; top:100%; left:0; margin-top:6px; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.18); z-index:60; min-width:210px; overflow:hidden;">
-                <div class="dash-subtab-option" onclick="switchDashSubTab_('tiendo')" style="padding:10px 16px; cursor:pointer; font-size:14px; font-weight:600; color:#333;">
-                  <i class="fa-solid fa-chart-pie" style="width:18px; color:#1a73e8;"></i>&nbsp; Tiến độ
-                </div>
-                <div class="dash-subtab-option" onclick="switchDashSubTab_('thoigian')" style="padding:10px 16px; cursor:pointer; font-size:14px; font-weight:600; color:#333; border-top:1px solid #eee;">
-                  <i class="fa-solid fa-briefcase-clock" style="width:18px; color:#8e44ad;"></i>&nbsp; Thời gian gia công
-                </div>
+            <h2 style="margin:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="display:flex; gap:8px;">
+                <button type="button" id="dashSubTabBtn-tiendo" class="quick-btn active" onclick="switchDashSubTab_('tiendo')" style="font-size:14px; padding:8px 16px;">
+                  <i class="fa-solid fa-chart-pie" style="margin-right:6px;"></i>Tiến độ
+                </button>
+                <button type="button" id="dashSubTabBtn-thoigian" class="quick-btn" onclick="switchDashSubTab_('thoigian')" style="font-size:14px; padding:8px 16px;">
+                  <i class="fa-solid fa-briefcase-clock" style="margin-right:6px;"></i>Thời gian gia công
+                </button>
               </div>
               <span id="progressSyncStatus" class="sync-status" style="font-weight:bold; font-size:13px;"></span>
             </h2>
@@ -3306,6 +3317,44 @@ function confirmModalYes_() {
         styleTag.textContent = css;
       }
 
+      function applyTgGcStickyColumns_() {
+  const table = document.querySelector('#tgGcTableWrap table');
+  if (!table || table.rows.length === 0) return;
+  const headerRow = table.rows[0];
+  const stickyCells = headerRow.querySelectorAll('.sticky-col');
+  if (stickyCells.length === 0) return;
+
+  const lefts = [];
+  let acc = 0;
+  stickyCells.forEach(function(cell) {
+    lefts.push(acc);
+    acc += cell.getBoundingClientRect().width;
+  });
+
+  const allHeaderCells = headerRow.querySelectorAll('th');
+  const positions = [];
+  allHeaderCells.forEach(function(cell, idx) {
+    if (cell.classList.contains('sticky-col')) positions.push(idx + 1);
+  });
+
+  let css = '';
+  positions.forEach(function(pos, i) {
+    css += '#tgGcTableWrap table td:nth-child(' + pos + '), ' +
+           '#tgGcTableWrap table th:nth-child(' + pos + ') { left: ' + lefts[i] + 'px; }\n';
+  });
+
+  let styleTag = document.getElementById('tgGcStickyColStyle');
+  if (!styleTag) {
+    styleTag = document.createElement('style');
+    styleTag.id = 'tgGcStickyColStyle';
+    document.head.appendChild(styleTag);
+  }
+  styleTag.textContent = css;
+}
+function tgGcIsStickyCol_(arrIdx) {
+  return arrIdx === 0 || arrIdx === tgGcLsxArrayIndex_;
+}
+
       function findRowData(lsxStt) {
         return lastRows.find(function(r) { return String(r.lsx_stt) === String(lsxStt); });
       }
@@ -4277,6 +4326,11 @@ function onVtGhQrScanSuccess_(decodedText) {
           function onDarkModeToggle_(isDark) {
         document.body.classList.toggle('dark-mode', isDark);
         try { localStorage.setItem('gcck_dark_mode', isDark ? '1' : '0'); } catch (e) {}
+        const khbusTab = document.getElementById('tab-khbus');
+        if (khbusTab && khbusTab.classList.contains('active') && khbusLoaded_) {
+          khbusRenderSlideList_();
+          khbusRenderCanvas_();
+        }
       }
 
       let zoomRafId_ = null;
@@ -4463,19 +4517,9 @@ function onVtGhQrScanSuccess_(decodedText) {
       })
       .getGiaoHangData();
   }
-          function toggleDashSubTabMenu_() {
-        const menu = document.getElementById('dashSubTabMenu');
-        menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
-      }
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('#dashSubTabDropdownBtn') && !e.target.closest('#dashSubTabMenu')) {
-          const menu = document.getElementById('dashSubTabMenu');
-          if (menu) menu.style.display = 'none';
-        }
-      });
-            function switchDashSubTab_(key) {
-        document.getElementById('dashSubTabMenu').style.display = 'none';
-        document.getElementById('dashSubTabLabel').textContent = key === 'thoigian' ? 'Thời gian gia công' : 'Tiến độ';
+          function switchDashSubTab_(key) {
+        document.getElementById('dashSubTabBtn-tiendo').classList.toggle('active', key === 'tiendo');
+        document.getElementById('dashSubTabBtn-thoigian').classList.toggle('active', key === 'thoigian');
         document.getElementById('dashSubTab-tiendo').style.display = (key === 'tiendo') ? 'flex' : 'none';
         document.getElementById('dashSubTab-thoigian').style.display = (key === 'thoigian') ? 'flex' : 'none';
         if (key === 'thoigian') {
@@ -4550,7 +4594,8 @@ function onVtGhQrScanSuccess_(decodedText) {
 
       function tgGcRegisterColvis_() {
         const cols = tgGcColumns_.map(function(c) {
-          return { key: 'col_' + c.index, label: (c.group ? c.group + ' - ' : '') + c.label };
+          const displayLabel = TG_GC_LABEL_DISPLAY_MAP_[String(c.label || '').trim().toLowerCase()] || c.label;
+          return { key: 'col_' + c.index, label: (c.group ? c.group + ' - ' : '') + displayLabel };
         });
         registerColvisTable_('thoigianGC', cols, 'gcck_colvis_thoigianGC_v1', function() { renderThoiGianGC_(); });
       }
@@ -4575,6 +4620,35 @@ function onVtGhQrScanSuccess_(decodedText) {
         const num = Number(v);
         if (isNaN(num)) return String(v);
         return num.toFixed(1);
+      }
+      function tgGcIsTienDoCol_(col) {
+        const l = String(col.label || '').trim().toLowerCase();
+        return l.indexOf('tiến độ') !== -1;
+      }
+      function tgGcFormatTienDo_(v) {
+        if (v === '' || v === null || v === undefined) return '';
+        const num = Number(v);
+        if (isNaN(num)) return String(v);
+        return Math.round(num * 100) + '%';
+      }
+      // Đổi tên hiển thị (chỉ ảnh hưởng giao diện, không đổi dữ liệu/cột thật trên Sheet)
+      const TG_GC_LABEL_DISPLAY_MAP_ = {
+        'tổng chi tiết': 'Tổng',
+        'sl gc còn lại': 'Còn lại',
+        'gia công': 'GC'
+      };
+      function tgGcDisplayLabel_(label) {
+        const key = String(label || '').trim().toLowerCase();
+        return escapeHtml_(TG_GC_LABEL_DISPLAY_MAP_[key] || label);
+      }
+      // Các cột số liệu (trong nhóm chuyền + cột Tổng) khi giá trị = 0 -> để trống
+      function tgGcShouldHideZero_(col) {
+        return !!col.group || tgGcIsTotalCol_(col);
+      }
+      function tgGcIsZeroVal_(v) {
+        if (v === '' || v === null || v === undefined) return true;
+        const num = Number(v);
+        return !isNaN(num) && num === 0;
       }
 
       function tgGcApplySearch_() {
@@ -4630,7 +4704,8 @@ function onVtGhQrScanSuccess_(decodedText) {
           const arrIdx = tgGcColumns_.indexOf(col);
           if (!col.group) {
             const activeCls = tgGcFilters_[arrIdx] ? ' active' : '';
-            r1 += '<th class="tgGc-thead-r1" rowspan="2">' + escapeHtml_(col.label) +
+            const stickyCls = tgGcIsStickyCol_(arrIdx) ? ' sticky-col' + (arrIdx === tgGcLsxArrayIndex_ ? ' sticky-col-end' : '') : '';
+            r1 += '<th class="tgGc-thead-r1' + stickyCls + '" rowspan="2">' + tgGcDisplayLabel_(col.label) +
               '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + arrIdx + ', this)">&#9662;</span></th>';
             i++;
           } else {
@@ -4646,7 +4721,7 @@ function onVtGhQrScanSuccess_(decodedText) {
           if (!col.group) return;
           const arrIdx = tgGcColumns_.indexOf(col);
           const activeCls = tgGcFilters_[arrIdx] ? ' active' : '';
-          r2 += '<th class="tgGc-thead-r2">' + escapeHtml_(col.label) +
+          r2 += '<th class="tgGc-thead-r2">' + tgGcDisplayLabel_(col.label) +
             '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + arrIdx + ', this)">&#9662;</span></th>';
         });
         r2 += '</tr>';
@@ -4660,14 +4735,19 @@ function onVtGhQrScanSuccess_(decodedText) {
           const arrIdx = tgGcColumns_.indexOf(col);
           const v = r.values[arrIdx];
           const totalStyle = tgGcIsTotalCol_(col) ? ' style="font-weight:800; color:#003DA5;"' : '';
+          const stickyCls = tgGcIsStickyCol_(arrIdx) ? (' class="' + ('sticky-col' + (arrIdx === tgGcLsxArrayIndex_ ? ' sticky-col-end' : '')) + '"') : '';
+          const hideZero = tgGcShouldHideZero_(col) && tgGcIsZeroVal_(v);
+
           if (tgGcIsTimeDkCol_(col) && isPermAdmin_) {
-            html += '<td style="padding:2px;"><input type="number" step="any" value="' + (v === '' ? '' : v) +
+            html += '<td style="padding:2px;"><input type="number" step="any" value="' + (hideZero ? '' : (v === '' ? '' : v)) +
               '" data-sheetrow="' + r.sheetRow + '" data-col="' + col.index + '" data-idx="' + arrIdx +
               '" onchange="tgGcSaveTimeDk_(this)" style="width:66px; padding:5px; box-sizing:border-box; text-align:center; border:1px solid #ddd; border-radius:4px;" /></td>';
+          } else if (tgGcIsTienDoCol_(col)) {
+            html += '<td' + totalStyle + stickyCls + '>' + (hideZero ? '' : tgGcFormatTienDo_(v)) + '</td>';
           } else if (tgGcIsTimeGcCol_(col)) {
-            html += '<td' + totalStyle + '>' + tgGcFormatTimeGC_(v) + '</td>';
+            html += '<td' + totalStyle + stickyCls + '>' + (hideZero ? '' : tgGcFormatTimeGC_(v)) + '</td>';
           } else {
-            html += '<td' + totalStyle + '>' + (v === '' || v === null || v === undefined ? '' : escapeHtml_(String(v))) + '</td>';
+            html += '<td' + totalStyle + stickyCls + '>' + (hideZero ? '' : (v === '' || v === null || v === undefined ? '' : escapeHtml_(String(v)))) + '</td>';
           }
         });
         html += '</tr>';
@@ -4711,6 +4791,7 @@ function onVtGhQrScanSuccess_(decodedText) {
           table.insertAdjacentHTML('beforeend', html);
           tgGcRenderedCount_ = index;
           if (index < limit) requestAnimationFrame(renderChunk);
+          else applyTgGcStickyColumns_();
         }
         requestAnimationFrame(renderChunk);
       }
@@ -4830,6 +4911,8 @@ function onVtGhQrScanSuccess_(decodedText) {
         };
       }
 
+      function khbusIsDark_() { return document.body.classList.contains('dark-mode'); }
+
       /** Chuẩn hoá 1 slide nhận từ server - phòng dữ liệu cũ/hỏng khiến rows không phải mảng. */
       function khbusNormalizeSlide_(s) {
         function normMap(m) { return (m && typeof m === 'object') ? m : {}; }
@@ -4888,16 +4971,22 @@ function onVtGhQrScanSuccess_(decodedText) {
 
       function khbusRenderSlideList_() {
         const wrap = document.getElementById('khbusSlideList');
+        const dark = khbusIsDark_();
+        const cardBg = dark ? '#1c1f26' : '#fff';
+        const cardBorder = dark ? '#2c313c' : '#ddd';
+        const cardText = dark ? '#9aa0ab' : '#666';
+        const previewBg = dark ? '#23262d' : '#f8f9fa';
+        const titleColor = dark ? '#8fc1ff' : '#003DA5';
         wrap.innerHTML = khbusSlides_.map(function(s, i) {
           const active = i === khbusCurrentIndex_;
-          return '<div onclick="khbusSelectSlide_(' + i + ')" style="cursor:pointer; border:2px solid ' + (active ? '#1a73e8' : '#ddd') +
-            '; border-radius:6px; background:#fff; padding:6px; font-size:10px; color:#666; box-shadow:0 1px 3px rgba(0,0,0,0.08);">' +
-            '<div style="font-weight:800; color:#003DA5; margin-bottom:4px;">Slide ' + (i + 1) + '</div>' +
-            '<div style="height:70px; background:#f8f9fa; border-radius:3px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:4px; text-align:center; line-height:1.2;">' +
+          return '<div onclick="khbusSelectSlide_(' + i + ')" style="cursor:pointer; border:2px solid ' + (active ? '#1a73e8' : cardBorder) +
+            '; border-radius:6px; background:' + cardBg + '; padding:6px; font-size:10px; color:' + cardText + '; box-shadow:0 1px 3px rgba(0,0,0,0.08);">' +
+            '<div style="font-weight:800; color:' + titleColor + '; margin-bottom:4px;">Slide ' + (i + 1) + '</div>' +
+            '<div style="height:70px; background:' + previewBg + '; border-radius:3px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:4px; text-align:center; line-height:1.2;">' +
               escapeHtml_((s.title || '').slice(0, 40)) +
             '</div></div>';
         }).join('') +
-        '<button type="button" onclick="khbusAddSlide_()" style="border:2px dashed #bbb; background:none; border-radius:6px; padding:10px; color:#888; cursor:pointer; font-size:12px;">' +
+        '<button type="button" onclick="khbusAddSlide_()" style="border:2px dashed ' + (dark ? '#3a3f4a' : '#bbb') + '; background:none; border-radius:6px; padding:10px; color:' + (dark ? '#9aa0ab' : '#888') + '; cursor:pointer; font-size:12px;">' +
           '<i class="fa-solid fa-plus"></i> Thêm slide</button>';
       }
 
@@ -4948,12 +5037,13 @@ function onVtGhQrScanSuccess_(decodedText) {
         s.rows.push(khbusEmptyRow_());
         const newRowIdx = s.rows.length - 1;
         if (!s.cellColors) s.cellColors = {};
+        const dark = khbusIsDark_();
         const totalCols = 2 + KHBUS_GROUPS_.length * 3;
         for (let c = 0; c < totalCols; c++) {
-          // Cột LSX của mỗi nhóm (chỉ số 3, 6, 9, 12, 15, 18) mặc định tô VÀNG để dễ nhận
-          // ra ngay dòng mới cần điền LSX; các cột còn lại vẫn nền trắng như trước.
+          // Chỉ ép màu cho cột LSX (dễ nhận dòng cần điền) - các cột khác KHÔNG ép màu
+          // nữa để bảng tự theo đúng nền sáng/tối hiện tại.
           const isLsxCol = c >= 3 && (c - 3) % 3 === 0;
-          s.cellColors[newRowIdx + '_' + c] = isLsxCol ? '#fff9c4' : '#ffffff';
+          if (isLsxCol) s.cellColors[newRowIdx + '_' + c] = dark ? '#3a3520' : '#fff9c4';
         }
         khbusRenderCanvas_();
         khbusScheduleSave_();
@@ -5122,15 +5212,24 @@ function onVtGhQrScanSuccess_(decodedText) {
         const canvas = document.getElementById('khbusSlideCanvas');
         if (!s) { canvas.innerHTML = ''; return; }
 
-        let html = '<div style="background:#fff; max-width:1700px; margin:0 auto; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,0.1); font-family:Arial, sans-serif;">';
+        const dark = khbusIsDark_();
+        const wrapBg = dark ? '#1c1f26' : '#fff';
+        const titleBoxBg = dark ? '#23262d' : '#fffde7';
+        const titleBoxBorder = dark ? '#3a6fc4' : '#003DA5';
+        const titleColor = dark ? '#ff8a8a' : '#c00';
+        const subtitleColor = dark ? '#8fc1ff' : '#003DA5';
+        const xacNhanBg = dark ? '#3a3520' : '#fff9c4';
 
-        html += '<div style="background:#fffde7; border:2px solid #003DA5; padding:10px 16px; margin-bottom:14px; text-align:center;">' +
-          khbusEditableCell_(s.title, 'title', 'font-size:20px; font-weight:800; color:#c00; text-align:center;') +
-          khbusEditableCell_(s.subtitle, 'subtitle', 'font-size:16px; font-weight:700; color:#003DA5; text-align:center;') +
+        let html = '<div style="background:' + wrapBg + '; max-width:1700px; margin:0 auto; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,0.3); font-family:Arial, sans-serif;">';
+
+        html += '<div style="background:' + titleBoxBg + '; border:2px solid ' + titleBoxBorder + '; padding:10px 16px; margin-bottom:14px; text-align:center;">' +
+          khbusEditableCell_(s.title, 'title', 'font-size:20px; font-weight:800; color:' + titleColor + '; text-align:center;') +
+          khbusEditableCell_(s.subtitle, 'subtitle', 'font-size:16px; font-weight:700; color:' + subtitleColor + '; text-align:center;') +
         '</div>';
 
         html += '<table style="width:100%; border-collapse:collapse; font-size:12px; text-align:center;">';
         html += '<tr>' +
+          '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px; width:26px;"></th>' +
           '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">LOẠI XE</th>' +
           '<th rowspan="2" style="background:#1a56c4; color:#fff; border:1px solid #ccc; padding:6px;">SL ĐH</th>' +
           KHBUS_GROUPS_.map(function(g) {
@@ -5191,7 +5290,7 @@ function onVtGhQrScanSuccess_(decodedText) {
             const cB = colIdx++;
             html += '<td data-r="' + rIdx + '" data-c="' + cB + '" style="' + khbusTdStyle_(rIdx, cB, KHBUS_BASE_TD_STYLE_) + '">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx', 'font-weight:800; color:#c00;' + khbusCellTextStyle_(rIdx, cB, false)) + '</td>';
             const cC = colIdx++;
-            html += '<td data-r="' + rIdx + '" data-c="' + cC + '" style="' + khbusTdStyle_(rIdx, cC, KHBUS_BASE_TD_STYLE_ + ' background:#fff9c4;') + '">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan', khbusCellTextStyle_(rIdx, cC, false)) + '</td>';
+            html += '<td data-r="' + rIdx + '" data-c="' + cC + '" style="' + khbusTdStyle_(rIdx, cC, KHBUS_BASE_TD_STYLE_ + ' background:' + xacNhanBg + ';') + '">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan', khbusCellTextStyle_(rIdx, cC, false)) + '</td>';
           });
           html += '<td style="border:1px solid #ccc; padding:2px; color:#c62828; cursor:pointer;" onclick="khbusDeleteRow_(' + rIdx + ')" title="Xóa dòng">&times;</td>';
           html += '</tr>';
@@ -5279,27 +5378,49 @@ function onVtGhQrScanSuccess_(decodedText) {
         }).join('');
       }
 
+      function khbusGetCurrentFontSize_() {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s || khbusSelRegions.length === 0) return null;
+        const first = khbusSelRegions[0];
+        return (s.cellFontSizes && s.cellFontSizes[first.r1 + '_' + first.c1]) || null;
+      }
+      function khbusIsCurrentBold_() {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s || khbusSelRegions.length === 0) return false;
+        const first = khbusSelRegions[0];
+        return !!(s.cellBold && s.cellBold[first.r1 + '_' + first.c1]);
+      }
+      function khbusStepFontSize_(delta) {
+        const input = document.getElementById('khbusFontSizeInput');
+        let size = (Number(input && input.value) || 13) + delta;
+        size = Math.max(8, Math.min(60, size));
+        if (input) input.value = size;
+        khbusApplyFontSize_(size);
+      }
+
       function khbusOpenColorPopup_(e) {
         e.stopPropagation();
         if (khbusSelRegions.length === 0) { showToast('Hãy chọn ô cần định dạng trước.', 'info'); return; }
         const popup = document.getElementById('khbusColorPopup');
+        const currentSize = khbusGetCurrentFontSize_() || 13;
+        const isBoldNow = khbusIsCurrentBold_();
+
         popup.innerHTML =
           '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:6px;">Màu nền</div>' +
           '<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">' + khbusSwatchesHtml_(KHBUS_COLOR_CHOICES_, 'khbusApplyColor_') + '</div>' +
           '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:6px;">Màu chữ</div>' +
           '<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">' + khbusSwatchesHtml_(KHBUS_TEXT_COLOR_CHOICES_, 'khbusApplyTextColor_') + '</div>' +
-          '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:6px;">Cỡ chữ</div>' +
-          '<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">' +
-          KHBUS_FONT_SIZES_.map(function(sz) {
-            return '<button type="button" onclick="khbusApplyFontSize_(' + sz + ')" style="padding:4px 8px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-size:12px;">' + sz + '</button>';
-          }).join('') + '</div>' +
-          '<div style="display:flex; gap:6px;">' +
-          '<button type="button" onclick="khbusToggleBold_()" style="flex:1; padding:6px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-weight:800;">In đậm</button>' +
-          '<button type="button" onclick="khbusClearFormat_()" style="flex:1; padding:6px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-size:12px;"><i class="fa-solid fa-eraser"></i> Xóa</button>' +
-          '</div>';
+          '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:6px;">Cỡ chữ &amp; định dạng</div>' +
+          '<div style="display:flex; align-items:stretch; gap:6px; margin-bottom:10px;">' +
+            '<button type="button" onclick="khbusStepFontSize_(-1)" title="Giảm cỡ chữ" style="width:30px; font-size:16px; font-weight:700; border:1px solid #ccc; border-radius:4px; background:#f5f5f5; color:#333; cursor:pointer;">&minus;</button>' +
+            '<input type="number" id="khbusFontSizeInput" value="' + currentSize + '" min="8" max="60" ' +
+              'onchange="khbusApplyFontSize_(Number(this.value)||13)" ' +
+              'style="width:52px; text-align:center; border:1px solid #ccc; border-radius:4px; font-size:13px; color:#222;" />' +
+            '<button type="button" onclick="khbusStepFontSize_(1)" title="Tăng cỡ chữ" style="width:30px; font-size:16px; font-weight:700; border:1px solid #ccc; border-radius:4px; background:#f5f5f5; color:#333; cursor:pointer;">&plus;</button>' +
+            '<button type="button" onclick="khbusToggleBold_()" title="In đậm" style="width:34px; font-weight:900; font-size:15px; border:1px solid ' + (isBoldNow ? '#1a73e8' : '#ccc') + '; border-radius:4px; background:' + (isBoldNow ? '#e8f0fe' : '#f5f5f5') + '; color:#1a1a1a; cursor:pointer;">B</button>' +
+          '</div>' +
+          '<button type="button" onclick="khbusClearFormat_()" style="width:100%; padding:6px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-size:12px; color:#333;"><i class="fa-solid fa-eraser"></i> Xóa định dạng</button>';
 
-        // Hiện trước để đo kích thước thật, rồi định vị theo nút bấm (position:fixed nên
-        // không còn bị "overflow:hidden" của khung slide cắt/làm mờ nữa).
         popup.style.display = 'block';
         const rect = e.currentTarget.getBoundingClientRect();
         const popupWidth = popup.offsetWidth || 216;
@@ -8468,6 +8589,44 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         if (focusEl) focusEl.focus();
       }, 100);
     }
+    
+          /* ================= ESC / bấm ra ngoài để đóng MỌI modal dạng overlay ================= */
+      const MODAL_CLOSE_MAP_ = {
+        devNoticeOverlay: closeDevNotice_,
+        customDhOverlay: closeCustomDhModal_,
+        customPriorityOverlay: closeCustomPriorityModal_,
+        colVisOverlay: closeColumnVisibilityModal,
+        genericColVisOverlay: closeGenericColVisModal_,
+        addPermTabOverlay: closeAddPermTabModal_,
+        addPermUserOverlay: closeAddPermUserModal_,
+        lsxDetailOverlay: closeLsxDetailModal_,
+        confirmModalOverlay: closeConfirmModal_,
+        trackingOverlay: closeTrackingModal,
+        vtGhOverlay: closeVtGhModal_,
+        changePassOverlay: closeChangePasswordModal_
+      };
+
+      document.addEventListener('click', function(e) {
+        Object.keys(MODAL_CLOSE_MAP_).forEach(function(id) {
+          const overlay = document.getElementById(id);
+          if (overlay && e.target === overlay && overlay.style.display !== 'none') {
+            MODAL_CLOSE_MAP_[id]();
+          }
+        });
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        Object.keys(MODAL_CLOSE_MAP_).forEach(function(id) {
+          const overlay = document.getElementById(id);
+          if (overlay && overlay.style.display !== 'none') {
+            MODAL_CLOSE_MAP_[id]();
+          }
+        });
+        const notif = document.getElementById('notifOverlay');
+        if (notif && notif.classList.contains('open')) closeNotifModal_();
+      });
+
     applyLoginScreenState_();
 
     // "Đăng nhập tài khoản khác": xoá thông tin đã nhớ, quay về form nhập MSNV trống.
@@ -8914,8 +9073,8 @@ window.addEventListener('online', tryFlushPriorityQueue_);
     </div>
   </div>
 
-  <div id="changePassOverlay" class="colvis-overlay" style="display:none;">
-    <div class="colvis-modal" style="width:min(94vw, 820px); max-height:90vh; border-radius:16px; overflow:hidden; display:flex; flex-direction:column;">
+      <div id="changePassOverlay" class="colvis-overlay" style="display:none;">
+    <div class="colvis-modal" style="width:min(94vw, 900px); height:min(90vh, 720px); max-width:97vw; max-height:94vh; min-width:560px; min-height:420px; border-radius:16px; overflow:auto; resize:both; display:flex; flex-direction:column;">
       <div class="colvis-header" style="border-radius:0;">
         <h3>Tài khoản</h3>
         <span class="upbom-close" onclick="closeChangePasswordModal_()">&times;</span>
@@ -8951,11 +9110,11 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
             <h3 style="margin:0; font-size:15px; color:#003DA5;"><i class="fa-solid fa-user-shield" style="margin-right:8px;"></i>Phân quyền người dùng</h3>
             <div style="display:flex; gap:8px;">
-              <button type="button" onclick="addPermTab_()" style="background:#1a73e8; color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;">
-                <i class="fa-solid fa-table-columns"></i> Thêm mục phân quyền
+              <button type="button" onclick="addPermTab_()" title="Thêm mục phân quyền" style="background:#1a73e8; color:#fff; border:none; border-radius:6px; width:34px; height:34px; font-size:14px; cursor:pointer;">
+                <i class="fa-solid fa-table-columns"></i>
               </button>
-              <button type="button" onclick="addPermUser_()" style="background:#00b894; color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;">
-                <i class="fa-solid fa-plus"></i> Thêm người
+              <button type="button" onclick="addPermUser_()" title="Thêm người" style="background:#00b894; color:#fff; border:none; border-radius:6px; width:34px; height:34px; font-size:14px; cursor:pointer;">
+                <i class="fa-solid fa-plus"></i>
               </button>
             </div>
           </div>
