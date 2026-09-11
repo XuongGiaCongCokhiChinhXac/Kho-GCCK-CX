@@ -620,7 +620,22 @@
       #dashTable td { height: 48px; }
       .tracking-table-wrap tr td:first-child, .tracking-table-wrap tr th:first-child { border-left: 1px solid #ddd; }
       .tracking-table-wrap td { background: #fff; }
-      body.dark-mode .tracking-table-wrap td { background: #2a2a2a; }
+      body.dark-mode .tracking-table-wrap td { background: #1c1f26; color: #d8dadf; border-color: #2c313c; }
+      body.dark-mode .tracking-table-wrap th { background: #0c2f6e; border-color: #0c2f6e; }
+
+      /* ===== Đồng bộ màu các cột CỐ ĐỊNH (sticky) trong chế độ tối - trước đây các cột này vẫn
+        giữ nền/viền sáng (#fff / #003DA5) dù đã bật dark mode, gây lệch màu giữa các cột cùng bảng. */
+      body.dark-mode .sticky-col-end { border-right: 1px solid #3a6fc4 !important; }
+      body.dark-mode #result td.sticky-col,
+      body.dark-mode #tgGcTableWrap td.sticky-col,
+      body.dark-mode .tracking-table-wrap td.sticky-col {
+        background: #1c1f26 !important;
+      }
+      body.dark-mode #result th.sticky-col,
+      body.dark-mode #tgGcTableWrap th.sticky-col,
+      body.dark-mode .tracking-table-wrap th.sticky-col {
+        background: #0c2f6e !important;
+      }
       .tracking-table-wrap th {
         background: #003DA5; color: #fff; font-weight: bold;
         position: sticky; top: 0; z-index: 5;
@@ -1522,7 +1537,12 @@
                 <div id="tab-nhanvattu" class="tab-pane">
           <div class="tracking-toolbar">
             <h2>Nhận Vật Tư</h2>
-            <button id="vtRefreshBtn" class="icon-btn" title="Làm mới" onclick="loadVtData_()"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn-primary-blue" onclick="openVtGhModal_('nhanvattu')">
+                <i class="fa-solid fa-plus"></i> Nhận vật tư
+              </button>
+              <button id="vtRefreshBtn" class="icon-btn" title="Làm mới" onclick="loadVtData_()"><i class="fa-solid fa-arrows-rotate"></i></button>
+            </div>
           </div>
           <div class="tracking-table-wrap" id="vtResultWrap"></div>
         </div>
@@ -1557,7 +1577,12 @@
         <div id="tab-giaohang2" class="tab-pane">
           <div class="tracking-toolbar">
             <h2>Giao Hàng</h2>
-            <button id="ghRefreshBtn" class="icon-btn" title="Làm mới" onclick="loadGhData2_()"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn-primary-blue" onclick="openVtGhModal_('giaohang')">
+                <i class="fa-solid fa-plus"></i> Giao hàng
+              </button>
+              <button id="ghRefreshBtn" class="icon-btn" title="Làm mới" onclick="loadGhData2_()"><i class="fa-solid fa-arrows-rotate"></i></button>
+            </div>
           </div>
           <div class="tracking-table-wrap" id="ghResultWrap"></div>
         </div>
@@ -3318,39 +3343,43 @@ function confirmModalYes_() {
       }
 
       function applyTgGcStickyColumns_() {
-  const table = document.querySelector('#tgGcTableWrap table');
-  if (!table || table.rows.length === 0) return;
-  const headerRow = table.rows[0];
-  const stickyCells = headerRow.querySelectorAll('.sticky-col');
-  if (stickyCells.length === 0) return;
+        const table = document.querySelector('#tgGcTableWrap table');
+        if (!table) return;
 
-  const lefts = [];
-  let acc = 0;
-  stickyCells.forEach(function(cell) {
-    lefts.push(acc);
-    acc += cell.getBoundingClientRect().width;
-  });
+        // Đo độ rộng theo DÒNG DỮ LIỆU THẬT (không dùng header) - header có rowspan/colspan nên
+        // nth-child của nó KHÔNG khớp cột với dòng dữ liệu, đây là nguyên nhân gốc gây đè/hở khe.
+        // Khớp cột bằng data-stickycol (gán khi build cả header và dữ liệu) nên luôn đúng.
+        let sampleCells = table.querySelectorAll('tr[data-sheetrow] td[data-stickycol]');
+        const stickyByIdx = {};
+        sampleCells.forEach(function(td) {
+          const idx = td.getAttribute('data-stickycol');
+          if (!(idx in stickyByIdx)) stickyByIdx[idx] = td;
+        });
+        // Bảng chưa có dòng dữ liệu (đang trống) -> tạm đo theo header.
+        if (Object.keys(stickyByIdx).length === 0) {
+          table.querySelectorAll('th[data-stickycol]').forEach(function(th) {
+            stickyByIdx[th.getAttribute('data-stickycol')] = th;
+          });
+        }
 
-  const allHeaderCells = headerRow.querySelectorAll('th');
-  const positions = [];
-  allHeaderCells.forEach(function(cell, idx) {
-    if (cell.classList.contains('sticky-col')) positions.push(idx + 1);
-  });
+        const sortedIdx = Object.keys(stickyByIdx).map(Number).sort(function(a, b) { return a - b; });
+        if (sortedIdx.length === 0) return;
 
-  let css = '';
-  positions.forEach(function(pos, i) {
-    css += '#tgGcTableWrap table td:nth-child(' + pos + '), ' +
-           '#tgGcTableWrap table th:nth-child(' + pos + ') { left: ' + lefts[i] + 'px; }\n';
-  });
+        let css = '';
+        let acc = 0;
+        sortedIdx.forEach(function(idx) {
+          css += '#tgGcTableWrap table [data-stickycol="' + idx + '"] { left: ' + acc + 'px; }\n';
+          acc += stickyByIdx[idx].getBoundingClientRect().width;
+        });
 
-  let styleTag = document.getElementById('tgGcStickyColStyle');
-  if (!styleTag) {
-    styleTag = document.createElement('style');
-    styleTag.id = 'tgGcStickyColStyle';
-    document.head.appendChild(styleTag);
-  }
-  styleTag.textContent = css;
-}
+        let styleTag = document.getElementById('tgGcStickyColStyle');
+        if (!styleTag) {
+          styleTag = document.createElement('style');
+          styleTag.id = 'tgGcStickyColStyle';
+          document.head.appendChild(styleTag);
+        }
+        styleTag.textContent = css;
+      }
 function tgGcIsStickyCol_(arrIdx) {
   return arrIdx === 0 || arrIdx === tgGcLsxArrayIndex_;
 }
@@ -3995,6 +4024,8 @@ const VT_LOCAL_CACHE_KEY_ = 'gcck_vt_local_cache_v1';
 const GH2_LOCAL_CACHE_KEY_ = 'gcck_gh2_local_cache_v1';
 
 function loadVtData_() {
+  const btn = document.getElementById('vtRefreshBtn');
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
   try {
     const cached = JSON.parse(localStorage.getItem(VT_LOCAL_CACHE_KEY_) || 'null');
     if (cached) { vtRows_ = cached; renderVtGhTable_('vtResultWrap', vtRows_, 'nhanvattu'); }
@@ -4004,11 +4035,17 @@ function loadVtData_() {
       vtRows_ = rows || [];
       try { localStorage.setItem(VT_LOCAL_CACHE_KEY_, JSON.stringify(vtRows_)); } catch (e) {}
       renderVtGhTable_('vtResultWrap', vtRows_, 'nhanvattu');
+      if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
     })
-    .withFailureHandler(function(err) { showToast('Lỗi tải Nhận Vật Tư: ' + err.message, 'error'); })
+    .withFailureHandler(function(err) {
+      showToast('Lỗi tải Nhận Vật Tư: ' + err.message, 'error');
+      if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+    })
     .getNhanVatTuData_v2();
 }
 function loadGhData2_() {
+  const btn = document.getElementById('ghRefreshBtn');
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
   try {
     const cached = JSON.parse(localStorage.getItem(GH2_LOCAL_CACHE_KEY_) || 'null');
     if (cached) { ghRows2_ = cached; renderVtGhTable_('ghResultWrap', ghRows2_, 'giaohang'); }
@@ -4018,8 +4055,12 @@ function loadGhData2_() {
       ghRows2_ = rows || [];
       try { localStorage.setItem(GH2_LOCAL_CACHE_KEY_, JSON.stringify(ghRows2_)); } catch (e) {}
       renderVtGhTable_('ghResultWrap', ghRows2_, 'giaohang');
+      if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
     })
-    .withFailureHandler(function(err) { showToast('Lỗi tải Giao Hàng: ' + err.message, 'error'); })
+    .withFailureHandler(function(err) {
+      showToast('Lỗi tải Giao Hàng: ' + err.message, 'error');
+      if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+    })
     .getGiaoHangData_v2();
 }
 
@@ -4619,7 +4660,20 @@ function onVtGhQrScanSuccess_(decodedText) {
         if (v === '' || v === null || v === undefined) return '';
         const num = Number(v);
         if (isNaN(num)) return String(v);
-        return num.toFixed(1);
+        return String(Math.round(num));
+      }
+
+      /** Làm tròn MỌI giá trị số có phần lẻ thập phân (sai số dấu phẩy động do công thức SUM
+        trên Sheet, VD 29522.000000053667) thành số nguyên gần nhất. Dùng cho các cột không rơi
+        vào các nhánh định dạng riêng (Tiến độ %, Time GC) - phòng trường hợp nhận diện cột bị
+        lệch, tránh hiện số thô ra màn hình như trước đây. */
+      function tgGcFormatGenericValue_(v) {
+        if (v === '' || v === null || v === undefined) return '';
+        const num = Number(v);
+        if (!isNaN(num) && String(v).indexOf('.') !== -1) {
+          return String(Math.round(num));
+        }
+        return escapeHtml_(String(v));
       }
       function tgGcIsTienDoCol_(col) {
         const l = String(col.label || '').trim().toLowerCase();
@@ -4705,7 +4759,8 @@ function onVtGhQrScanSuccess_(decodedText) {
           if (!col.group) {
             const activeCls = tgGcFilters_[arrIdx] ? ' active' : '';
             const stickyCls = tgGcIsStickyCol_(arrIdx) ? ' sticky-col' + (arrIdx === tgGcLsxArrayIndex_ ? ' sticky-col-end' : '') : '';
-            r1 += '<th class="tgGc-thead-r1' + stickyCls + '" rowspan="2">' + tgGcDisplayLabel_(col.label) +
+            const stickyAttr = tgGcIsStickyCol_(arrIdx) ? (' data-stickycol="' + i + '"') : '';
+            r1 += '<th class="tgGc-thead-r1' + stickyCls + '"' + stickyAttr + ' rowspan="2">' + tgGcDisplayLabel_(col.label) +
               '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + arrIdx + ', this)">&#9662;</span></th>';
             i++;
           } else {
@@ -4728,26 +4783,31 @@ function onVtGhQrScanSuccess_(decodedText) {
         return r1 + r2;
       }
 
-      function tgGcBuildRowHtml_(r) {
+      function tgGcBuildRowHtml_(r, rIdx) {
         const visCols = tgGcVisibleColumns_();
         let html = '<tr data-sheetrow="' + r.sheetRow + '">';
-        visCols.forEach(function(col) {
+        visCols.forEach(function(col, cIdx) {
           const arrIdx = tgGcColumns_.indexOf(col);
           const v = r.values[arrIdx];
-          const totalStyle = tgGcIsTotalCol_(col) ? ' style="font-weight:800; color:#003DA5;"' : '';
-          const stickyCls = tgGcIsStickyCol_(arrIdx) ? (' class="' + ('sticky-col' + (arrIdx === tgGcLsxArrayIndex_ ? ' sticky-col-end' : '')) + '"') : '';
+          const totalStyle = tgGcIsTotalCol_(col) ? 'font-weight:800; color:#003DA5;' : '';
+          // data-stickycol dùng để canh "left" chính xác ở applyTgGcStickyColumns_ - không còn
+          // dựa vào nth-child (nguồn gây lệch/hở khe khi header có rowspan/colspan khác dòng dữ liệu).
+          const stickyClsName = tgGcIsStickyCol_(arrIdx)
+            ? (' class="sticky-col' + (arrIdx === tgGcLsxArrayIndex_ ? ' sticky-col-end' : '') + '" data-stickycol="' + cIdx + '"')
+            : '';
+          const posAttrs = ' data-r="' + rIdx + '" data-c="' + cIdx + '"';
           const hideZero = tgGcShouldHideZero_(col) && tgGcIsZeroVal_(v);
 
           if (tgGcIsTimeDkCol_(col) && isPermAdmin_) {
-            html += '<td style="padding:2px;"><input type="number" step="any" value="' + (hideZero ? '' : (v === '' ? '' : v)) +
+            html += '<td' + stickyClsName + posAttrs + ' style="padding:2px;' + totalStyle + '"><input type="number" step="any" value="' + (hideZero ? '' : (v === '' ? '' : v)) +
               '" data-sheetrow="' + r.sheetRow + '" data-col="' + col.index + '" data-idx="' + arrIdx +
               '" onchange="tgGcSaveTimeDk_(this)" style="width:66px; padding:5px; box-sizing:border-box; text-align:center; border:1px solid #ddd; border-radius:4px;" /></td>';
           } else if (tgGcIsTienDoCol_(col)) {
-            html += '<td' + totalStyle + stickyCls + '>' + (hideZero ? '' : tgGcFormatTienDo_(v)) + '</td>';
+            html += '<td' + stickyClsName + posAttrs + ' style="' + totalStyle + '">' + (hideZero ? '' : tgGcFormatTienDo_(v)) + '</td>';
           } else if (tgGcIsTimeGcCol_(col)) {
-            html += '<td' + totalStyle + stickyCls + '>' + (hideZero ? '' : tgGcFormatTimeGC_(v)) + '</td>';
+            html += '<td' + stickyClsName + posAttrs + ' style="' + totalStyle + '">' + (hideZero ? '' : tgGcFormatTimeGC_(v)) + '</td>';
           } else {
-            html += '<td' + totalStyle + stickyCls + '>' + (hideZero ? '' : (v === '' || v === null || v === undefined ? '' : escapeHtml_(String(v)))) + '</td>';
+            html += '<td' + stickyClsName + posAttrs + ' style="' + totalStyle + '">' + (hideZero ? '' : tgGcFormatGenericValue_(v)) + '</td>';
           }
         });
         html += '</tr>';
@@ -4757,6 +4817,7 @@ function onVtGhQrScanSuccess_(decodedText) {
       function renderThoiGianGC_() {
         const wrap = document.getElementById('tgGcTableWrap');
         if (!wrap) return;
+        tgGcClearSelection_();
         if (!tgGcColumns_.length) { wrap.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu.</div>'; return; }
 
         const rows = tgGcApplyFilters_(tgGcRows_);
@@ -4787,7 +4848,7 @@ function onVtGhQrScanSuccess_(decodedText) {
           if (myToken !== tgGcRenderToken_) return;
           let html = '';
           const end = Math.min(index + CHUNK, limit);
-          for (; index < end; index++) html += tgGcBuildRowHtml_(rows[index]);
+          for (; index < end; index++) html += tgGcBuildRowHtml_(rows[index], index);
           table.insertAdjacentHTML('beforeend', html);
           tgGcRenderedCount_ = index;
           if (index < limit) requestAnimationFrame(renderChunk);
@@ -4808,7 +4869,7 @@ function onVtGhQrScanSuccess_(decodedText) {
           if (myToken !== tgGcRenderToken_) return;
           let html = '';
           const end = Math.min(index + CHUNK, target);
-          for (; index < end; index++) html += tgGcBuildRowHtml_(tgGcRenderRowsRef_[index]);
+          for (; index < end; index++) html += tgGcBuildRowHtml_(tgGcRenderRowsRef_[index], index);
           table.insertAdjacentHTML('beforeend', html);
           tgGcRenderedCount_ = index;
           if (index < target) requestAnimationFrame(renderChunk);
@@ -4821,13 +4882,99 @@ function onVtGhQrScanSuccess_(decodedText) {
         if (el.scrollTop + el.clientHeight >= el.scrollHeight - 400) tgGcRenderMore_();
       });
 
-      // Bấm vào ô bất kỳ trong dòng -> tô xanh cả dòng.
-      document.getElementById('tgGcTableWrap').addEventListener('click', function(e) {
-        const tr = e.target.closest('tr[data-sheetrow]');
-        if (!tr) return;
+      /* ================= CHỌN Ô KIỂU EXCEL + COPY cho bảng Thời gian gia công =================
+        Nhân bản đúng cơ chế đã dùng ở tab Tra cứu: kéo chuột / Shift+Click chọn 1 dải, Ctrl+Click
+        chọn rời rạc, Ctrl+C copy ra clipboard dạng bảng (dán vào Excel/Sheet vẫn đúng cột). */
+      let tgGcSelRegions = [];
+      let tgGcSelAnchorR = -1, tgGcSelAnchorC = -1, tgGcActiveR = -1, tgGcActiveC = -1;
+      let tgGcIsSelecting = false;
+
+      function tgGcIsCellSelected_(r, c) {
+        return tgGcSelRegions.some(function(reg) { return r >= reg.r1 && r <= reg.r2 && c >= reg.c1 && c <= reg.c2; });
+      }
+      function tgGcClearSelection_() {
+        tgGcSelRegions = [];
+        tgGcSelAnchorR = tgGcSelAnchorC = tgGcActiveR = tgGcActiveC = -1;
+        document.querySelectorAll('#tgGcTableWrap td.cell-selected, #tgGcTableWrap td.cell-active')
+          .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
         document.querySelectorAll('#tgGcTableWrap tr.tgGc-row-selected')
-          .forEach(function(el) { el.classList.remove('tgGc-row-selected'); });
-        tr.classList.add('tgGc-row-selected');
+          .forEach(function(tr) { tr.classList.remove('tgGc-row-selected'); });
+      }
+      function tgGcSelectSingle_(r, c) {
+        tgGcSelRegions = [{ r1: r, r2: r, c1: c, c2: c }];
+        tgGcSelAnchorR = r; tgGcSelAnchorC = c; tgGcActiveR = r; tgGcActiveC = c;
+        tgGcPaintSelection_();
+      }
+      function tgGcExtendSelection_(r, c) {
+        if (tgGcSelAnchorR < 0) { tgGcSelectSingle_(r, c); return; }
+        const rect = { r1: Math.min(tgGcSelAnchorR, r), r2: Math.max(tgGcSelAnchorR, r), c1: Math.min(tgGcSelAnchorC, c), c2: Math.max(tgGcSelAnchorC, c) };
+        if (tgGcSelRegions.length === 0) tgGcSelRegions.push(rect); else tgGcSelRegions[tgGcSelRegions.length - 1] = rect;
+        tgGcActiveR = r; tgGcActiveC = c;
+        tgGcPaintSelection_();
+      }
+      function tgGcToggleCellRegion_(r, c) {
+        const idx = tgGcSelRegions.findIndex(function(reg) { return reg.r1 === r && reg.r2 === r && reg.c1 === c && reg.c2 === c; });
+        if (idx !== -1) tgGcSelRegions.splice(idx, 1); else tgGcSelRegions.push({ r1: r, r2: r, c1: c, c2: c });
+        tgGcSelAnchorR = r; tgGcSelAnchorC = c; tgGcActiveR = r; tgGcActiveC = c;
+        tgGcPaintSelection_();
+      }
+      function tgGcPaintSelection_() {
+        document.querySelectorAll('#tgGcTableWrap td.cell-selected, #tgGcTableWrap td.cell-active')
+          .forEach(function(td) { td.classList.remove('cell-selected', 'cell-active'); });
+        document.querySelectorAll('#tgGcTableWrap tr.tgGc-row-selected')
+          .forEach(function(tr) { tr.classList.remove('tgGc-row-selected'); });
+        document.querySelectorAll('#tgGcTableWrap td[data-r]').forEach(function(td) {
+          const r = Number(td.getAttribute('data-r')), c = Number(td.getAttribute('data-c'));
+          if (tgGcIsCellSelected_(r, c)) {
+            td.classList.add('cell-selected');
+            const tr = td.closest('tr');
+            if (tr) tr.classList.add('tgGc-row-selected');
+          }
+        });
+        const activeTd = document.querySelector('#tgGcTableWrap td[data-r="' + tgGcActiveR + '"][data-c="' + tgGcActiveC + '"]');
+        if (activeTd) activeTd.classList.add('cell-active');
+      }
+      function tgGcCopySelection_() {
+        if (tgGcSelRegions.length === 0) return;
+        let r1 = Infinity, r2 = -Infinity, c1 = Infinity, c2 = -Infinity;
+        tgGcSelRegions.forEach(function(reg) { r1 = Math.min(r1, reg.r1); r2 = Math.max(r2, reg.r2); c1 = Math.min(c1, reg.c1); c2 = Math.max(c2, reg.c2); });
+        const lines = [];
+        for (let r = r1; r <= r2; r++) {
+          const vals = [];
+          for (let c = c1; c <= c2; c++) {
+            const td = document.querySelector('#tgGcTableWrap td[data-r="' + r + '"][data-c="' + c + '"]');
+            vals.push(tgGcIsCellSelected_(r, c) && td ? td.innerText.trim() : '');
+          }
+          lines.push(vals.join('\t'));
+        }
+        writeToRealClipboard_(lines.join('\n'));
+        showToast('Đã copy ' + ((r2 - r1 + 1) * (c2 - c1 + 1)) + ' ô.', 'success');
+      }
+
+      document.getElementById('tgGcTableWrap').addEventListener('mousedown', function(e) {
+        const td = e.target.closest('td[data-r]');
+        if (!td) return;
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+        const r = Number(td.getAttribute('data-r')), c = Number(td.getAttribute('data-c'));
+        if (e.shiftKey) { tgGcExtendSelection_(r, c); tgGcIsSelecting = false; }
+        else if (e.ctrlKey || e.metaKey) { tgGcToggleCellRegion_(r, c); tgGcIsSelecting = false; }
+        else { tgGcIsSelecting = true; tgGcSelectSingle_(r, c); }
+        if (e.target.tagName === 'TD') e.preventDefault();
+      });
+      document.getElementById('tgGcTableWrap').addEventListener('mouseover', function(e) {
+        if (!tgGcIsSelecting) return;
+        const td = e.target.closest('td[data-r]');
+        if (!td) return;
+        tgGcExtendSelection_(Number(td.getAttribute('data-r')), Number(td.getAttribute('data-c')));
+      });
+      document.addEventListener('mouseup', function() { tgGcIsSelecting = false; });
+
+      document.addEventListener('keydown', function(e) {
+        const tgGcPane = document.getElementById('dashSubTab-thoigian');
+        if (!tgGcPane || tgGcPane.style.display === 'none') return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { tgGcCopySelection_(); e.preventDefault(); }
+        else if (e.key === 'Escape') { tgGcClearSelection_(); }
       });
 
       function tgGcSumTimeDkForRow_(sheetRow) {
@@ -9110,10 +9257,10 @@ window.addEventListener('online', tryFlushPriorityQueue_);
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
             <h3 style="margin:0; font-size:15px; color:#003DA5;"><i class="fa-solid fa-user-shield" style="margin-right:8px;"></i>Phân quyền người dùng</h3>
             <div style="display:flex; gap:8px;">
-              <button type="button" onclick="addPermTab_()" title="Thêm mục phân quyền" style="background:#1a73e8; color:#fff; border:none; border-radius:6px; width:34px; height:34px; font-size:14px; cursor:pointer;">
+              <button type="button" onclick="addPermTab_()" title="Thêm mục phân quyền" style="background:#1a73e8; color:#fff; border:none; border-radius:6px; width:34px; height:34px; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
                 <i class="fa-solid fa-table-columns"></i>
               </button>
-              <button type="button" onclick="addPermUser_()" title="Thêm người" style="background:#00b894; color:#fff; border:none; border-radius:6px; width:34px; height:34px; font-size:14px; cursor:pointer;">
+              <button type="button" onclick="addPermUser_()" title="Thêm người" style="background:#00b894; color:#fff; border:none; border-radius:6px; width:34px; height:34px; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
                 <i class="fa-solid fa-plus"></i>
               </button>
             </div>
