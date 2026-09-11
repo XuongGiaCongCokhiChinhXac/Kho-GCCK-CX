@@ -1467,7 +1467,7 @@
               <div style="font-size:13px; color:#888;">Bấm vào ô để chỉnh sửa - tự động lưu.</div>
               <div style="display:flex; gap:8px; position:relative;">
                 <button type="button" class="icon-btn" title="Thêm dòng" onclick="khbusAddRow_()"><i class="fa-solid fa-plus"></i></button>
-                <button type="button" class="icon-btn" title="Tô màu ô đang chọn" onclick="khbusOpenColorPopup_(event)"><i class="fa-solid fa-fill-drip"></i></button>
+                <button type="button" class="icon-btn" title="Định dạng ô đang chọn" onclick="khbusOpenColorPopup_(event)"><i class="fa-solid fa-fill-drip"></i></button>
                 <button type="button" class="icon-btn" title="Nhân bản slide" onclick="khbusDuplicateSlide_()"><i class="fa-solid fa-copy"></i></button>
                 <button type="button" class="icon-btn" title="Xóa slide" onclick="khbusDeleteSlide_()" style="color:#c62828;"><i class="fa-solid fa-trash"></i></button>
                 <div id="khbusColorPopup" class="filter-popup" style="display:none; width:216px; padding:10px;"></div>
@@ -1754,6 +1754,13 @@ function confirmModalYes_() {
             btn.style.display = tabVisibility[tabId] ? '' : 'none';
           });
         });
+
+        // Nếu tab-checkdon vừa được HIỆN LẠI (do đổi tài khoản/đổi quyền mà không tải lại
+        // trang), phải tính lại vị trí cột cố định NGAY - nếu không nó vẫn giữ giá trị đo
+        // được lúc tab đang display:none (bằng 0), khiến bảng bị chồng cột/lệch tràn sang phải.
+        if (tabVisibility['tab-checkdon']) {
+          requestAnimationFrame(function() { applyStickyColumn(); });
+        }
       }
 
       function loadPermUsers_(forceRefresh) {
@@ -3720,6 +3727,7 @@ function confirmModalYes_() {
       const TRACKING_POLL_INTERVAL_MS = 90000; // 90 giây - đã có cập nhật lạc quan ngay khi lưu, kéo dài thêm để giảm quota
 
       function switchTab(tabId) {
+        khbusStopPolling_(); // luôn tắt trước, bật lại đúng lúc nếu vào lại KH BUS bên dưới
         document.querySelectorAll('.tab-pane').forEach(function(el) { el.classList.remove('active'); });
         // Bỏ active ở CẢ sidebar (desktop) lẫn bottom nav (mobile) - trước đây chỉ
         // cập nhật sidebar nên trên mobile bấm tab không hiện trạng thái đang chọn.
@@ -3742,6 +3750,7 @@ function confirmModalYes_() {
         } else if (tabId === 'tab-khbus') {
           activeTrackingTab_ = null;
           if (!khbusLoaded_) loadKhBusSlides_();
+          khbusStartPolling_();
         } else if (tabId === 'tab-nhansu-dashboard') {
           activeTrackingTab_ = null;
           loadNhanSuDashboard_();
@@ -3749,6 +3758,9 @@ function confirmModalYes_() {
           activeTrackingTab_ = null;
           if (nhanSuAll_.length === 0) loadNhanSuList_();
           else renderNhanSuTable_();
+        } else if (tabId === 'tab-checkdon') {
+          activeTrackingTab_ = null;
+          requestAnimationFrame(function() { applyStickyColumn(); });
         } else {
           activeTrackingTab_ = null;
         }
@@ -4350,18 +4362,22 @@ function onVtGhQrScanSuccess_(decodedText) {
             String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear(),
           subtitle: 'CÔNG TY TỔ HỢP CƠ KHÍ',
           rows: [khbusEmptyRow_(), khbusEmptyRow_(), khbusEmptyRow_()],
-          cellColors: {}
+          cellColors: {}, cellTextColors: {}, cellFontSizes: {}, cellBold: {}
         };
       }
 
       /** Chuẩn hoá 1 slide nhận từ server - phòng dữ liệu cũ/hỏng khiến rows không phải mảng. */
       function khbusNormalizeSlide_(s) {
+        function normMap(m) { return (m && typeof m === 'object') ? m : {}; }
         return {
           id: s.id || null,
           title: s.title || '',
           subtitle: s.subtitle || '',
           rows: (Array.isArray(s.rows) && s.rows.length) ? s.rows : [khbusEmptyRow_()],
-          cellColors: (s.cellColors && typeof s.cellColors === 'object') ? s.cellColors : {}
+          cellColors: normMap(s.cellColors),
+          cellTextColors: normMap(s.cellTextColors),
+          cellFontSizes: normMap(s.cellFontSizes),
+          cellBold: normMap(s.cellBold)
         };
       }
 
@@ -4446,14 +4462,39 @@ function onVtGhQrScanSuccess_(decodedText) {
         const s = khbusSlides_[khbusCurrentIndex_];
         if (!s) return;
         s.rows.push(khbusEmptyRow_());
+        const newRowIdx = s.rows.length - 1;
+        // Hàng mới thêm luôn mặc định NỀN TRẮNG - kể cả đè lên màu vàng mặc định của cột
+        // Xác nhận - để không bị "thừa hưởng" màu của mẫu có sẵn.
+        if (!s.cellColors) s.cellColors = {};
+        const totalCols = 2 + KHBUS_GROUPS_.length * 3;
+        for (let c = 0; c < totalCols; c++) s.cellColors[newRowIdx + '_' + c] = '#ffffff';
         khbusRenderCanvas_();
         khbusScheduleSave_();
+      }
+
+      /** Dịch lại toàn bộ key "r_c" của 1 map định dạng sau khi xóa dòng rIdxDeleted:
+        các dòng SAU nó lùi lại 1 chỉ số, dòng bị xóa bị loại bỏ hẳn. */
+      function khbusReindexMapAfterDelete_(map, rIdxDeleted) {
+        if (!map) return {};
+        const result = {};
+        Object.keys(map).forEach(function(key) {
+          const parts = key.split('_');
+          const r = Number(parts[0]), c = parts[1];
+          if (r === rIdxDeleted) return;
+          const newR = r > rIdxDeleted ? r - 1 : r;
+          result[newR + '_' + c] = map[key];
+        });
+        return result;
       }
 
       function khbusDeleteRow_(rIdx) {
         const s = khbusSlides_[khbusCurrentIndex_];
         if (!s || s.rows.length <= 1) { showToast('Phải còn ít nhất 1 dòng.', 'error'); return; }
         s.rows.splice(rIdx, 1);
+        s.cellColors = khbusReindexMapAfterDelete_(s.cellColors, rIdx);
+        s.cellTextColors = khbusReindexMapAfterDelete_(s.cellTextColors, rIdx);
+        s.cellFontSizes = khbusReindexMapAfterDelete_(s.cellFontSizes, rIdx);
+        s.cellBold = khbusReindexMapAfterDelete_(s.cellBold, rIdx);
         khbusRenderCanvas_();
         khbusScheduleSave_();
       }
@@ -4485,11 +4526,50 @@ function onVtGhQrScanSuccess_(decodedText) {
           .saveKhBusSlide(s);
       }
 
+            let khbusPollTimer_ = null;
+      const KHBUS_POLL_MS = 15000; // 15 giây - đủ nhanh để thấy thay đổi của người khác, không tốn quota
+
+      function khbusStartPolling_() {
+        if (khbusPollTimer_) clearInterval(khbusPollTimer_);
+        khbusPollTimer_ = setInterval(khbusPollSlides_, KHBUS_POLL_MS);
+      }
+      function khbusStopPolling_() {
+        if (khbusPollTimer_) { clearInterval(khbusPollTimer_); khbusPollTimer_ = null; }
+      }
+
+      function khbusIsEditingNow_() {
+        const active = document.activeElement;
+        return !!(active && active.getAttribute && active.getAttribute('contenteditable') === 'true' &&
+          active.closest && active.closest('#khbusSlideCanvas'));
+      }
+
+      function khbusPollSlides_() {
+        if (document.hidden) return; // tab trình duyệt đang ẩn -> bỏ qua, đỡ tốn quota
+        const khbusTabEl = document.getElementById('tab-khbus');
+        if (!khbusTabEl || !khbusTabEl.classList.contains('active')) return;
+        if (khbusIsEditingNow_()) return;   // đang gõ dở -> không ghi đè, đợi lượt sau
+        if (khbusSaveTimer_) return;        // vừa sửa, chưa lưu xong -> đợi lưu xong lượt này đã
+
+        google.script.run
+          .withSuccessHandler(function(slides) {
+            if (khbusIsEditingNow_() || khbusSaveTimer_) return; // vừa gõ lại đúng lúc dữ liệu về
+            const normalized = (slides && slides.length) ? slides.map(khbusNormalizeSlide_) : [khbusEmptySlide_()];
+            const newJson = JSON.stringify(normalized);
+            if (newJson === JSON.stringify(khbusSlides_)) return; // không có gì đổi -> khỏi vẽ lại
+            khbusSlides_ = normalized;
+            khbusCurrentIndex_ = Math.min(khbusCurrentIndex_, normalized.length - 1);
+            khbusRenderSlideList_();
+            khbusRenderCanvas_();
+          })
+          .withFailureHandler(function() { /* im lặng, lượt sau tự thử lại */ })
+          .getKhBusSlides();
+      }
+
       function khbusEditableCell_(value, path, extraStyle) {
-  const safeVal = escapeHtml_(value || '');
-  return '<div contenteditable="true" spellcheck="false" data-path="' + path + '" onblur="khbusUpdateField_(this.dataset.path, this.innerText)" ' +
-    'style="min-height:20px; outline:none; padding:2px; font-family:Arial, sans-serif;' + (extraStyle || '') + '">' + safeVal + '</div>';
-}
+        const safeVal = escapeHtml_(value || '').replace(/\n/g, '<br>');
+        return '<div contenteditable="true" spellcheck="false" data-path="' + path + '" onblur="khbusUpdateField_(this.dataset.path, this.innerText)" ' +
+          'style="min-height:20px; outline:none; padding:2px; font-family:Arial, sans-serif; white-space:pre-wrap; word-break:break-word;' + (extraStyle || '') + '">' + safeVal + '</div>';
+      }
 
       function khbusRenderCanvas_() {
         khbusClearSelection_();
@@ -4521,6 +4601,14 @@ function onVtGhQrScanSuccess_(decodedText) {
         '</tr>';
 
         const khbusColorMap_ = s.cellColors || {};
+        const khbusTextColorMap_ = s.cellTextColors || {};
+        const khbusFontSizeMap_ = s.cellFontSizes || {};
+        const khbusBoldMap_ = s.cellBold || {};
+        // white-space:normal ép lại rule "nowrap" toàn cục (áp dụng cho MỌI table/td trong app)
+        // - chính nó là nguyên nhân bảng KH BUS bị đẩy tràn/khuyết cột sang phải khi có ô
+        // chứa chữ dài. max-width để mọi ô có kích thước đồng đều, không phụ thuộc độ dài nội dung.
+        const KHBUS_BASE_TD_STYLE_ = 'border:1px solid #ccc; padding:4px; max-width:220px; white-space:normal; word-break:break-word; vertical-align:top;';
+
         function khbusTdStyle_(rIdx, cIdx, baseStyle) {
           const custom = khbusColorMap_[rIdx + '_' + cIdx];
           if (!custom) return baseStyle;
@@ -4528,21 +4616,32 @@ function onVtGhQrScanSuccess_(decodedText) {
           return baseStyle.replace(/background\s*:[^;]+;?/i, '') + ' background:' + custom + ';';
         }
 
+        // Style CHỮ (đậm/màu/cỡ chữ) áp cho div nội dung - tách riêng khỏi màu NỀN ở trên.
+        // Cột "KH nhận" LUÔN in đậm mặc định, không cần người dùng tự bấm.
+        function khbusCellTextStyle_(rIdx, cIdx, isKhNhanCol) {
+          const key = rIdx + '_' + cIdx;
+          let style = '';
+          if (khbusBoldMap_[key] || isKhNhanCol) style += ' font-weight:800;';
+          if (khbusTextColorMap_[key]) style += ' color:' + khbusTextColorMap_[key] + ';';
+          if (khbusFontSizeMap_[key]) style += ' font-size:' + khbusFontSizeMap_[key] + 'px;';
+          return style;
+        }
+
         s.rows.forEach(function(row, rIdx) {
           let colIdx = 0;
           html += '<tr>';
           const c0 = colIdx++;
-          html += '<td data-r="' + rIdx + '" data-c="' + c0 + '" style="' + khbusTdStyle_(rIdx, c0, 'border:1px solid #ccc; padding:2px;') + '">' + khbusEditableCell_(row.loaiXe, 'rows.' + rIdx + '.loaiXe') + '</td>';
+          html += '<td data-r="' + rIdx + '" data-c="' + c0 + '" style="' + khbusTdStyle_(rIdx, c0, KHBUS_BASE_TD_STYLE_) + '">' + khbusEditableCell_(row.loaiXe, 'rows.' + rIdx + '.loaiXe', khbusCellTextStyle_(rIdx, c0, false)) + '</td>';
           const c1 = colIdx++;
-          html += '<td data-r="' + rIdx + '" data-c="' + c1 + '" style="' + khbusTdStyle_(rIdx, c1, 'border:1px solid #ccc; padding:2px;') + '">' + khbusEditableCell_(row.slDatHang, 'rows.' + rIdx + '.slDatHang') + '</td>';
+          html += '<td data-r="' + rIdx + '" data-c="' + c1 + '" style="' + khbusTdStyle_(rIdx, c1, KHBUS_BASE_TD_STYLE_) + '">' + khbusEditableCell_(row.slDatHang, 'rows.' + rIdx + '.slDatHang', khbusCellTextStyle_(rIdx, c1, false)) + '</td>';
           KHBUS_GROUPS_.forEach(function(g) {
             const cell = row[g] || { khNhan: '', lsx: '', xacNhan: '' };
             const cA = colIdx++;
-            html += '<td data-r="' + rIdx + '" data-c="' + cA + '" style="' + khbusTdStyle_(rIdx, cA, 'border:1px solid #ccc; padding:2px;') + '">' + khbusEditableCell_(cell.khNhan, 'rows.' + rIdx + '.' + g + '.khNhan') + '</td>';
+            html += '<td data-r="' + rIdx + '" data-c="' + cA + '" style="' + khbusTdStyle_(rIdx, cA, KHBUS_BASE_TD_STYLE_) + '">' + khbusEditableCell_(cell.khNhan, 'rows.' + rIdx + '.' + g + '.khNhan', khbusCellTextStyle_(rIdx, cA, true)) + '</td>';
             const cB = colIdx++;
-            html += '<td data-r="' + rIdx + '" data-c="' + cB + '" style="' + khbusTdStyle_(rIdx, cB, 'border:1px solid #ccc; padding:2px;') + '">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx', 'font-weight:800; color:#c00;') + '</td>';
+            html += '<td data-r="' + rIdx + '" data-c="' + cB + '" style="' + khbusTdStyle_(rIdx, cB, KHBUS_BASE_TD_STYLE_) + '">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx', 'font-weight:800; color:#c00;' + khbusCellTextStyle_(rIdx, cB, false)) + '</td>';
             const cC = colIdx++;
-            html += '<td data-r="' + rIdx + '" data-c="' + cC + '" style="' + khbusTdStyle_(rIdx, cC, 'border:1px solid #ccc; padding:2px; background:#fff9c4;') + '">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan') + '</td>';
+            html += '<td data-r="' + rIdx + '" data-c="' + cC + '" style="' + khbusTdStyle_(rIdx, cC, KHBUS_BASE_TD_STYLE_ + ' background:#fff9c4;') + '">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan', khbusCellTextStyle_(rIdx, cC, false)) + '</td>';
           });
           html += '<td style="border:1px solid #ccc; padding:2px; color:#c62828; cursor:pointer;" onclick="khbusDeleteRow_(' + rIdx + ')" title="Xóa dòng">&times;</td>';
           html += '</tr>';
@@ -4611,51 +4710,124 @@ function onVtGhQrScanSuccess_(decodedText) {
         showToast('Đã copy ' + ((r2 - r1 + 1) * (c2 - c1 + 1)) + ' ô.', 'success');
       }
 
-            /* ================= TÔ MÀU TÙY Ý CHO Ô KH BUS ĐANG CHỌN ================= */
+            /* ================= ĐỊNH DẠNG Ô KH BUS ĐANG CHỌN: màu nền/chữ, cỡ chữ, in đậm ================= */
       const KHBUS_COLOR_CHOICES_ = [
         '#ffffff', '#fff9c4', '#ffe0b2', '#ffcdd2', '#f8bbd0',
         '#e1bee7', '#c5cae9', '#bbdefb', '#b2ebf2', '#c8e6c9',
         '#dcedc8', '#fff59d', '#d7ccc8', '#cfd8dc'
       ];
+      const KHBUS_TEXT_COLOR_CHOICES_ = [
+        '#000000', '#c62828', '#1a56c4', '#2e7d32', '#8e44ad',
+        '#e65100', '#00897b', '#5d4037', '#616161'
+      ];
+      const KHBUS_FONT_SIZES_ = [11, 12, 13, 14, 16, 18, 20, 24];
+
+      function khbusSwatchesHtml_(colors, fnName) {
+        return colors.map(function(c) {
+          return '<span onclick="' + fnName + '(\'' + c + '\')" title="' + c + '" style="width:20px; height:20px; ' +
+            'border-radius:50%; background:' + c + '; border:1px solid #ccc; cursor:pointer; display:inline-block;"></span>';
+        }).join('');
+      }
 
       function khbusOpenColorPopup_(e) {
         e.stopPropagation();
-        if (khbusSelRegions.length === 0) { showToast('Hãy chọn ô cần tô màu trước.', 'info'); return; }
+        if (khbusSelRegions.length === 0) { showToast('Hãy chọn ô cần định dạng trước.', 'info'); return; }
         const popup = document.getElementById('khbusColorPopup');
         popup.innerHTML =
-          '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:8px;">Chọn màu cho ô đang chọn</div>' +
-          '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">' +
-          KHBUS_COLOR_CHOICES_.map(function(c) {
-            return '<span onclick="khbusApplyColor_(\'' + c + '\')" title="' + c + '" style="width:22px; height:22px; ' +
-              'border-radius:50%; background:' + c + '; border:1px solid #ccc; cursor:pointer; display:inline-block;"></span>';
-          }).join('') +
-          '</div>' +
-          '<button type="button" onclick="khbusApplyColor_(null)" ' +
-          'style="width:100%; padding:6px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-size:12px;">' +
-          '<i class="fa-solid fa-eraser"></i> Xóa màu</button>';
+          '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:6px;">Màu nền</div>' +
+          '<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">' + khbusSwatchesHtml_(KHBUS_COLOR_CHOICES_, 'khbusApplyColor_') + '</div>' +
+          '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:6px;">Màu chữ</div>' +
+          '<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">' + khbusSwatchesHtml_(KHBUS_TEXT_COLOR_CHOICES_, 'khbusApplyTextColor_') + '</div>' +
+          '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:6px;">Cỡ chữ</div>' +
+          '<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">' +
+          KHBUS_FONT_SIZES_.map(function(sz) {
+            return '<button type="button" onclick="khbusApplyFontSize_(' + sz + ')" style="padding:4px 8px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-size:12px;">' + sz + '</button>';
+          }).join('') + '</div>' +
+          '<div style="display:flex; gap:6px;">' +
+          '<button type="button" onclick="khbusToggleBold_()" style="flex:1; padding:6px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-weight:800;">In đậm</button>' +
+          '<button type="button" onclick="khbusClearFormat_()" style="flex:1; padding:6px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-size:12px;"><i class="fa-solid fa-eraser"></i> Xóa</button>' +
+          '</div>';
         popup.style.display = 'block';
         popup.style.top = '38px';
         popup.style.left = '0px';
       }
 
       document.addEventListener('click', function(e) {
-        if (!e.target.closest('#khbusColorPopup') && !e.target.closest('[title="Tô màu ô đang chọn"]')) {
+        if (!e.target.closest('#khbusColorPopup') && !e.target.closest('[title="Định dạng ô đang chọn"]')) {
           const popup = document.getElementById('khbusColorPopup');
           if (popup) popup.style.display = 'none';
         }
       });
 
+      function khbusForEachSelectedCell_(cb) {
+        khbusSelRegions.forEach(function(reg) {
+          for (let r = reg.r1; r <= reg.r2; r++) {
+            for (let c = reg.c1; c <= reg.c2; c++) cb(r, c);
+          }
+        });
+      }
+
       function khbusApplyColor_(color) {
         const s = khbusSlides_[khbusCurrentIndex_];
         if (!s) return;
         if (!s.cellColors) s.cellColors = {};
-        khbusSelRegions.forEach(function(reg) {
-          for (let r = reg.r1; r <= reg.r2; r++) {
-            for (let c = reg.c1; c <= reg.c2; c++) {
-              const key = r + '_' + c;
-              if (color) s.cellColors[key] = color; else delete s.cellColors[key];
-            }
-          }
+        khbusForEachSelectedCell_(function(r, c) {
+          const key = r + '_' + c;
+          if (color) s.cellColors[key] = color; else delete s.cellColors[key];
+        });
+        document.getElementById('khbusColorPopup').style.display = 'none';
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+      }
+
+      function khbusApplyTextColor_(color) {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s) return;
+        if (!s.cellTextColors) s.cellTextColors = {};
+        khbusForEachSelectedCell_(function(r, c) {
+          const key = r + '_' + c;
+          if (color) s.cellTextColors[key] = color; else delete s.cellTextColors[key];
+        });
+        document.getElementById('khbusColorPopup').style.display = 'none';
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+      }
+
+      function khbusApplyFontSize_(size) {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s) return;
+        if (!s.cellFontSizes) s.cellFontSizes = {};
+        khbusForEachSelectedCell_(function(r, c) { s.cellFontSizes[r + '_' + c] = size; });
+        document.getElementById('khbusColorPopup').style.display = 'none';
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+      }
+
+      function khbusToggleBold_() {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s) return;
+        if (!s.cellBold) s.cellBold = {};
+        // Ô đầu tiên trong vùng chọn đang đậm -> bỏ đậm cả vùng; ngược lại -> in đậm cả vùng.
+        const first = khbusSelRegions[0];
+        const turnOn = !s.cellBold[first.r1 + '_' + first.c1];
+        khbusForEachSelectedCell_(function(r, c) {
+          const key = r + '_' + c;
+          if (turnOn) s.cellBold[key] = true; else delete s.cellBold[key];
+        });
+        document.getElementById('khbusColorPopup').style.display = 'none';
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+      }
+
+      function khbusClearFormat_() {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s) return;
+        khbusForEachSelectedCell_(function(r, c) {
+          const key = r + '_' + c;
+          if (s.cellColors) delete s.cellColors[key];
+          if (s.cellTextColors) delete s.cellTextColors[key];
+          if (s.cellFontSizes) delete s.cellFontSizes[key];
+          if (s.cellBold) delete s.cellBold[key];
         });
         document.getElementById('khbusColorPopup').style.display = 'none';
         khbusRenderCanvas_();
