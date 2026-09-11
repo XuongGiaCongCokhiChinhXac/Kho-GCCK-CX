@@ -327,8 +327,8 @@
       body.dark-mode .ns-panel-header { border-color: #2c313c; }
       body.dark-mode .ns-absent-item, body.dark-mode .ns-dept-item { border-color: #2c313c; }
             /* ===== Chế độ tối cho tab KH BUS ===== */
-      body.dark-mode #khbusSlideList { background: #14171c; border-color: #2c313c; }
-      body.dark-mode #khbusSlideCanvas { background: #14171c; }
+      body.dark-mode #khbusSlideList { background: #14171c !important; border-color: #2c313c; }
+      body.dark-mode #khbusSlideCanvas { background: #14171c !important; }
       body.dark-mode .khbus-ribbon { background: #1c1f26; border: 1px solid #2c313c; }
       body.dark-mode .khbus-ribbon-btn { color: #d8dadf; }
       body.dark-mode .khbus-ribbon-btn i { color: #8fc1ff; }
@@ -4798,7 +4798,7 @@ function onVtGhQrScanSuccess_(decodedText) {
           const posAttrs = ' data-r="' + rIdx + '" data-c="' + cIdx + '"';
           const hideZero = tgGcShouldHideZero_(col) && tgGcIsZeroVal_(v);
 
-          if (tgGcIsTimeDkCol_(col) && isPermAdmin_) {
+          if (tgGcIsTimeDkCol_(col) && !tgGcIsTotalDkCol_(col) && isPermAdmin_) {
             html += '<td' + stickyClsName + posAttrs + ' style="padding:2px;' + totalStyle + '"><input type="number" step="any" value="' + (hideZero ? '' : (v === '' ? '' : v)) +
               '" data-sheetrow="' + r.sheetRow + '" data-col="' + col.index + '" data-idx="' + arrIdx +
               '" onchange="tgGcSaveTimeDk_(this)" style="width:66px; padding:5px; box-sizing:border-box; text-align:center; border:1px solid #ddd; border-radius:4px;" /></td>';
@@ -4872,10 +4872,25 @@ function onVtGhQrScanSuccess_(decodedText) {
           for (; index < end; index++) html += tgGcBuildRowHtml_(tgGcRenderRowsRef_[index], index);
           table.insertAdjacentHTML('beforeend', html);
           tgGcRenderedCount_ = index;
-          if (index < target) requestAnimationFrame(renderChunk);
+          if (index < target) {
+            requestAnimationFrame(renderChunk);
+          } else {
+            // QUAN TRỌNG: giống hệt applyStickyColumn() ở tab Tra cứu - phải tính lại vị trí
+            // "left" của các cột cố định SAU KHI có thêm dòng mới, vì nội dung mới có thể làm
+            // trình duyệt tính lại độ rộng cột (table auto-layout), khiến vị trí cũ bị lệch,
+            // sinh ra khe hở/đè header khi cuộn ngang. Đây chính là nguyên nhân của lỗi đang gặp.
+            applyTgGcStickyColumns_();
+          }
         }
         requestAnimationFrame(renderChunk);
       }
+
+      // Cửa sổ đổi kích thước (xoay ngang điện thoại, thu/mở sidebar...) cũng có thể làm lệch
+      // độ rộng cột - tính lại cho chắc, giống tinh thần "cuộn ngang như tab Tra cứu".
+      window.addEventListener('resize', function() {
+        const pane = document.getElementById('dashSubTab-thoigian');
+        if (pane && pane.style.display !== 'none') applyTgGcStickyColumns_();
+      });
 
       document.getElementById('tgGcTableWrap').addEventListener('scroll', function() {
         const el = document.getElementById('tgGcTableWrap');
@@ -5407,6 +5422,17 @@ function onVtGhQrScanSuccess_(decodedText) {
           return baseStyle.replace(/background\s*:[^;]+;?/i, '') + ' background:' + custom + ';';
         }
 
+        // Riêng cột "Xác nhận": nếu màu nền đang lưu (kể cả do người dùng từng tự chọn từ trước
+        // khi có phân biệt sáng/tối) trùng đúng màu vàng nhạt mặc định cũ '#fff9c4' và đang ở
+        // dark mode -> coi như CHƯA có màu tùy chỉnh, tự chuyển sang nền tối mặc định. Nhờ vậy
+        // các ô cũ không còn bị "kẹt" màu sáng làm mất chữ khi bật chế độ tối.
+        function khbusResolveXacNhanBg_(rIdx, cIdx, dark) {
+          const s = khbusSlides_[khbusCurrentIndex_];
+          const custom = s && s.cellColors ? s.cellColors[rIdx + '_' + cIdx] : null;
+          if (custom && !(dark && String(custom).toLowerCase() === '#fff9c4')) return custom;
+          return dark ? '#3a3520' : '#fff9c4';
+        }
+
         // Style CHỮ (đậm/màu/cỡ chữ) áp cho div nội dung - tách riêng khỏi màu NỀN ở trên.
         // Cột "KH nhận" LUÔN in đậm mặc định, không cần người dùng tự bấm.
         function khbusCellTextStyle_(rIdx, cIdx, isKhNhanCol) {
@@ -5437,7 +5463,10 @@ function onVtGhQrScanSuccess_(decodedText) {
             const cB = colIdx++;
             html += '<td data-r="' + rIdx + '" data-c="' + cB + '" style="' + khbusTdStyle_(rIdx, cB, KHBUS_BASE_TD_STYLE_) + '">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx', 'font-weight:800; color:#c00;' + khbusCellTextStyle_(rIdx, cB, false)) + '</td>';
             const cC = colIdx++;
-            html += '<td data-r="' + rIdx + '" data-c="' + cC + '" style="' + khbusTdStyle_(rIdx, cC, KHBUS_BASE_TD_STYLE_ + ' background:' + xacNhanBg + ';') + '">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan', khbusCellTextStyle_(rIdx, cC, false)) + '</td>';
+            const xacNhanResolvedBg_ = khbusResolveXacNhanBg_(rIdx, cC, dark);
+            const xacNhanTdStyle_ = KHBUS_BASE_TD_STYLE_ + ' background:' + xacNhanResolvedBg_ + ';';
+            const xacNhanTextStyle_ = khbusCellTextStyle_(rIdx, cC, false) + (dark ? ' color:#fff;' : '');
+            html += '<td data-r="' + rIdx + '" data-c="' + cC + '" style="' + xacNhanTdStyle_ + '">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan', xacNhanTextStyle_) + '</td>';
           });
           html += '<td style="border:1px solid #ccc; padding:2px; color:#c62828; cursor:pointer;" onclick="khbusDeleteRow_(' + rIdx + ')" title="Xóa dòng">&times;</td>';
           html += '</tr>';
@@ -8738,7 +8767,8 @@ window.addEventListener('online', tryFlushPriorityQueue_);
     }
     
           /* ================= ESC / bấm ra ngoài để đóng MỌI modal dạng overlay ================= */
-      const MODAL_CLOSE_MAP_ = {
+      // Map dùng cho phím Esc - đủ cả 12 modal, kể cả 2 modal cho phép resize.
+      const MODAL_ESC_CLOSE_MAP_ = {
         devNoticeOverlay: closeDevNotice_,
         customDhOverlay: closeCustomDhModal_,
         customPriorityOverlay: closeCustomPriorityModal_,
@@ -8753,21 +8783,28 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         changePassOverlay: closeChangePasswordModal_
       };
 
+      // Map dùng cho "bấm ra ngoài để đóng" - KHÔNG gồm lsxDetailOverlay và changePassOverlay,
+      // vì 2 modal này cho phép kéo giãn (resize:both): khi kéo, chuột rê ra ngoài .colvis-modal
+      // sẽ bị hiểu nhầm là click vào overlay nền và tự đóng modal giữa chừng.
+      const MODAL_CLICK_OUTSIDE_CLOSE_MAP_ = Object.assign({}, MODAL_ESC_CLOSE_MAP_);
+      delete MODAL_CLICK_OUTSIDE_CLOSE_MAP_.lsxDetailOverlay;
+      delete MODAL_CLICK_OUTSIDE_CLOSE_MAP_.changePassOverlay;
+
       document.addEventListener('click', function(e) {
-        Object.keys(MODAL_CLOSE_MAP_).forEach(function(id) {
+        Object.keys(MODAL_CLICK_OUTSIDE_CLOSE_MAP_).forEach(function(id) {
           const overlay = document.getElementById(id);
           if (overlay && e.target === overlay && overlay.style.display !== 'none') {
-            MODAL_CLOSE_MAP_[id]();
+            MODAL_CLICK_OUTSIDE_CLOSE_MAP_[id]();
           }
         });
       });
 
       document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-        Object.keys(MODAL_CLOSE_MAP_).forEach(function(id) {
+        Object.keys(MODAL_ESC_CLOSE_MAP_).forEach(function(id) {
           const overlay = document.getElementById(id);
           if (overlay && overlay.style.display !== 'none') {
-            MODAL_CLOSE_MAP_[id]();
+            MODAL_ESC_CLOSE_MAP_[id]();
           }
         });
         const notif = document.getElementById('notifOverlay');
