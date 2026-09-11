@@ -2239,7 +2239,9 @@ function confirmModalYes_() {
         document.getElementById('clearBtn').style.display = value ? 'block' : 'none';
         clearTimeout(suggestTimer);
 
-        if (value.trim().length < 1) {
+        // Khớp với ngưỡng 3 ký tự bên server (suggestLSX) - gõ dưới 3 ký tự sẽ luôn
+        // nhận về mảng rỗng nên không cần gọi server làm gì.
+        if (value.trim().length < 3) {
           hideSuggestions();
           return;
         }
@@ -6374,7 +6376,8 @@ window.addEventListener('online', tryFlushPriorityQueue_);
       const value = input.value;
       document.getElementById('dashLsxSearchClear').style.display = value ? 'block' : 'none';
       clearTimeout(dashSuggestTimer_);
-      if (value.trim().length < 1) { hideDashSuggestions_(); return; }
+      // Khớp với ngưỡng 3 ký tự bên server (suggestLSX).
+      if (value.trim().length < 3) { hideDashSuggestions_(); return; }
       const myId = ++dashSuggestRequestId_;
       dashSuggestTimer_ = setTimeout(function() {
         google.script.run
