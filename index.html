@@ -1465,10 +1465,12 @@
           <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
             <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid #eee; gap:8px; flex-wrap:wrap;">
               <div style="font-size:13px; color:#888;">Bấm vào ô để chỉnh sửa - tự động lưu.</div>
-              <div style="display:flex; gap:8px;">
+              <div style="display:flex; gap:8px; position:relative;">
                 <button type="button" class="icon-btn" title="Thêm dòng" onclick="khbusAddRow_()"><i class="fa-solid fa-plus"></i></button>
+                <button type="button" class="icon-btn" title="Tô màu ô đang chọn" onclick="khbusOpenColorPopup_(event)"><i class="fa-solid fa-fill-drip"></i></button>
                 <button type="button" class="icon-btn" title="Nhân bản slide" onclick="khbusDuplicateSlide_()"><i class="fa-solid fa-copy"></i></button>
                 <button type="button" class="icon-btn" title="Xóa slide" onclick="khbusDeleteSlide_()" style="color:#c62828;"><i class="fa-solid fa-trash"></i></button>
+                <div id="khbusColorPopup" class="filter-popup" style="display:none; width:216px; padding:10px;"></div>
               </div>
             </div>
             <div id="khbusSlideCanvas" style="flex:1; overflow:auto; padding:20px; background:#eef1f5;"></div>
@@ -3468,6 +3470,12 @@ function confirmModalYes_() {
         if (e.target.tagName === 'INPUT') {
           return;
         }
+        // CHỈ áp dụng các phím tắt này khi tab Tra cứu đang thực sự mở - nếu không, việc
+        // từng bấm chọn 1 ô ở Tra cứu rồi chuyển sang tab khác (VD KH BUS) sẽ khiến Enter/
+        // Ctrl+C ở đây vẫn "sống" và cướp mất phím tắt của tab đang xem (đúng lỗi Enter
+        // xuống dòng lúc được lúc không, và copy sai ô ở KH BUS).
+        const checkdonTabEl_ = document.getElementById('tab-checkdon');
+        if (!checkdonTabEl_ || !checkdonTabEl_.classList.contains('active')) return;
         // Đang tìm kiếm mà bấm Esc -> hủy ngay, không cần đang focus vào ô nhập
         if (e.key === 'Escape' && isSearching) {
           cancelSearch();
@@ -4341,7 +4349,19 @@ function onVtGhQrScanSuccess_(decodedText) {
           title: 'XÁC NHẬN GIAO HÀNG LINH KIỆN XE BUS THÁNG ' +
             String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear(),
           subtitle: 'CÔNG TY TỔ HỢP CƠ KHÍ',
-          rows: [khbusEmptyRow_(), khbusEmptyRow_(), khbusEmptyRow_()]
+          rows: [khbusEmptyRow_(), khbusEmptyRow_(), khbusEmptyRow_()],
+          cellColors: {}
+        };
+      }
+
+      /** Chuẩn hoá 1 slide nhận từ server - phòng dữ liệu cũ/hỏng khiến rows không phải mảng. */
+      function khbusNormalizeSlide_(s) {
+        return {
+          id: s.id || null,
+          title: s.title || '',
+          subtitle: s.subtitle || '',
+          rows: (Array.isArray(s.rows) && s.rows.length) ? s.rows : [khbusEmptyRow_()],
+          cellColors: (s.cellColors && typeof s.cellColors === 'object') ? s.cellColors : {}
         };
       }
 
@@ -4351,7 +4371,7 @@ function onVtGhQrScanSuccess_(decodedText) {
         google.script.run
           .withSuccessHandler(function(slides) {
             khbusLoaded_ = true;
-            khbusSlides_ = (slides && slides.length) ? slides : [khbusEmptySlide_()];
+            khbusSlides_ = (slides && slides.length) ? slides.map(khbusNormalizeSlide_) : [khbusEmptySlide_()];
             khbusCurrentIndex_ = 0;
             khbusRenderSlideList_();
             khbusRenderCanvas_();
@@ -4500,16 +4520,29 @@ function onVtGhQrScanSuccess_(decodedText) {
           }).join('') +
         '</tr>';
 
-               s.rows.forEach(function(row, rIdx) {
+        const khbusColorMap_ = s.cellColors || {};
+        function khbusTdStyle_(rIdx, cIdx, baseStyle) {
+          const custom = khbusColorMap_[rIdx + '_' + cIdx];
+          if (!custom) return baseStyle;
+          // Màu tự chọn LUÔN ưu tiên, kể cả đè lên nền vàng mặc định của cột Xác nhận.
+          return baseStyle.replace(/background\s*:[^;]+;?/i, '') + ' background:' + custom + ';';
+        }
+
+        s.rows.forEach(function(row, rIdx) {
           let colIdx = 0;
           html += '<tr>';
-          html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(row.loaiXe, 'rows.' + rIdx + '.loaiXe') + '</td>';
-          html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(row.slDatHang, 'rows.' + rIdx + '.slDatHang') + '</td>';
+          const c0 = colIdx++;
+          html += '<td data-r="' + rIdx + '" data-c="' + c0 + '" style="' + khbusTdStyle_(rIdx, c0, 'border:1px solid #ccc; padding:2px;') + '">' + khbusEditableCell_(row.loaiXe, 'rows.' + rIdx + '.loaiXe') + '</td>';
+          const c1 = colIdx++;
+          html += '<td data-r="' + rIdx + '" data-c="' + c1 + '" style="' + khbusTdStyle_(rIdx, c1, 'border:1px solid #ccc; padding:2px;') + '">' + khbusEditableCell_(row.slDatHang, 'rows.' + rIdx + '.slDatHang') + '</td>';
           KHBUS_GROUPS_.forEach(function(g) {
             const cell = row[g] || { khNhan: '', lsx: '', xacNhan: '' };
-            html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(cell.khNhan, 'rows.' + rIdx + '.' + g + '.khNhan') + '</td>';
-            html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px;">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx', 'font-weight:800; color:#c00;') + '</td>';
-            html += '<td data-r="' + rIdx + '" data-c="' + (colIdx++) + '" style="border:1px solid #ccc; padding:2px; background:#fff9c4;">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan') + '</td>';
+            const cA = colIdx++;
+            html += '<td data-r="' + rIdx + '" data-c="' + cA + '" style="' + khbusTdStyle_(rIdx, cA, 'border:1px solid #ccc; padding:2px;') + '">' + khbusEditableCell_(cell.khNhan, 'rows.' + rIdx + '.' + g + '.khNhan') + '</td>';
+            const cB = colIdx++;
+            html += '<td data-r="' + rIdx + '" data-c="' + cB + '" style="' + khbusTdStyle_(rIdx, cB, 'border:1px solid #ccc; padding:2px;') + '">' + khbusEditableCell_(cell.lsx, 'rows.' + rIdx + '.' + g + '.lsx', 'font-weight:800; color:#c00;') + '</td>';
+            const cC = colIdx++;
+            html += '<td data-r="' + rIdx + '" data-c="' + cC + '" style="' + khbusTdStyle_(rIdx, cC, 'border:1px solid #ccc; padding:2px; background:#fff9c4;') + '">' + khbusEditableCell_(cell.xacNhan, 'rows.' + rIdx + '.' + g + '.xacNhan') + '</td>';
           });
           html += '<td style="border:1px solid #ccc; padding:2px; color:#c62828; cursor:pointer;" onclick="khbusDeleteRow_(' + rIdx + ')" title="Xóa dòng">&times;</td>';
           html += '</tr>';
@@ -4576,6 +4609,57 @@ function onVtGhQrScanSuccess_(decodedText) {
         }
         writeToRealClipboard_(lines.join('\n'));
         showToast('Đã copy ' + ((r2 - r1 + 1) * (c2 - c1 + 1)) + ' ô.', 'success');
+      }
+
+            /* ================= TÔ MÀU TÙY Ý CHO Ô KH BUS ĐANG CHỌN ================= */
+      const KHBUS_COLOR_CHOICES_ = [
+        '#ffffff', '#fff9c4', '#ffe0b2', '#ffcdd2', '#f8bbd0',
+        '#e1bee7', '#c5cae9', '#bbdefb', '#b2ebf2', '#c8e6c9',
+        '#dcedc8', '#fff59d', '#d7ccc8', '#cfd8dc'
+      ];
+
+      function khbusOpenColorPopup_(e) {
+        e.stopPropagation();
+        if (khbusSelRegions.length === 0) { showToast('Hãy chọn ô cần tô màu trước.', 'info'); return; }
+        const popup = document.getElementById('khbusColorPopup');
+        popup.innerHTML =
+          '<div style="font-size:12px; font-weight:700; color:#333; margin-bottom:8px;">Chọn màu cho ô đang chọn</div>' +
+          '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">' +
+          KHBUS_COLOR_CHOICES_.map(function(c) {
+            return '<span onclick="khbusApplyColor_(\'' + c + '\')" title="' + c + '" style="width:22px; height:22px; ' +
+              'border-radius:50%; background:' + c + '; border:1px solid #ccc; cursor:pointer; display:inline-block;"></span>';
+          }).join('') +
+          '</div>' +
+          '<button type="button" onclick="khbusApplyColor_(null)" ' +
+          'style="width:100%; padding:6px; border:1px solid #ddd; background:#f5f5f5; border-radius:4px; cursor:pointer; font-size:12px;">' +
+          '<i class="fa-solid fa-eraser"></i> Xóa màu</button>';
+        popup.style.display = 'block';
+        popup.style.top = '38px';
+        popup.style.left = '0px';
+      }
+
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#khbusColorPopup') && !e.target.closest('[title="Tô màu ô đang chọn"]')) {
+          const popup = document.getElementById('khbusColorPopup');
+          if (popup) popup.style.display = 'none';
+        }
+      });
+
+      function khbusApplyColor_(color) {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s) return;
+        if (!s.cellColors) s.cellColors = {};
+        khbusSelRegions.forEach(function(reg) {
+          for (let r = reg.r1; r <= reg.r2; r++) {
+            for (let c = reg.c1; c <= reg.c2; c++) {
+              const key = r + '_' + c;
+              if (color) s.cellColors[key] = color; else delete s.cellColors[key];
+            }
+          }
+        });
+        document.getElementById('khbusColorPopup').style.display = 'none';
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
       }
 
       document.getElementById('khbusSlideCanvas').addEventListener('mousedown', function(e) {
