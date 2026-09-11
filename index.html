@@ -1112,6 +1112,34 @@
       }
       .devnotice-close-btn:hover { background: #1558b0; }
 
+            /* ===== Thời gian gia công: header 2 dòng cố định + chọn dòng tô xanh ===== */
+      #tgGcTableWrap table { border-collapse: separate; border-spacing: 0; }
+      #tgGcTableWrap th {
+        height: 34px; box-sizing: border-box; background: #003DA5; color: #fff;
+        white-space: nowrap; border: 1px solid #0c2f6e; position: sticky; z-index: 5;
+      }
+      #tgGcTableWrap th.tgGc-thead-r1 { top: 0; z-index: 7; }
+      #tgGcTableWrap th.tgGc-thead-r2 { top: 34px; z-index: 6; }
+      #tgGcTableWrap td { border: 1px solid #ddd; padding: 5px 8px; text-align: center; white-space: nowrap; }
+      #tgGcTableWrap tr.tgGc-row-selected td { background: #e8f0fe !important; }
+      body.dark-mode #tgGcTableWrap td { background: #1c1f26; color: #d8dadf; border-color: #2c313c; }
+      body.dark-mode #tgGcTableWrap tr.tgGc-row-selected td { background: #26364d !important; }
+
+      /* ===== Sửa header 2 dòng bảng phân quyền bị mất khi cuộn + khe hở đầu bảng ===== */
+      .perm-table { border-collapse: separate; border-spacing: 0; }
+      .perm-table th { height: 32px; box-sizing: border-box; position: sticky; z-index: 5; border: 1px solid #0c2f6e; }
+      .perm-table th.perm-thead-r1 { top: 0; z-index: 7; }
+      .perm-table th.perm-thead-r2 { top: 32px; z-index: 6; }
+      .perm-table td { border: 1px solid #ddd; }
+
+      /* ===== Modal thêm mục phân quyền / thêm người dùng ===== */
+      .simple-modal-field { margin-bottom: 14px; }
+      .simple-modal-field label { font-size: 13px; font-weight: 600; color: #333; display: block; margin-bottom: 6px; }
+      .simple-modal-field input {
+        width: 100%; padding: 9px 10px; box-sizing: border-box; border: 1px solid #ddd;
+        border-radius: 6px; font-size: 14px;
+      }
+
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   </head>
@@ -1587,14 +1615,23 @@
           <div id="dashboardResult" class="tracking-table-wrap"></div>
           </div><!-- /dashSubTab-tiendo -->
 
-          <div id="dashSubTab-thoigian" class="dash-subtab-pane" style="display:none; flex-direction:column; flex:1; min-height:0;">
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 16px; gap:8px;">
-              <div id="tgGcStatus" style="font-size:12px; color:#888;"></div>
-              <button type="button" class="icon-btn" title="Làm mới" onclick="loadThoiGianGC_()"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    <div id="dashSubTab-thoigian" class="dash-subtab-pane" style="display:none; flex-direction:column; flex:1; min-height:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 16px 4px 16px; gap:8px; flex-wrap:wrap;">
+              <div class="search-row" style="flex:1; min-width:260px; margin-bottom:0;">
+                <div class="search-input-wrap">
+                  <input type="text" id="tgGcSearchInput" placeholder="Nhập/dán LSX (nhiều LSX cách nhau bởi dấu phẩy, xuống dòng...)" autocomplete="off" />
+                  <span id="tgGcSearchClear" class="clear-btn" onclick="tgGcClearSearch_()" style="display:none;">&times;</span>
+                </div>
+                <button type="button" onclick="tgGcApplySearch_()">Tìm</button>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <div id="tgGcStatus" style="font-size:12px; color:#888; white-space:nowrap;"></div>
+                <button type="button" id="tgGcColVisBtn" class="icon-btn" title="Chọn cột hiển thị" onclick="openGenericColVisModal_('thoigianGC')"><i class="fa-solid fa-table-columns"></i></button>
+                <button type="button" id="tgGcRefreshBtn" class="icon-btn" title="Làm mới" onclick="loadThoiGianGC_(true)"><i class="fa-solid fa-arrows-rotate"></i></button>
+              </div>
             </div>
-            <div id="tgGcTableWrap" class="tracking-table-wrap" style="flex:1; padding:0;"></div>
+            <div id="tgGcTableWrap" class="tracking-table-wrap" style="flex:1; padding:0 16px 16px 16px;"></div>
           </div>
-        </div>
 
         <div id="tab-nhansu-dashboard" class="tab-pane" style="flex-direction:column; overflow:auto;">
           <div class="ns-header-card" style="margin-top:16px;">
@@ -1754,17 +1791,28 @@ function confirmModalYes_() {
           .getPermTabs();
       }
 
-      function addPermTab_() {
-        const label = prompt('Tên mục phân quyền mới (VD: Kho vật tư):');
-        if (!label || !label.trim()) return;
+            function openAddPermTabModal_() {
+        document.getElementById('addPermTabNameInput').value = '';
+        document.getElementById('addPermTabError').textContent = '';
+        document.getElementById('addPermTabOverlay').style.display = 'flex';
+        setTimeout(function() { document.getElementById('addPermTabNameInput').focus(); }, 50);
+      }
+      function closeAddPermTabModal_() { document.getElementById('addPermTabOverlay').style.display = 'none'; }
+      function submitAddPermTab_() {
+        const label = document.getElementById('addPermTabNameInput').value.trim();
+        const errEl = document.getElementById('addPermTabError');
+        if (!label) { errEl.textContent = 'Vui lòng nhập tên mục phân quyền.'; return; }
+        errEl.textContent = '';
         google.script.run
           .withSuccessHandler(function() {
+            closeAddPermTabModal_();
             showToast('Đã thêm mục phân quyền "' + label + '".', 'success');
             loadPermTabs_(function() { loadPermUsers_(true); });
           })
-          .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
-          .addPermTab(label.trim());
+          .withFailureHandler(function(err) { errEl.textContent = err.message; })
+          .addPermTab(label);
       }
+      function addPermTab_() { openAddPermTabModal_(); }
       // Các chức vụ được thấy/sửa bảng phân quyền. Thêm đúng chữ tên chức vụ trong cột D
       // sheet "Người dùng" của bạn vào đây (VD "Quản Đốc") nếu tài khoản bạn không phải "Quản lý".
       const PERM_ADMIN_ROLES_ = ['Quản lý', 'ADMIN'];
@@ -1822,10 +1870,14 @@ function confirmModalYes_() {
       function renderPermTable_() {
         const wrap = document.getElementById('permTableWrap');
         if (!wrap || !permUsersCache_) return;
-        let html = '<table class="perm-table"><tr><th rowspan="2">MSNV</th><th rowspan="2">Họ và tên</th><th rowspan="2">Chức vụ</th>';
-        PERM_TAB_LABELS_.forEach(function(l) { html += '<th colspan="2">' + l.label + '</th>'; });
-        html += '<th rowspan="2"></th></tr><tr>';
-        PERM_TAB_LABELS_.forEach(function() { html += '<th>Xem</th><th>Sửa</th>'; });
+        let html = '<table class="perm-table">' +
+          '<tr>' +
+            '<th class="perm-thead-r1" rowspan="2">MSNV</th>' +
+            '<th class="perm-thead-r1" rowspan="2">Họ và tên</th>' +
+            '<th class="perm-thead-r1" rowspan="2">Chức vụ</th>';
+        PERM_TAB_LABELS_.forEach(function(l) { html += '<th class="perm-thead-r1" colspan="2">' + l.label + '</th>'; });
+        html += '<th class="perm-thead-r1" rowspan="2"></th></tr><tr>';
+        PERM_TAB_LABELS_.forEach(function() { html += '<th class="perm-thead-r2">Xem</th><th class="perm-thead-r2">Sửa</th>'; });
         html += '</tr>';
 
         permUsersCache_.forEach(function(u) {
@@ -1854,16 +1906,31 @@ function confirmModalYes_() {
           .savePermission(msnv, tab, type, checked);
       }
 
-      function addPermUser_() {
-        const msnv = prompt('Nhập MSNV nhân viên mới:');
-        if (!msnv) return;
-        const hoTen = prompt('Họ và tên:');
-        if (!hoTen) return;
+      function openAddPermUserModal_() {
+        document.getElementById('addPermUserMsnvInput').value = '';
+        document.getElementById('addPermUserHoTenInput').value = '';
+        document.getElementById('addPermUserError').textContent = '';
+        document.getElementById('addPermUserOverlay').style.display = 'flex';
+        setTimeout(function() { document.getElementById('addPermUserMsnvInput').focus(); }, 50);
+      }
+      function closeAddPermUserModal_() { document.getElementById('addPermUserOverlay').style.display = 'none'; }
+      function submitAddPermUser_() {
+        const msnv = document.getElementById('addPermUserMsnvInput').value.trim();
+        const hoTen = document.getElementById('addPermUserHoTenInput').value.trim();
+        const errEl = document.getElementById('addPermUserError');
+        if (!msnv) { errEl.textContent = 'Vui lòng nhập MSNV.'; return; }
+        if (!hoTen) { errEl.textContent = 'Vui lòng nhập họ và tên.'; return; }
+        errEl.textContent = '';
         google.script.run
-          .withSuccessHandler(function() { loadPermUsers_(true); showToast('Đã thêm tài khoản.', 'success'); })
-          .withFailureHandler(function(err) { showToast('Lỗi: ' + err.message, 'error'); })
+          .withSuccessHandler(function() {
+            closeAddPermUserModal_();
+            loadPermUsers_(true);
+            showToast('Đã thêm "' + hoTen + '" vào danh sách. Tick các ô Xem/Sửa để cấp quyền.', 'success');
+          })
+          .withFailureHandler(function(err) { errEl.textContent = err.message; })
           .addUserAccount(msnv, hoTen, 'Công nhân');
       }
+      function addPermUser_() { openAddPermUserModal_(); }
 
       function deletePermUser_(msnv) {
         if (!confirm('Xóa tài khoản ' + msnv + '?')) return;
@@ -2171,15 +2238,16 @@ function confirmModalYes_() {
 
         // Các lệnh gọi còn lại KHÔNG bị màn hình chờ đợi - hoãn 800ms để nhường trọn băng
         // thông cho request Dashboard ở trên hoàn tất trước.
-        setTimeout(function() {
+                setTimeout(function() {
           loadPriorityTagsFromServer_();
-          loadCustomPriorityTagsFromServer_(); // đồng bộ danh sách nhãn tự tạo cho mọi người dùng
+          loadCustomPriorityTagsFromServer_();
           loadDhTagsFromServer_();
           loadCustomDhTagsFromServer_();
           loadInitialAppData_();
           sendHeartbeat_();
           loadAllNotifications_();
-          tryFlushPriorityQueue_(); // lưu bù ngay các nhãn còn tồn trong hàng đợi từ phiên trước
+          tryFlushPriorityQueue_();
+          if (hasPerm_('dashboard', 'view')) loadThoiGianGCOnce_(); // tải ngầm để vào tab là có sẵn
         }, 800);
 
         setInterval(refreshSyncStatus, SYNC_STATUS_REFRESH_MS);
@@ -4405,36 +4473,86 @@ function onVtGhQrScanSuccess_(decodedText) {
           if (menu) menu.style.display = 'none';
         }
       });
-      function switchDashSubTab_(key) {
+            function switchDashSubTab_(key) {
         document.getElementById('dashSubTabMenu').style.display = 'none';
         document.getElementById('dashSubTabLabel').textContent = key === 'thoigian' ? 'Thời gian gia công' : 'Tiến độ';
         document.getElementById('dashSubTab-tiendo').style.display = (key === 'tiendo') ? 'flex' : 'none';
         document.getElementById('dashSubTab-thoigian').style.display = (key === 'thoigian') ? 'flex' : 'none';
-        if (key === 'thoigian' && !tgGcLoaded_) loadThoiGianGC_();
+        if (key === 'thoigian') {
+          if (tgGcLoaded_) renderThoiGianGC_();
+          else loadThoiGianGC_();
+        }
       }
 
             /* ================= TAB THỜI GIAN GIA CÔNG ================= */
+      const TG_GC_CACHE_KEY_ = 'gcck_tgGc_cache_v1';
       let tgGcColumns_ = [];
       let tgGcRows_ = [];
+      let tgGcLsxArrayIndex_ = 1;
       let tgGcFilters_ = {};
+      let tgGcSearchTokens_ = [];
       let tgGcLoaded_ = false;
+      let tgGcRenderToken_ = 0;
+      let tgGcRenderedCount_ = 0;
+      let tgGcRenderRowsRef_ = [];
+      const TG_GC_INITIAL_LIMIT_ = 500;
+      const TG_GC_LOAD_MORE_STEP_ = 400;
 
-      function loadThoiGianGC_() {
+      function tgGcLoadCache_() {
+        try { const raw = localStorage.getItem(TG_GC_CACHE_KEY_); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+      }
+      function tgGcSaveCache_(data) {
+        try { localStorage.setItem(TG_GC_CACHE_KEY_, JSON.stringify(data)); } catch (e) {}
+      }
+
+      /** Tải ngầm 1 lần lúc đăng nhập - không hiện loading, để lúc bấm vào tab đã có sẵn dữ liệu. */
+      function loadThoiGianGCOnce_() {
+        if (tgGcLoaded_) return;
+        const cached = tgGcLoadCache_();
+        if (cached && cached.rows) tgGcApplyLoadedData_(cached, false);
+        google.script.run
+          .withSuccessHandler(function(data) { tgGcApplyLoadedData_(data, false); })
+          .withFailureHandler(function() { /* im lặng, người dùng có thể tự Làm mới trong tab */ })
+          .getThoiGianGCData();
+      }
+
+      function loadThoiGianGC_(isManualRefresh) {
         const statusEl = document.getElementById('tgGcStatus');
-        if (statusEl) statusEl.textContent = 'Đang tải...';
+        const btn = document.getElementById('tgGcRefreshBtn');
+        if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+        if (statusEl && !tgGcLoaded_) statusEl.textContent = 'Đang tải...';
+
         google.script.run
           .withSuccessHandler(function(data) {
-            tgGcColumns_ = data.columns || [];
-            tgGcRows_ = data.rows || [];
-            tgGcLoaded_ = true;
-            if (statusEl) statusEl.textContent = 'Đã tải ' + tgGcRows_.length + ' dòng.';
-            renderThoiGianGC_();
+            tgGcApplyLoadedData_(data, true);
+            if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+            if (isManualRefresh) showToast('Đã làm mới dữ liệu Thời gian gia công.', 'success');
           })
           .withFailureHandler(function(err) {
-            if (statusEl) statusEl.textContent = '';
+            if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
             showToast('Lỗi tải Thời gian gia công: ' + err.message, 'error');
           })
           .getThoiGianGCData();
+      }
+
+      function tgGcApplyLoadedData_(data, doRender) {
+        tgGcColumns_ = data.columns || [];
+        tgGcRows_ = data.rows || [];
+        tgGcLsxArrayIndex_ = (data.lsxArrayIndex === undefined) ? 1 : data.lsxArrayIndex;
+        tgGcLoaded_ = true;
+        tgGcSaveCache_(data);
+        tgGcRegisterColvis_();
+        const statusEl = document.getElementById('tgGcStatus');
+        if (statusEl) statusEl.textContent = 'Đã tải ' + tgGcRows_.length + ' dòng.';
+        const tab = document.getElementById('dashSubTab-thoigian');
+        if (doRender || (tab && tab.style.display !== 'none')) renderThoiGianGC_();
+      }
+
+      function tgGcRegisterColvis_() {
+        const cols = tgGcColumns_.map(function(c) {
+          return { key: 'col_' + c.index, label: (c.group ? c.group + ' - ' : '') + c.label };
+        });
+        registerColvisTable_('thoigianGC', cols, 'gcck_colvis_thoigianGC_v1', function() { renderThoiGianGC_(); });
       }
 
       function tgGcIsTimeDkCol_(col) {
@@ -4445,89 +4563,198 @@ function onVtGhQrScanSuccess_(decodedText) {
         const l = String(col.label || '').trim().toLowerCase();
         return l.indexOf('tổng') !== -1 && (l.indexOf('đk') !== -1 || l.indexOf('dk') !== -1);
       }
+      function tgGcIsTimeGcCol_(col) {
+        const l = String(col.label || '').trim().toLowerCase();
+        return l === 'time gc' || (l.indexOf('tổng') !== -1 && l.indexOf('gc') !== -1);
+      }
+      function tgGcIsTotalCol_(col) {
+        return String(col.label || '').trim().toLowerCase().indexOf('tổng') !== -1;
+      }
+      function tgGcFormatTimeGC_(v) {
+        if (v === '' || v === null || v === undefined) return '';
+        const num = Number(v);
+        if (isNaN(num)) return String(v);
+        return num.toFixed(1);
+      }
+
+      function tgGcApplySearch_() {
+        const raw = document.getElementById('tgGcSearchInput').value;
+        tgGcSearchTokens_ = raw.split(/[,;\s]+/).map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s.length > 0; });
+        document.getElementById('tgGcSearchClear').style.display = raw ? 'block' : 'none';
+        renderThoiGianGC_();
+      }
+      function tgGcClearSearch_() {
+        tgGcSearchTokens_ = [];
+        document.getElementById('tgGcSearchInput').value = '';
+        document.getElementById('tgGcSearchClear').style.display = 'none';
+        renderThoiGianGC_();
+      }
+      document.getElementById('tgGcSearchInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); tgGcApplySearch_(); }
+      });
+      document.getElementById('tgGcSearchInput').addEventListener('input', function() {
+        document.getElementById('tgGcSearchClear').style.display = this.value ? 'block' : 'none';
+      });
 
       function tgGcApplyFilters_(rows) {
-        const keys = Object.keys(tgGcFilters_);
-        if (keys.length === 0) return rows;
-        return rows.filter(function(r) {
-          for (const key in tgGcFilters_) {
-            const allowed = tgGcFilters_[key];
-            if (!allowed) continue;
-            const v = (r.values[Number(key)] === null || r.values[Number(key)] === undefined) ? '' : String(r.values[Number(key)]);
-            if (!allowed.has(v)) return false;
+        let result = rows;
+        if (Object.keys(tgGcFilters_).length > 0) {
+          result = result.filter(function(r) {
+            for (const key in tgGcFilters_) {
+              const allowed = tgGcFilters_[key];
+              if (!allowed) continue;
+              const v = (r.values[Number(key)] === null || r.values[Number(key)] === undefined) ? '' : String(r.values[Number(key)]);
+              if (!allowed.has(v)) return false;
+            }
+            return true;
+          });
+        }
+        if (tgGcSearchTokens_.length > 0) {
+          result = result.filter(function(r) {
+            const lsxVal = String(r.values[tgGcLsxArrayIndex_] || '').toLowerCase();
+            return tgGcSearchTokens_.some(function(tok) { return lsxVal.indexOf(tok) !== -1; });
+          });
+        }
+        return result;
+      }
+
+      function tgGcVisibleColumns_() {
+        return tgGcColumns_.filter(function(c) { return isGenericColVisible_('thoigianGC', 'col_' + c.index); });
+      }
+
+      function tgGcBuildHeaderHtml_() {
+        const visCols = tgGcVisibleColumns_();
+        let r1 = '<tr>', i = 0;
+        while (i < visCols.length) {
+          const col = visCols[i];
+          const arrIdx = tgGcColumns_.indexOf(col);
+          if (!col.group) {
+            const activeCls = tgGcFilters_[arrIdx] ? ' active' : '';
+            r1 += '<th class="tgGc-thead-r1" rowspan="2">' + escapeHtml_(col.label) +
+              '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + arrIdx + ', this)">&#9662;</span></th>';
+            i++;
+          } else {
+            let span = 1;
+            while (i + span < visCols.length && visCols[i + span].group === col.group) span++;
+            r1 += '<th class="tgGc-thead-r1" colspan="' + span + '">' + escapeHtml_(col.group) + '</th>';
+            i += span;
           }
-          return true;
+        }
+        r1 += '</tr>';
+        let r2 = '<tr>';
+        visCols.forEach(function(col) {
+          if (!col.group) return;
+          const arrIdx = tgGcColumns_.indexOf(col);
+          const activeCls = tgGcFilters_[arrIdx] ? ' active' : '';
+          r2 += '<th class="tgGc-thead-r2">' + escapeHtml_(col.label) +
+            '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + arrIdx + ', this)">&#9662;</span></th>';
         });
+        r2 += '</tr>';
+        return r1 + r2;
+      }
+
+      function tgGcBuildRowHtml_(r) {
+        const visCols = tgGcVisibleColumns_();
+        let html = '<tr data-sheetrow="' + r.sheetRow + '">';
+        visCols.forEach(function(col) {
+          const arrIdx = tgGcColumns_.indexOf(col);
+          const v = r.values[arrIdx];
+          const totalStyle = tgGcIsTotalCol_(col) ? ' style="font-weight:800; color:#003DA5;"' : '';
+          if (tgGcIsTimeDkCol_(col) && isPermAdmin_) {
+            html += '<td style="padding:2px;"><input type="number" step="any" value="' + (v === '' ? '' : v) +
+              '" data-sheetrow="' + r.sheetRow + '" data-col="' + col.index + '" data-idx="' + arrIdx +
+              '" onchange="tgGcSaveTimeDk_(this)" style="width:66px; padding:5px; box-sizing:border-box; text-align:center; border:1px solid #ddd; border-radius:4px;" /></td>';
+          } else if (tgGcIsTimeGcCol_(col)) {
+            html += '<td' + totalStyle + '>' + tgGcFormatTimeGC_(v) + '</td>';
+          } else {
+            html += '<td' + totalStyle + '>' + (v === '' || v === null || v === undefined ? '' : escapeHtml_(String(v))) + '</td>';
+          }
+        });
+        html += '</tr>';
+        return html;
       }
 
       function renderThoiGianGC_() {
         const wrap = document.getElementById('tgGcTableWrap');
         if (!wrap) return;
-        const cols = tgGcColumns_;
-        if (!cols.length) { wrap.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu.</div>'; return; }
+        if (!tgGcColumns_.length) { wrap.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu.</div>'; return; }
+
         const rows = tgGcApplyFilters_(tgGcRows_);
-
-        let groupHtml = '<tr>';
-        let i = 0;
-        while (i < cols.length) {
-          if (!cols[i].group) {
-            const idx = i;
-            const activeCls = tgGcFilters_[idx] ? ' active' : '';
-            groupHtml += '<th rowspan="2" style="background:#003DA5; color:#fff; min-width:70px; top:0;">' +
-              escapeHtml_(cols[idx].label) +
-              '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + idx + ', this)">&#9662;</span></th>';
-            i += 1;
-          } else {
-            let span = 1;
-            while (i + span < cols.length && cols[i + span].group === cols[i].group) span++;
-            groupHtml += '<th colspan="' + span + '" style="background:#0c2f6e; color:#fff; top:0;">' + escapeHtml_(cols[i].group) + '</th>';
-            i += span;
-          }
+        const statusEl = document.getElementById('tgGcStatus');
+        if (statusEl) {
+          statusEl.textContent = (tgGcSearchTokens_.length || Object.keys(tgGcFilters_).length)
+            ? ('Tìm thấy ' + rows.length + '/' + tgGcRows_.length + ' dòng')
+            : ('Đã tải ' + tgGcRows_.length + ' dòng.');
         }
-        groupHtml += '</tr>';
 
-        let subHtml = '<tr>';
-        cols.forEach(function(col, idx) {
-          if (!col.group) return; // đã vẽ rowspan=2 ở hàng trên
-          const activeCls = tgGcFilters_[idx] ? ' active' : '';
-          subHtml += '<th style="background:#003DA5; color:#fff; white-space:nowrap; top:34px;">' + escapeHtml_(col.label) +
-            '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + idx + ', this)">&#9662;</span></th>';
-        });
-        subHtml += '</tr>';
+        const myToken = ++tgGcRenderToken_;
+        tgGcRenderRowsRef_ = rows;
+        tgGcRenderedCount_ = 0;
 
-        let bodyHtml = '';
         if (rows.length === 0) {
-          bodyHtml = '<tr><td colspan="' + cols.length + '" class="empty-state-cell">Không có dữ liệu phù hợp bộ lọc.</td></tr>';
-        } else {
-          rows.forEach(function(r) {
-            bodyHtml += '<tr>';
-            cols.forEach(function(col, idx) {
-              const v = r.values[idx];
-              if (tgGcIsTimeDkCol_(col) && isPermAdmin_) {
-                bodyHtml += '<td style="padding:2px;"><input type="number" step="any" value="' + (v === '' ? '' : v) +
-                  '" data-sheetrow="' + r.sheetRow + '" data-col="' + col.index + '" data-idx="' + idx +
-                  '" onchange="tgGcSaveTimeDk_(this)" style="width:66px; padding:5px; box-sizing:border-box; text-align:center; border:1px solid #ddd; border-radius:4px;" /></td>';
-              } else {
-                bodyHtml += '<td' + (tgGcIsTotalDkCol_(col) ? ' style="font-weight:800; color:#003DA5;"' : '') + '>' +
-                  (v === '' || v === null || v === undefined ? '' : escapeHtml_(String(v))) + '</td>';
-              }
-            });
-            bodyHtml += '</tr>';
-          });
+          wrap.innerHTML = '<table>' + tgGcBuildHeaderHtml_() +
+            '<tr><td colspan="' + tgGcVisibleColumns_().length + '" class="empty-state-cell">Không có dữ liệu phù hợp.</td></tr></table>';
+          return;
         }
 
-        wrap.innerHTML = '<table style="width:100%; border-collapse:separate; border-spacing:0;">' + groupHtml + subHtml + bodyHtml + '</table>';
+        wrap.innerHTML = '<table id="tgGcTable">' + tgGcBuildHeaderHtml_() + '</table>';
+        const table = document.getElementById('tgGcTable');
+        const limit = Math.min(TG_GC_INITIAL_LIMIT_, rows.length);
+        let index = 0;
+        const CHUNK = 150;
+
+        function renderChunk() {
+          if (myToken !== tgGcRenderToken_) return;
+          let html = '';
+          const end = Math.min(index + CHUNK, limit);
+          for (; index < end; index++) html += tgGcBuildRowHtml_(rows[index]);
+          table.insertAdjacentHTML('beforeend', html);
+          tgGcRenderedCount_ = index;
+          if (index < limit) requestAnimationFrame(renderChunk);
+        }
+        requestAnimationFrame(renderChunk);
       }
+
+      function tgGcRenderMore_() {
+        if (tgGcRenderedCount_ >= tgGcRenderRowsRef_.length) return;
+        const table = document.getElementById('tgGcTable');
+        if (!table) return;
+        const myToken = tgGcRenderToken_;
+        const target = Math.min(tgGcRenderedCount_ + TG_GC_LOAD_MORE_STEP_, tgGcRenderRowsRef_.length);
+        let index = tgGcRenderedCount_;
+        const CHUNK = 150;
+        function renderChunk() {
+          if (myToken !== tgGcRenderToken_) return;
+          let html = '';
+          const end = Math.min(index + CHUNK, target);
+          for (; index < end; index++) html += tgGcBuildRowHtml_(tgGcRenderRowsRef_[index]);
+          table.insertAdjacentHTML('beforeend', html);
+          tgGcRenderedCount_ = index;
+          if (index < target) requestAnimationFrame(renderChunk);
+        }
+        requestAnimationFrame(renderChunk);
+      }
+
+      document.getElementById('tgGcTableWrap').addEventListener('scroll', function() {
+        const el = document.getElementById('tgGcTableWrap');
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 400) tgGcRenderMore_();
+      });
+
+      // Bấm vào ô bất kỳ trong dòng -> tô xanh cả dòng.
+      document.getElementById('tgGcTableWrap').addEventListener('click', function(e) {
+        const tr = e.target.closest('tr[data-sheetrow]');
+        if (!tr) return;
+        document.querySelectorAll('#tgGcTableWrap tr.tgGc-row-selected')
+          .forEach(function(el) { el.classList.remove('tgGc-row-selected'); });
+        tr.classList.add('tgGc-row-selected');
+      });
 
       function tgGcSumTimeDkForRow_(sheetRow) {
         const row = tgGcRows_.find(function(r) { return r.sheetRow === sheetRow; });
         if (!row) return 0;
         let sum = 0;
         tgGcColumns_.forEach(function(col, idx) {
-          if (tgGcIsTimeDkCol_(col)) {
-            const n = Number(row.values[idx]);
-            if (!isNaN(n)) sum += n;
-          }
+          if (tgGcIsTimeDkCol_(col)) { const n = Number(row.values[idx]); if (!isNaN(n)) sum += n; }
         });
         return sum;
       }
@@ -4536,43 +4763,41 @@ function onVtGhQrScanSuccess_(decodedText) {
         if (!isPermAdmin_) { showToast('Bạn không có quyền chỉnh sửa Time ĐK.', 'error'); return; }
         const sheetRow = Number(inputEl.getAttribute('data-sheetrow'));
         const sheetCol = Number(inputEl.getAttribute('data-col'));
+        const idx = Number(inputEl.getAttribute('data-idx'));
         const value = inputEl.value.trim();
 
         const row = tgGcRows_.find(function(r) { return r.sheetRow === sheetRow; });
-        const totalIdx = tgGcColumns_.findIndex(function(c) { return tgGcIsTotalDkCol_(c); });
+        const totalArrIdx = tgGcColumns_.findIndex(function(c) { return tgGcIsTotalDkCol_(c); });
         if (row) {
-          const idx = Number(inputEl.getAttribute('data-idx'));
           row.values[idx] = value === '' ? '' : Number(value);
-          if (totalIdx !== -1) { row.values[totalIdx] = tgGcSumTimeDkForRow_(sheetRow); renderThoiGianGC_(); }
+          if (totalArrIdx !== -1) row.values[totalArrIdx] = tgGcSumTimeDkForRow_(sheetRow);
+          tgGcSaveCache_({ columns: tgGcColumns_, rows: tgGcRows_, lsxArrayIndex: tgGcLsxArrayIndex_ });
+          renderThoiGianGC_();
         }
 
         google.script.run
           .withSuccessHandler(function(freshRowValues) {
             if (!row || !freshRowValues) return;
             tgGcColumns_.forEach(function(col, i2) { row.values[i2] = freshRowValues[col.index]; });
+            tgGcSaveCache_({ columns: tgGcColumns_, rows: tgGcRows_, lsxArrayIndex: tgGcLsxArrayIndex_ });
             renderThoiGianGC_();
             showToast('Đã lưu Time ĐK.', 'success');
           })
-          .withFailureHandler(function(err) {
-            showToast('Lỗi lưu Time ĐK: ' + err.message, 'error');
-            loadThoiGianGC_();
-          })
+          .withFailureHandler(function(err) { showToast('Lỗi lưu Time ĐK: ' + err.message, 'error'); loadThoiGianGC_(); })
           .saveThoiGianGCTimeDK(currentUser_.msnv, sheetRow, sheetCol, value);
       }
 
-      function tgGcOpenFilter_(idx, iconEl) {
+      function tgGcOpenFilter_(arrIdx, iconEl) {
         activeFilterTarget = 'thoigianGC';
-        filterPopupKey = idx;
+        filterPopupKey = arrIdx;
         const values = new Set();
         tgGcRows_.forEach(function(r) {
-          values.add((r.values[idx] === null || r.values[idx] === undefined) ? '' : String(r.values[idx]));
+          values.add((r.values[arrIdx] === null || r.values[arrIdx] === undefined) ? '' : String(r.values[arrIdx]));
         });
         filterPopupValues = Array.from(values).sort();
-        filterPopupSelected = tgGcFilters_[idx] ? new Set(tgGcFilters_[idx]) : new Set(filterPopupValues);
-
+        filterPopupSelected = tgGcFilters_[arrIdx] ? new Set(tgGcFilters_[arrIdx]) : new Set(filterPopupValues);
         document.getElementById('filterPopupSearch').value = '';
         renderFilterOptions();
-
         const popup = document.getElementById('filterPopup');
         const rect = iconEl.getBoundingClientRect();
         popup.style.display = 'block';
@@ -8464,6 +8689,50 @@ window.addEventListener('online', tryFlushPriorityQueue_);
         <div id="genericColVisList" class="colvis-list"></div>
         <div class="colvis-footer">
           <button type="button" onclick="closeGenericColVisModal_()">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+        <div id="addPermTabOverlay" class="colvis-overlay" style="display:none; z-index:520;">
+      <div class="colvis-modal" style="width:380px;">
+        <div class="colvis-header">
+          <h3>Thêm mục phân quyền</h3>
+          <span class="upbom-close" onclick="closeAddPermTabModal_()">&times;</span>
+        </div>
+        <div style="padding:18px;">
+          <div class="simple-modal-field">
+            <label>Tên mục phân quyền mới</label>
+            <input type="text" id="addPermTabNameInput" placeholder="VD: Kho vật tư" autocomplete="off" />
+          </div>
+          <div id="addPermTabError" style="color:#c62828; font-size:13px; min-height:16px;"></div>
+        </div>
+        <div class="upbom-footer">
+          <button type="button" class="upbom-cancel" onclick="closeAddPermTabModal_()">Hủy</button>
+          <button type="button" class="upbom-save" onclick="submitAddPermTab_()">Thêm</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="addPermUserOverlay" class="colvis-overlay" style="display:none; z-index:520;">
+      <div class="colvis-modal" style="width:380px;">
+        <div class="colvis-header">
+          <h3>Thêm người dùng</h3>
+          <span class="upbom-close" onclick="closeAddPermUserModal_()">&times;</span>
+        </div>
+        <div style="padding:18px;">
+          <div class="simple-modal-field">
+            <label>Mã số nhân viên (MSNV)</label>
+            <input type="text" id="addPermUserMsnvInput" placeholder="VD: 1234567" autocomplete="off" inputmode="numeric" />
+          </div>
+          <div class="simple-modal-field">
+            <label>Họ và tên</label>
+            <input type="text" id="addPermUserHoTenInput" placeholder="VD: Nguyễn Văn A" autocomplete="off" />
+          </div>
+          <div id="addPermUserError" style="color:#c62828; font-size:13px; min-height:16px;"></div>
+        </div>
+        <div class="upbom-footer">
+          <button type="button" class="upbom-cancel" onclick="closeAddPermUserModal_()">Hủy</button>
+          <button type="button" class="upbom-save" onclick="submitAddPermUser_()">Thêm vào danh sách</button>
         </div>
       </div>
     </div>
