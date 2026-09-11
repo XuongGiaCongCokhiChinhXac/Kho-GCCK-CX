@@ -951,6 +951,30 @@
       .chuyen-box.chuyen-mid .chuyen-value { color: #7a5b00; }
       .chuyen-box.chuyen-low { background: #ffe1cc; }
       .chuyen-box.chuyen-low .chuyen-value { color: #a24a00; }
+            /* ===== Kéo-thả đổi vị trí hàng KH BUS ===== */
+      .khbus-drag-handle {
+        width: 26px; text-align: center; color: #b0b0b0; cursor: grab;
+        border-right: 1px solid #eee !important; background: #fafafa !important;
+        font-size: 13px; user-select: none;
+      }
+      .khbus-drag-handle:hover { color: #1a73e8; }
+      tr.khbus-row-dragging { opacity: 0.35; }
+      tr.khbus-row-dragover td { box-shadow: inset 0 3px 0 0 #1a73e8; }
+
+      /* ===== Toolbar kiểu PowerPoint cho KH BUS ===== */
+      .khbus-ribbon {
+        display: flex; align-items: stretch; gap: 2px; background: #f4f6f9;
+        border: 1px solid #e3e6ea; border-radius: 8px; padding: 4px;
+      }
+      .khbus-ribbon-btn {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 3px; min-width: 56px; padding: 6px 8px; border: none; background: transparent;
+        border-radius: 6px; cursor: pointer; color: #444; font-size: 10px; font-weight: 600;
+      }
+      .khbus-ribbon-btn i { font-size: 15px; color: #1a56c4; }
+      .khbus-ribbon-btn:hover { background: #e8f0fe; }
+      .khbus-ribbon-btn.danger i { color: #c62828; }
+      .khbus-ribbon-sep { width: 1px; background: #ddd; margin: 4px 3px; }
       /* Tô nhạt cả hàng theo ưu tiên nhưng KHÔNG đổi màu chữ. td vốn có nền trắng
         riêng (.tracking-table-wrap td), nên phải ép nó "kế thừa" nền của tr —
         thiếu dòng này thì ô nào không có color riêng (VD Sản phẩm) sẽ bị chữ trắng/trắng. */
@@ -1465,11 +1489,22 @@
           <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
             <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid #eee; gap:8px; flex-wrap:wrap;">
               <div style="font-size:13px; color:#888;">Bấm vào ô để chỉnh sửa - tự động lưu.</div>
-              <div style="display:flex; gap:8px; position:relative;">
-                <button type="button" class="icon-btn" title="Thêm dòng" onclick="khbusAddRow_()"><i class="fa-solid fa-plus"></i></button>
-                <button type="button" class="icon-btn" title="Định dạng ô đang chọn" onclick="khbusOpenColorPopup_(event)"><i class="fa-solid fa-fill-drip"></i></button>
-                <button type="button" class="icon-btn" title="Nhân bản slide" onclick="khbusDuplicateSlide_()"><i class="fa-solid fa-copy"></i></button>
-                <button type="button" class="icon-btn" title="Xóa slide" onclick="khbusDeleteSlide_()" style="color:#c62828;"><i class="fa-solid fa-trash"></i></button>
+              <div class="khbus-ribbon" style="position:relative;">
+                <button type="button" class="khbus-ribbon-btn" title="Thêm dòng mới" onclick="khbusAddRow_()">
+                  <i class="fa-solid fa-table-list"></i><span>Thêm dòng</span>
+                </button>
+                <div class="khbus-ribbon-sep"></div>
+                <button type="button" class="khbus-ribbon-btn" title="Định dạng ô đang chọn" onclick="khbusOpenColorPopup_(event)">
+                  <i class="fa-solid fa-fill-drip"></i><span>Định dạng</span>
+                </button>
+                <div class="khbus-ribbon-sep"></div>
+                <button type="button" class="khbus-ribbon-btn" title="Nhân bản slide" onclick="khbusDuplicateSlide_()">
+                  <i class="fa-solid fa-copy"></i><span>Nhân bản</span>
+                </button>
+                <div class="khbus-ribbon-sep"></div>
+                <button type="button" class="khbus-ribbon-btn danger" title="Xóa slide" onclick="khbusDeleteSlide_()">
+                  <i class="fa-solid fa-trash"></i><span>Xóa slide</span>
+                </button>
               </div>
             </div>
             <div id="khbusSlideCanvas" style="flex:1; overflow:auto; padding:20px; background:#eef1f5;"></div>
@@ -1552,9 +1587,12 @@
           <div id="dashboardResult" class="tracking-table-wrap"></div>
           </div><!-- /dashSubTab-tiendo -->
 
-          <div id="dashSubTab-thoigian" class="dash-subtab-pane" style="display:none; flex-direction:column; flex:1; min-height:0; align-items:center; justify-content:center; color:#999; font-size:14px; gap:10px;">
-            <i class="fa-solid fa-briefcase-clock" style="font-size:40px; opacity:0.4;"></i>
-            Tab "Thời gian gia công" đang chờ thiết kế thêm.
+          <div id="dashSubTab-thoigian" class="dash-subtab-pane" style="display:none; flex-direction:column; flex:1; min-height:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 16px; gap:8px;">
+              <div id="tgGcStatus" style="font-size:12px; color:#888;"></div>
+              <button type="button" class="icon-btn" title="Làm mới" onclick="loadThoiGianGC_()"><i class="fa-solid fa-arrows-rotate"></i></button>
+            </div>
+            <div id="tgGcTableWrap" class="tracking-table-wrap" style="flex:1; padding:0;"></div>
           </div>
         </div>
 
@@ -2649,6 +2687,16 @@ function confirmModalYes_() {
       }
 
       function applyFilterPopup() {
+        if (activeFilterTarget === 'thoigianGC') {
+          if (filterPopupSelected.size === 0 || filterPopupSelected.size === filterPopupValues.length) {
+            delete tgGcFilters_[filterPopupKey];
+          } else {
+            tgGcFilters_[filterPopupKey] = new Set(filterPopupSelected);
+          }
+          closeFilterPopup();
+          renderThoiGianGC_();
+          return;
+        }
         const ds = getFilterDataset_();
         if (filterPopupSelected.size === 0 || filterPopupSelected.size === filterPopupValues.length) {
           delete ds.filters[filterPopupKey];
@@ -4362,12 +4410,181 @@ function onVtGhQrScanSuccess_(decodedText) {
         document.getElementById('dashSubTabLabel').textContent = key === 'thoigian' ? 'Thời gian gia công' : 'Tiến độ';
         document.getElementById('dashSubTab-tiendo').style.display = (key === 'tiendo') ? 'flex' : 'none';
         document.getElementById('dashSubTab-thoigian').style.display = (key === 'thoigian') ? 'flex' : 'none';
+        if (key === 'thoigian' && !tgGcLoaded_) loadThoiGianGC_();
+      }
+
+            /* ================= TAB THỜI GIAN GIA CÔNG ================= */
+      let tgGcColumns_ = [];
+      let tgGcRows_ = [];
+      let tgGcFilters_ = {};
+      let tgGcLoaded_ = false;
+
+      function loadThoiGianGC_() {
+        const statusEl = document.getElementById('tgGcStatus');
+        if (statusEl) statusEl.textContent = 'Đang tải...';
+        google.script.run
+          .withSuccessHandler(function(data) {
+            tgGcColumns_ = data.columns || [];
+            tgGcRows_ = data.rows || [];
+            tgGcLoaded_ = true;
+            if (statusEl) statusEl.textContent = 'Đã tải ' + tgGcRows_.length + ' dòng.';
+            renderThoiGianGC_();
+          })
+          .withFailureHandler(function(err) {
+            if (statusEl) statusEl.textContent = '';
+            showToast('Lỗi tải Thời gian gia công: ' + err.message, 'error');
+          })
+          .getThoiGianGCData();
+      }
+
+      function tgGcIsTimeDkCol_(col) {
+        const l = String(col.label || '').trim().toLowerCase();
+        return l === 'time đk' || l === 'time dk';
+      }
+      function tgGcIsTotalDkCol_(col) {
+        const l = String(col.label || '').trim().toLowerCase();
+        return l.indexOf('tổng') !== -1 && (l.indexOf('đk') !== -1 || l.indexOf('dk') !== -1);
+      }
+
+      function tgGcApplyFilters_(rows) {
+        const keys = Object.keys(tgGcFilters_);
+        if (keys.length === 0) return rows;
+        return rows.filter(function(r) {
+          for (const key in tgGcFilters_) {
+            const allowed = tgGcFilters_[key];
+            if (!allowed) continue;
+            const v = (r.values[Number(key)] === null || r.values[Number(key)] === undefined) ? '' : String(r.values[Number(key)]);
+            if (!allowed.has(v)) return false;
+          }
+          return true;
+        });
+      }
+
+      function renderThoiGianGC_() {
+        const wrap = document.getElementById('tgGcTableWrap');
+        if (!wrap) return;
+        const cols = tgGcColumns_;
+        if (!cols.length) { wrap.innerHTML = '<div class="empty-state-cell">Chưa có dữ liệu.</div>'; return; }
+        const rows = tgGcApplyFilters_(tgGcRows_);
+
+        let groupHtml = '<tr>';
+        let i = 0;
+        while (i < cols.length) {
+          if (!cols[i].group) {
+            const idx = i;
+            const activeCls = tgGcFilters_[idx] ? ' active' : '';
+            groupHtml += '<th rowspan="2" style="background:#003DA5; color:#fff; min-width:70px; top:0;">' +
+              escapeHtml_(cols[idx].label) +
+              '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + idx + ', this)">&#9662;</span></th>';
+            i += 1;
+          } else {
+            let span = 1;
+            while (i + span < cols.length && cols[i + span].group === cols[i].group) span++;
+            groupHtml += '<th colspan="' + span + '" style="background:#0c2f6e; color:#fff; top:0;">' + escapeHtml_(cols[i].group) + '</th>';
+            i += span;
+          }
+        }
+        groupHtml += '</tr>';
+
+        let subHtml = '<tr>';
+        cols.forEach(function(col, idx) {
+          if (!col.group) return; // đã vẽ rowspan=2 ở hàng trên
+          const activeCls = tgGcFilters_[idx] ? ' active' : '';
+          subHtml += '<th style="background:#003DA5; color:#fff; white-space:nowrap; top:34px;">' + escapeHtml_(col.label) +
+            '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + idx + ', this)">&#9662;</span></th>';
+        });
+        subHtml += '</tr>';
+
+        let bodyHtml = '';
+        if (rows.length === 0) {
+          bodyHtml = '<tr><td colspan="' + cols.length + '" class="empty-state-cell">Không có dữ liệu phù hợp bộ lọc.</td></tr>';
+        } else {
+          rows.forEach(function(r) {
+            bodyHtml += '<tr>';
+            cols.forEach(function(col, idx) {
+              const v = r.values[idx];
+              if (tgGcIsTimeDkCol_(col) && isPermAdmin_) {
+                bodyHtml += '<td style="padding:2px;"><input type="number" step="any" value="' + (v === '' ? '' : v) +
+                  '" data-sheetrow="' + r.sheetRow + '" data-col="' + col.index + '" data-idx="' + idx +
+                  '" onchange="tgGcSaveTimeDk_(this)" style="width:66px; padding:5px; box-sizing:border-box; text-align:center; border:1px solid #ddd; border-radius:4px;" /></td>';
+              } else {
+                bodyHtml += '<td' + (tgGcIsTotalDkCol_(col) ? ' style="font-weight:800; color:#003DA5;"' : '') + '>' +
+                  (v === '' || v === null || v === undefined ? '' : escapeHtml_(String(v))) + '</td>';
+              }
+            });
+            bodyHtml += '</tr>';
+          });
+        }
+
+        wrap.innerHTML = '<table style="width:100%; border-collapse:separate; border-spacing:0;">' + groupHtml + subHtml + bodyHtml + '</table>';
+      }
+
+      function tgGcSumTimeDkForRow_(sheetRow) {
+        const row = tgGcRows_.find(function(r) { return r.sheetRow === sheetRow; });
+        if (!row) return 0;
+        let sum = 0;
+        tgGcColumns_.forEach(function(col, idx) {
+          if (tgGcIsTimeDkCol_(col)) {
+            const n = Number(row.values[idx]);
+            if (!isNaN(n)) sum += n;
+          }
+        });
+        return sum;
+      }
+
+      function tgGcSaveTimeDk_(inputEl) {
+        if (!isPermAdmin_) { showToast('Bạn không có quyền chỉnh sửa Time ĐK.', 'error'); return; }
+        const sheetRow = Number(inputEl.getAttribute('data-sheetrow'));
+        const sheetCol = Number(inputEl.getAttribute('data-col'));
+        const value = inputEl.value.trim();
+
+        const row = tgGcRows_.find(function(r) { return r.sheetRow === sheetRow; });
+        const totalIdx = tgGcColumns_.findIndex(function(c) { return tgGcIsTotalDkCol_(c); });
+        if (row) {
+          const idx = Number(inputEl.getAttribute('data-idx'));
+          row.values[idx] = value === '' ? '' : Number(value);
+          if (totalIdx !== -1) { row.values[totalIdx] = tgGcSumTimeDkForRow_(sheetRow); renderThoiGianGC_(); }
+        }
+
+        google.script.run
+          .withSuccessHandler(function(freshRowValues) {
+            if (!row || !freshRowValues) return;
+            tgGcColumns_.forEach(function(col, i2) { row.values[i2] = freshRowValues[col.index]; });
+            renderThoiGianGC_();
+            showToast('Đã lưu Time ĐK.', 'success');
+          })
+          .withFailureHandler(function(err) {
+            showToast('Lỗi lưu Time ĐK: ' + err.message, 'error');
+            loadThoiGianGC_();
+          })
+          .saveThoiGianGCTimeDK(currentUser_.msnv, sheetRow, sheetCol, value);
+      }
+
+      function tgGcOpenFilter_(idx, iconEl) {
+        activeFilterTarget = 'thoigianGC';
+        filterPopupKey = idx;
+        const values = new Set();
+        tgGcRows_.forEach(function(r) {
+          values.add((r.values[idx] === null || r.values[idx] === undefined) ? '' : String(r.values[idx]));
+        });
+        filterPopupValues = Array.from(values).sort();
+        filterPopupSelected = tgGcFilters_[idx] ? new Set(tgGcFilters_[idx]) : new Set(filterPopupValues);
+
+        document.getElementById('filterPopupSearch').value = '';
+        renderFilterOptions();
+
+        const popup = document.getElementById('filterPopup');
+        const rect = iconEl.getBoundingClientRect();
+        popup.style.display = 'block';
+        popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+        popup.style.left = (rect.left + window.scrollX) + 'px';
       }
 
             /* ================= KH BUS - SLIDE XÁC NHẬN GIAO HÀNG ================= */
       const KHBUS_GROUPS_ = ['CHASSIS', 'KHUNG XƯƠNG', 'ĐỒNG', 'CỐP NHÔM', 'TRIM CO2', 'TRIM THÀNH PHẨM'];
       let khbusSlides_ = [];
       let khbusCurrentIndex_ = 0;
+      let khbusDragRowIdx_ = null;
       let khbusLoaded_ = false;
       let khbusSaveTimer_ = null;
 
@@ -4544,6 +4761,64 @@ function onVtGhQrScanSuccess_(decodedText) {
         khbusScheduleSave_();
       }
 
+            function khbusRemapFormatMapsForMove_(map, oldOrder) {
+        if (!map) return {};
+        const result = {};
+        Object.keys(map).forEach(function(key) {
+          const parts = key.split('_');
+          const oldR = Number(parts[0]), c = parts[1];
+          const newR = oldOrder.indexOf(oldR);
+          if (newR === -1) return;
+          result[newR + '_' + c] = map[key];
+        });
+        return result;
+      }
+
+      function khbusMoveRow_(fromIdx, toIdx) {
+        const s = khbusSlides_[khbusCurrentIndex_];
+        if (!s || fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+
+        const oldOrder = s.rows.map(function(_, i) { return i; });
+        const movedOld = oldOrder.splice(fromIdx, 1)[0];
+        oldOrder.splice(toIdx, 0, movedOld);
+        // oldOrder[dòng mới] = dòng cũ
+
+        s.rows = oldOrder.map(function(oldIdx) { return s.rows[oldIdx]; });
+        s.cellColors = khbusRemapFormatMapsForMove_(s.cellColors, oldOrder);
+        s.cellTextColors = khbusRemapFormatMapsForMove_(s.cellTextColors, oldOrder);
+        s.cellFontSizes = khbusRemapFormatMapsForMove_(s.cellFontSizes, oldOrder);
+        s.cellBold = khbusRemapFormatMapsForMove_(s.cellBold, oldOrder);
+
+        khbusClearSelection_();
+        khbusRenderCanvas_();
+        khbusScheduleSave_();
+        showToast('Đã chuyển dòng ' + (fromIdx + 1) + ' đến vị trí ' + (toIdx + 1) + '.', 'success');
+      }
+
+      function khbusRowDragStart_(e, rIdx) {
+        khbusDragRowIdx_ = rIdx;
+        try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(rIdx)); } catch (err) {}
+        e.currentTarget.classList.add('khbus-row-dragging');
+      }
+      function khbusRowDragOver_(e, rIdx) {
+        e.preventDefault();
+        document.querySelectorAll('#khbusSlideCanvas tr.khbus-row-dragover')
+          .forEach(function(tr) { tr.classList.remove('khbus-row-dragover'); });
+        e.currentTarget.classList.add('khbus-row-dragover');
+      }
+      function khbusRowDrop_(e, rIdx) {
+        e.preventDefault();
+        document.querySelectorAll('#khbusSlideCanvas tr.khbus-row-dragover')
+          .forEach(function(tr) { tr.classList.remove('khbus-row-dragover'); });
+        if (khbusDragRowIdx_ === null || khbusDragRowIdx_ === rIdx) return;
+        khbusMoveRow_(khbusDragRowIdx_, rIdx);
+      }
+      function khbusRowDragEnd_(e) {
+        document.querySelectorAll('#khbusSlideCanvas tr.khbus-row-dragging, #khbusSlideCanvas tr.khbus-row-dragover')
+          .forEach(function(tr) { tr.classList.remove('khbus-row-dragging', 'khbus-row-dragover'); });
+        khbusDragRowIdx_ = null;
+      }
+
       function khbusUpdateField_(path, value) {
         const s = khbusSlides_[khbusCurrentIndex_];
         if (!s) return;
@@ -4674,7 +4949,12 @@ function onVtGhQrScanSuccess_(decodedText) {
 
         s.rows.forEach(function(row, rIdx) {
           let colIdx = 0;
-          html += '<tr>';
+          html += '<tr draggable="true" data-rowidx="' + rIdx + '"' +
+            ' ondragstart="khbusRowDragStart_(event,' + rIdx + ')"' +
+            ' ondragover="khbusRowDragOver_(event,' + rIdx + ')"' +
+            ' ondrop="khbusRowDrop_(event,' + rIdx + ')"' +
+            ' ondragend="khbusRowDragEnd_(event)">' +
+            '<td class="khbus-drag-handle" title="Kéo để đổi vị trí"><i class="fa-solid fa-grip-vertical"></i></td>';
           const c0 = colIdx++;
           html += '<td data-r="' + rIdx + '" data-c="' + c0 + '" style="' + khbusTdStyle_(rIdx, c0, KHBUS_BASE_TD_STYLE_) + '">' + khbusEditableCell_(row.loaiXe, 'rows.' + rIdx + '.loaiXe', khbusCellTextStyle_(rIdx, c0, false)) + '</td>';
           const c1 = colIdx++;
