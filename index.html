@@ -1155,6 +1155,33 @@
       body.dark-mode #tgGcTableWrap td { background: #1c1f26; color: #d8dadf; border-color: #2c313c; }
       body.dark-mode #tgGcTableWrap tr.tgGc-row-selected td { background: #26364d !important; }
 
+      /* ===== Cột cố định (STT + LSX) của bảng Thời gian gia công - ĐỘ RỘNG CỐ ĐỊNH bằng CSS,
+        KHÔNG đo bằng JS nữa (xem tgGcStickyColClass_). Trước đây đo độ rộng bằng JS có thể sai
+        thời điểm, khiến 2 cột này bị tính cùng 1 giá trị "left" -> chồng lên nhau, vừa đè chữ
+        header vừa che mất các ô Time ĐK nằm bên dưới khiến không bấm nhập được. Độ rộng cố định
+        đảm bảo header và dữ liệu LUÔN khớp tuyệt đối. */
+      #tgGcTableWrap .tgGc-stcol-idx {
+        position: sticky; left: 0; z-index: 3;
+        width: 46px; min-width: 46px; max-width: 46px;
+        background: #fff; overflow: hidden; text-overflow: ellipsis;
+      }
+      #tgGcTableWrap .tgGc-stcol-lsx {
+        position: sticky; left: 46px; z-index: 3;
+        width: 150px; min-width: 150px; max-width: 150px;
+        background: #fff; overflow: hidden; text-overflow: ellipsis;
+      }
+      #tgGcTableWrap th.tgGc-stcol-idx, #tgGcTableWrap th.tgGc-stcol-lsx {
+        z-index: 8; background: #003DA5;
+      }
+      body.dark-mode #tgGcTableWrap .tgGc-stcol-idx,
+      body.dark-mode #tgGcTableWrap .tgGc-stcol-lsx {
+        background: #1c1f26;
+      }
+      body.dark-mode #tgGcTableWrap th.tgGc-stcol-idx,
+      body.dark-mode #tgGcTableWrap th.tgGc-stcol-lsx {
+        background: #0c2f6e;
+      }
+
       /* ===== Sửa header 2 dòng bảng phân quyền bị mất khi cuộn + khe hở đầu bảng ===== */
       .perm-table { border-collapse: separate; border-spacing: 0; }
       .perm-table th { height: 32px; box-sizing: border-box; position: sticky; z-index: 5; border: 1px solid #0c2f6e; }
@@ -1862,7 +1889,11 @@ function confirmModalYes_() {
       }
 
       function applyPermissionsToUI_() {
-        isPermAdmin_ = !!(currentUser_ && PERM_ADMIN_ROLES_.indexOf(currentUser_.chucVu) !== -1);
+        // So khớp KHÔNG phân biệt hoa/thường + bỏ khoảng trắng thừa - tránh trường hợp cột
+        // "Chức vụ" trên Sheet gõ lệch 1 chút (VD "quản lý") khiến tài khoản quản lý thật sự
+        // không được nhận diện, làm ô Time ĐK hiện dạng chữ thường thay vì ô nhập được.
+        const chucVuNormalized_ = String(currentUser_ && currentUser_.chucVu || '').trim().toLowerCase();
+        isPermAdmin_ = !!(currentUser_ && PERM_ADMIN_ROLES_.some(function(r) { return r.toLowerCase() === chucVuNormalized_; }));
         const permWrap = document.getElementById('permSectionWrap');
         if (permWrap) permWrap.style.display = isPermAdmin_ ? 'block' : 'none';
 
@@ -3342,46 +3373,21 @@ function confirmModalYes_() {
         styleTag.textContent = css;
       }
 
+      // KHÔNG cần đo/tính "left" bằng JS nữa - 2 cột cố định giờ dùng độ rộng CỐ ĐỊNH qua CSS
+      // (.tgGc-stcol-idx / .tgGc-stcol-lsx). Giữ lại tên hàm rỗng này để các chỗ gọi cũ
+      // (renderThoiGianGC_, tgGcRenderMore_, resize listener) không bị lỗi, không cần sửa thêm.
       function applyTgGcStickyColumns_() {
-        const table = document.querySelector('#tgGcTableWrap table');
-        if (!table) return;
-
-        // Đo độ rộng theo DÒNG DỮ LIỆU THẬT (không dùng header) - header có rowspan/colspan nên
-        // nth-child của nó KHÔNG khớp cột với dòng dữ liệu, đây là nguyên nhân gốc gây đè/hở khe.
-        // Khớp cột bằng data-stickycol (gán khi build cả header và dữ liệu) nên luôn đúng.
-        let sampleCells = table.querySelectorAll('tr[data-sheetrow] td[data-stickycol]');
-        const stickyByIdx = {};
-        sampleCells.forEach(function(td) {
-          const idx = td.getAttribute('data-stickycol');
-          if (!(idx in stickyByIdx)) stickyByIdx[idx] = td;
-        });
-        // Bảng chưa có dòng dữ liệu (đang trống) -> tạm đo theo header.
-        if (Object.keys(stickyByIdx).length === 0) {
-          table.querySelectorAll('th[data-stickycol]').forEach(function(th) {
-            stickyByIdx[th.getAttribute('data-stickycol')] = th;
-          });
-        }
-
-        const sortedIdx = Object.keys(stickyByIdx).map(Number).sort(function(a, b) { return a - b; });
-        if (sortedIdx.length === 0) return;
-
-        let css = '';
-        let acc = 0;
-        sortedIdx.forEach(function(idx) {
-          css += '#tgGcTableWrap table [data-stickycol="' + idx + '"] { left: ' + acc + 'px; }\n';
-          acc += stickyByIdx[idx].getBoundingClientRect().width;
-        });
-
-        let styleTag = document.getElementById('tgGcStickyColStyle');
-        if (!styleTag) {
-          styleTag = document.createElement('style');
-          styleTag.id = 'tgGcStickyColStyle';
-          document.head.appendChild(styleTag);
-        }
-        styleTag.textContent = css;
+        /* no-op: đã chuyển sang cột cố định độ rộng bằng CSS. */
       }
 function tgGcIsStickyCol_(arrIdx) {
   return arrIdx === 0 || arrIdx === tgGcLsxArrayIndex_;
+}
+
+// Sinh đúng class CSS cố định độ rộng cho từng cột sticky - xem giải thích ở phần <style>.
+function tgGcStickyColClass_(arrIdx) {
+  if (arrIdx === tgGcLsxArrayIndex_) return ' tgGc-stcol-lsx sticky-col-end';
+  if (arrIdx === 0) return ' tgGc-stcol-idx';
+  return '';
 }
 
       function findRowData(lsxStt) {
@@ -4758,9 +4764,8 @@ function onVtGhQrScanSuccess_(decodedText) {
           const arrIdx = tgGcColumns_.indexOf(col);
           if (!col.group) {
             const activeCls = tgGcFilters_[arrIdx] ? ' active' : '';
-            const stickyCls = tgGcIsStickyCol_(arrIdx) ? ' sticky-col' + (arrIdx === tgGcLsxArrayIndex_ ? ' sticky-col-end' : '') : '';
-            const stickyAttr = tgGcIsStickyCol_(arrIdx) ? (' data-stickycol="' + i + '"') : '';
-            r1 += '<th class="tgGc-thead-r1' + stickyCls + '"' + stickyAttr + ' rowspan="2">' + tgGcDisplayLabel_(col.label) +
+            const stickyCls = tgGcIsStickyCol_(arrIdx) ? tgGcStickyColClass_(arrIdx) : '';
+            r1 += '<th class="tgGc-thead-r1' + stickyCls + '" rowspan="2">' + tgGcDisplayLabel_(col.label) +
               '<span class="filter-icon' + activeCls + '" onclick="tgGcOpenFilter_(' + arrIdx + ', this)">&#9662;</span></th>';
             i++;
           } else {
@@ -4790,10 +4795,10 @@ function onVtGhQrScanSuccess_(decodedText) {
           const arrIdx = tgGcColumns_.indexOf(col);
           const v = r.values[arrIdx];
           const totalStyle = tgGcIsTotalCol_(col) ? 'font-weight:800; color:#003DA5;' : '';
-          // data-stickycol dùng để canh "left" chính xác ở applyTgGcStickyColumns_ - không còn
-          // dựa vào nth-child (nguồn gây lệch/hở khe khi header có rowspan/colspan khác dòng dữ liệu).
+          // Cột cố định dùng class độ rộng CỐ ĐỊNH (.tgGc-stcol-idx/.tgGc-stcol-lsx) - không còn
+          // cần data-stickycol để đo/tính "left" nữa (xem tgGcStickyColClass_).
           const stickyClsName = tgGcIsStickyCol_(arrIdx)
-            ? (' class="sticky-col' + (arrIdx === tgGcLsxArrayIndex_ ? ' sticky-col-end' : '') + '" data-stickycol="' + cIdx + '"')
+            ? (' class="' + tgGcStickyColClass_(arrIdx).trim() + '"')
             : '';
           const posAttrs = ' data-r="' + rIdx + '" data-c="' + cIdx + '"';
           const hideZero = tgGcShouldHideZero_(col) && tgGcIsZeroVal_(v);
@@ -5365,7 +5370,7 @@ function onVtGhQrScanSuccess_(decodedText) {
       function khbusEditableCell_(value, path, extraStyle) {
         const safeVal = escapeHtml_(value || '').replace(/\n/g, '<br>');
         return '<div contenteditable="true" spellcheck="false" data-path="' + path + '" onblur="khbusUpdateField_(this.dataset.path, this.innerText)" ' +
-          'style="min-height:20px; outline:none; padding:2px; font-family:Arial, sans-serif; white-space:pre-wrap; word-break:break-word;' + (extraStyle || '') + '">' + safeVal + '</div>';
+          'style="min-height:20px; outline:none; padding:2px; font-family:Arial, sans-serif; white-space:pre-wrap; word-break:break-word; text-align:center;' + (extraStyle || '') + '">' + safeVal + '</div>';
       }
 
       function khbusRenderCanvas_() {
@@ -5413,7 +5418,7 @@ function onVtGhQrScanSuccess_(decodedText) {
         // white-space:normal ép lại rule "nowrap" toàn cục (áp dụng cho MỌI table/td trong app)
         // - chính nó là nguyên nhân bảng KH BUS bị đẩy tràn/khuyết cột sang phải khi có ô
         // chứa chữ dài. max-width để mọi ô có kích thước đồng đều, không phụ thuộc độ dài nội dung.
-        const KHBUS_BASE_TD_STYLE_ = 'border:1px solid #ccc; padding:4px; max-width:220px; white-space:normal; word-break:break-word; vertical-align:top;';
+        const KHBUS_BASE_TD_STYLE_ = 'border:1px solid #ccc; padding:4px; max-width:220px; white-space:normal; word-break:break-word; vertical-align:top; text-align:center;';
 
         function khbusTdStyle_(rIdx, cIdx, baseStyle) {
           const custom = khbusColorMap_[rIdx + '_' + cIdx];
